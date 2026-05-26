@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <link rel="shortcut icon" href="/portal/static/img/icons/icon-48x48.png"/>
+  <title>Invoices | Rehumile IMS</title>
+  <link href="/portal/static/css/app.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+</head>
+<body>
+<div class="wrapper">
+  <nav id="sidebar" class="sidebar js-sidebar">
+    <div class="sidebar-content js-simplebar">
+      <a class="sidebar-brand d-flex align-items-center p-2" href="/portal/dashboard/">
+        <img src="/portal/static/img/rehumile-logo.jpeg" style="height:36px;object-fit:contain" alt="Rehumile TMW">
+      </a>
+      <ul class="sidebar-nav">
+        <li class="sidebar-header">Operations</li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/"><i class="align-middle" data-feather="sliders"></i> <span class="align-middle">HQ Dashboard</span></a></li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/incidents/"><i class="align-middle" data-feather="alert-circle"></i> <span class="align-middle">Incidents</span></a></li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/companies/"><i class="align-middle" data-feather="briefcase"></i> <span class="align-middle">Companies</span></a></li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/users/"><i class="align-middle" data-feather="users"></i> <span class="align-middle">Users</span></a></li>
+        <li class="sidebar-header">Finance</li>
+        <li class="sidebar-item active"><a class="sidebar-link" href="/portal/invoices/"><i class="align-middle" data-feather="file-text"></i> <span class="align-middle">Invoices</span></a></li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/reports/"><i class="align-middle" data-feather="bar-chart-2"></i> <span class="align-middle">Reports</span></a></li>
+        <li class="sidebar-header">System</li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/admin/" target="_blank"><i class="align-middle" data-feather="settings"></i> <span class="align-middle">Admin Panel</span></a></li>
+      </ul>
+    </div>
+  </nav>
+  <div class="main">
+    <nav class="navbar navbar-expand navbar-light navbar-bg">
+      <a class="sidebar-toggle js-sidebar-toggle"><i class="hamburger align-self-center"></i></a>
+      <div class="navbar-collapse collapse">
+        <ul class="navbar-nav navbar-align">
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle d-none d-sm-inline-block" href="#" data-bs-toggle="dropdown">
+              <i class="align-middle me-1" data-feather="user"></i><span class="text-dark" id="navUserName">…</span>
+            </a>
+            <div class="dropdown-menu dropdown-menu-end">
+              <span class="dropdown-item-text small text-muted" id="navUserRole"></span>
+              <div class="dropdown-divider"></div>
+              <a class="dropdown-item" href="#" id="logoutBtn"><i class="align-middle me-1" data-feather="log-out"></i> Sign out</a>
+            </div>
+          </li>
+        </ul>
+      </div>
+    </nav>
+    <main class="content">
+      <div class="container-fluid p-0">
+        <div class="d-flex align-items-center justify-content-between mb-3">
+          <h1 class="h3 mb-0"><strong>Invoices</strong></h1>
+          <button class="btn btn-primary" id="newInvoiceBtn">
+            <i class="align-middle me-1" data-feather="plus"></i> Create Invoice
+          </button>
+        </div>
+        <div id="pageAlert"></div>
+        <div class="card">
+          <div class="card-header d-flex align-items-center justify-content-between">
+            <h5 class="card-title mb-0">All Invoices</h5>
+            <span class="badge bg-secondary" id="invoiceCount">Loading…</span>
+          </div>
+          <div class="card-body p-0">
+            <div id="tableLoading" class="text-center py-4 text-muted">Loading…</div>
+            <div class="table-responsive" id="tableWrapper" style="display:none">
+              <table class="table table-hover my-0">
+                <thead><tr>
+                  <th>Invoice #</th><th>Company</th>
+                  <th class="d-none d-md-table-cell">Billing Period</th>
+                  <th class="d-none d-md-table-cell">Hours</th>
+                  <th>Total (ZAR)</th><th>Status</th>
+                  <th class="d-none d-lg-table-cell">Due Date</th><th>Actions</th>
+                </tr></thead>
+                <tbody id="invoiceTbody"></tbody>
+              </table>
+            </div>
+            <div id="tableEmpty" class="text-center py-4 text-muted" style="display:none">No invoices found.</div>
+          </div>
+        </div>
+      </div>
+    </main>
+    <footer class="footer"><div class="container-fluid"><p class="mb-0 text-muted">Rehumile TMW IMS &copy; 2025</p></div></footer>
+  </div>
+</div>
+
+<!-- Create/Edit Invoice Modal -->
+<div class="modal fade" id="invoiceModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="invoiceModalTitle">Create Invoice</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div id="modalAlert"></div>
+        <form id="invoiceForm">
+          <input type="hidden" id="editId">
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label class="form-label">Company <span class="text-danger">*</span></label>
+              <select class="form-select" id="f_company" required><option value="">Loading…</option></select>
+            </div>
+            <div class="col-md-6 mb-3">
+              <label class="form-label">Invoice Number <span class="text-danger">*</span></label>
+              <input type="text" class="form-control" id="f_inv_number" required placeholder="e.g. INV-2025-001">
+            </div>
+          </div>
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label class="form-label">Billing Period Start <span class="text-danger">*</span></label>
+              <input type="date" class="form-control" id="f_period_start" required>
+            </div>
+            <div class="col-md-6 mb-3">
+              <label class="form-label">Billing Period End <span class="text-danger">*</span></label>
+              <input type="date" class="form-control" id="f_period_end" required>
+            </div>
+          </div>
+          <div class="row">
+            <div class="col-md-4 mb-3">
+              <label class="form-label">Ticket Count <span class="text-danger">*</span></label>
+              <input type="number" class="form-control" id="f_ticket_count" required min="0" value="0">
+            </div>
+            <div class="col-md-4 mb-3">
+              <label class="form-label">Hours Worked <span class="text-danger">*</span></label>
+              <input type="number" class="form-control" id="f_hours" required min="0" step="0.5" value="0">
+            </div>
+            <div class="col-md-4 mb-3">
+              <label class="form-label">Due Date</label>
+              <input type="date" class="form-control" id="f_due_date">
+            </div>
+          </div>
+          <div class="row">
+            <div class="col-md-5 mb-3">
+              <label class="form-label">Subtotal (ZAR) <span class="text-danger">*</span></label>
+              <input type="number" class="form-control" id="f_subtotal" required min="0" step="0.01" value="0" oninput="calcTotal()">
+            </div>
+            <div class="col-md-3 mb-3">
+              <label class="form-label">Tax Rate (%)</label>
+              <input type="number" class="form-control" id="f_tax_rate" min="0" max="100" step="0.01" value="15" oninput="calcTotal()">
+            </div>
+            <div class="col-md-4 mb-3">
+              <label class="form-label">Total (auto-calculated)</label>
+              <input type="text" class="form-control bg-light" id="f_total_display" readonly value="R 0.00">
+            </div>
+          </div>
+          <div class="row">
+            <div class="col-md-4 mb-3">
+              <label class="form-label">Status</label>
+              <select class="form-select" id="f_status">
+                <option value="draft" selected>Draft</option>
+                <option value="sent">Sent</option>
+                <option value="paid">Paid</option>
+                <option value="overdue">Overdue</option>
+                <option value="cancelled">Cancelled</option>
+              </select>
+            </div>
+            <div class="col-md-8 mb-3">
+              <label class="form-label">Notes</label>
+              <textarea class="form-control" id="f_notes" rows="2" placeholder="Payment terms, additional notes…"></textarea>
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary" id="saveInvoiceBtn">Save Invoice</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="/portal/static/js/app.js"></script>
+<script>
+window.calcTotal = function(){
+  const sub=parseFloat(document.getElementById('f_subtotal').value)||0;
+  const tax=parseFloat(document.getElementById('f_tax_rate').value)||0;
+  const total=sub+(sub*tax/100);
+  document.getElementById('f_total_display').value='R '+total.toFixed(2);
+};
+
+(function(){
+  const token = localStorage.getItem('ims_access');
+  if(!token){ window.location.href='/portal/login/'; return; }
+  const userData = JSON.parse(localStorage.getItem('ims_user')||'{}');
+  document.getElementById('navUserName').textContent=((userData.first_name||'')+' '+(userData.last_name||'')).trim()||userData.email||'User';
+  document.getElementById('navUserRole').textContent=(userData.role||'').toUpperCase();
+  document.getElementById('logoutBtn').onclick=e=>{ e.preventDefault(); localStorage.clear(); window.location.href='/portal/login/'; };
+
+  async function api(url, opts={}){
+    const r=await fetch(url,{...opts,headers:{'Content-Type':'application/json','Authorization':'Bearer '+token,...(opts.headers||{})}});
+    if(r.status===401){ localStorage.clear(); window.location.href='/portal/login/'; throw new Error('Unauth'); }
+    return r;
+  }
+  function showAlert(id, msg, type='danger'){
+    document.getElementById(id).innerHTML=`<div class="alert alert-${type} alert-dismissible"><button type="button" class="btn-close" data-bs-dismiss="alert"></button>${msg}</div>`;
+  }
+  const statusBadge=s=>({'draft':'<span class="badge bg-secondary">Draft</span>','sent':'<span class="badge bg-primary">Sent</span>','paid':'<span class="badge bg-success">Paid</span>','overdue':'<span class="badge bg-danger">Overdue</span>','cancelled':'<span class="badge bg-dark">Cancelled</span>'}[s]||`<span class="badge bg-secondary">${s}</span>`);
+  const fmtDate=d=>d?new Date(d).toLocaleDateString('en-ZA',{year:'numeric',month:'short',day:'numeric'}):'—';
+  const fmtPeriod=(s,e)=>`${fmtDate(s)} – ${fmtDate(e)}`;
+
+  async function loadCompanies(){
+    try{
+      const r=await api('/portal/api/companies/');
+      const data=await r.json();
+      document.getElementById('f_company').innerHTML='<option value="">Select company…</option>'+data.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
+    }catch{}
+  }
+
+  async function loadInvoices(){
+    try{
+      const r=await api('/portal/api/invoices/');
+      const data=await r.json();
+      document.getElementById('tableLoading').style.display='none';
+      document.getElementById('invoiceCount').textContent=data.length+' record'+(data.length!==1?'s':'');
+      if(!data.length){ document.getElementById('tableEmpty').style.display='block'; return; }
+      document.getElementById('tableWrapper').style.display='block';
+      document.getElementById('invoiceTbody').innerHTML=data.map(inv=>`
+        <tr>
+          <td><code>${inv.invoice_number}</code></td>
+          <td>${inv.company_name||'—'}</td>
+          <td class="d-none d-md-table-cell">${fmtPeriod(inv.billing_period_start,inv.billing_period_end)}</td>
+          <td class="d-none d-md-table-cell">${inv.hours_worked||0}h</td>
+          <td><strong>R ${parseFloat(inv.total_amount||0).toFixed(2)}</strong></td>
+          <td>${statusBadge(inv.status)}</td>
+          <td class="d-none d-lg-table-cell">${fmtDate(inv.due_date)}</td>
+          <td>
+            <button class="btn btn-sm btn-outline-primary me-1" onclick='openEdit(${JSON.stringify(inv)})'>Edit</button>
+          </td>
+        </tr>`).join('');
+    }catch(e){ if(e.message!=='Unauth') showAlert('pageAlert','Failed to load invoices.'); }
+  }
+
+  function resetForm(){
+    document.getElementById('invoiceForm').reset();
+    document.getElementById('editId').value='';
+    document.getElementById('modalAlert').innerHTML='';
+    document.getElementById('invoiceModalTitle').textContent='Create Invoice';
+    document.getElementById('f_total_display').value='R 0.00';
+    // Auto-suggest invoice number
+    document.getElementById('f_inv_number').value='INV-'+new Date().getFullYear()+'-'+String(Date.now()).slice(-4);
+  }
+
+  document.getElementById('newInvoiceBtn').onclick=()=>{
+    resetForm();
+    loadCompanies();
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('invoiceModal')).show();
+  };
+
+  window.openEdit=function(inv){
+    resetForm();
+    loadCompanies();
+    document.getElementById('invoiceModalTitle').textContent='Edit Invoice';
+    document.getElementById('editId').value=inv.id;
+    document.getElementById('f_inv_number').value=inv.invoice_number||'';
+    document.getElementById('f_period_start').value=inv.billing_period_start||'';
+    document.getElementById('f_period_end').value=inv.billing_period_end||'';
+    document.getElementById('f_ticket_count').value=inv.ticket_count||0;
+    document.getElementById('f_hours').value=inv.hours_worked||0;
+    document.getElementById('f_subtotal').value=inv.subtotal||0;
+    document.getElementById('f_tax_rate').value=inv.tax_rate||15;
+    document.getElementById('f_due_date').value=inv.due_date||'';
+    document.getElementById('f_status').value=inv.status||'draft';
+    document.getElementById('f_notes').value=inv.notes||'';
+    calcTotal();
+    // Set company after load
+    const setComp=()=>{ if(inv.company) document.getElementById('f_company').value=inv.company; };
+    setTimeout(setComp, 300);
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('invoiceModal')).show();
+  };
+
+  document.getElementById('saveInvoiceBtn').onclick=async()=>{
+    const id=document.getElementById('editId').value;
+    const company=document.getElementById('f_company').value;
+    const invoice_number=document.getElementById('f_inv_number').value.trim();
+    const billing_period_start=document.getElementById('f_period_start').value;
+    const billing_period_end=document.getElementById('f_period_end').value;
+    const ticket_count=parseInt(document.getElementById('f_ticket_count').value)||0;
+    const hours_worked=parseFloat(document.getElementById('f_hours').value)||0;
+    const subtotal=parseFloat(document.getElementById('f_subtotal').value)||0;
+    const tax_rate=parseFloat(document.getElementById('f_tax_rate').value)||0;
+    const due_date=document.getElementById('f_due_date').value||null;
+    const status=document.getElementById('f_status').value;
+    const notes=document.getElementById('f_notes').value.trim();
+    if(!company||!invoice_number||!billing_period_start||!billing_period_end){
+      showAlert('modalAlert','Company, invoice number, and billing period are required.'); return;
+    }
+    const body={company,invoice_number,billing_period_start,billing_period_end,ticket_count,hours_worked,subtotal,tax_rate,due_date,status,notes};
+    try{
+      const r=id
+        ? await api(`/portal/api/invoices/${id}/`,{method:'PATCH',body:JSON.stringify(body)})
+        : await api('/portal/api/invoices/',{method:'POST',body:JSON.stringify(body)});
+      const data=await r.json();
+      if(r.ok){
+        bootstrap.Modal.getInstance(document.getElementById('invoiceModal')).hide();
+        showAlert('pageAlert',id?'Invoice updated.':'Invoice created.','success');
+        loadInvoices();
+      } else { showAlert('modalAlert',data.detail||data.invoice_number?.[0]||JSON.stringify(data)); }
+    }catch(e){ if(e.message!=='Unauth') showAlert('modalAlert','Failed to save invoice.'); }
+  };
+
+  loadInvoices();
+})();
+</script>
+</body>
+</html>

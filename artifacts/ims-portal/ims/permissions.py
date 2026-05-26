@@ -21,6 +21,16 @@ class IsHQAdminOrAgent(BasePermission):
         )
 
 
+class IsHQStaff(BasePermission):
+    """HQ Administrators, Agents, and Finance users can access this endpoint."""
+    def has_permission(self, request, view):
+        return bool(
+            request.user and
+            request.user.is_authenticated and
+            request.user.role in ('admin', 'agent', 'finance')
+        )
+
+
 class IsHQAdminOrReadOnly(BasePermission):
     """HQ Administrators can mutate; authenticated users can read."""
     def has_permission(self, request, view):

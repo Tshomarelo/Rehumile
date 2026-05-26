@@ -12,14 +12,14 @@ import uuid
 
 from .models import (
     Company, UserProfile, Incident, IncidentComment,
-    SLAConfig, StatusChoices
+    SLAConfig, StatusChoices, Invoice
 )
 from .serializers import (
     CompanySerializer, UserSerializer, UserCreateSerializer,
     IncidentSerializer, IncidentCreateSerializer,
-    IncidentCommentSerializer, DashboardMetricsSerializer
+    IncidentCommentSerializer, DashboardMetricsSerializer, InvoiceSerializer
 )
-from .permissions import IsHQAdmin, IsHQAdminOrAgent, IsHQAdminOrReadOnly
+from .permissions import IsHQAdmin, IsHQAdminOrAgent, IsHQAdminOrReadOnly, IsHQStaff
 
 User = get_user_model()
 
@@ -281,6 +281,25 @@ class IncidentViewSet(viewsets.ModelViewSet):
             )
         serializer.save(incident=incident, author=request.user)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+# ============================================================================
+# INVOICE VIEWS
+# ============================================================================
+
+class InvoiceViewSet(viewsets.ModelViewSet):
+    """
+    Invoice management.
+    - List/retrieve: HQ staff (admin, agent, finance)
+    - Create/update/delete: HQ staff
+    """
+    serializer_class = InvoiceSerializer
+
+    def get_permissions(self):
+        return [IsHQStaff()]
+
+    def get_queryset(self):
+        return Invoice.objects.select_related('company').order_by('-created_at')
 
 
 # ============================================================================

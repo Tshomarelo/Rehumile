@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
-from .models import Company, UserProfile, Incident, IncidentComment
+from .models import Company, UserProfile, Incident, IncidentComment, Invoice
 
 User = get_user_model()
 
@@ -121,6 +121,40 @@ class IncidentCreateSerializer(serializers.ModelSerializer):
             'title', 'description', 'category',
             'priority', 'is_billable',
         ]
+
+
+class InvoiceSerializer(serializers.ModelSerializer):
+    company_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Invoice
+        fields = [
+            'id', 'invoice_number', 'company', 'company_name',
+            'billing_period_start', 'billing_period_end',
+            'subtotal', 'tax_rate', 'tax_amount', 'total_amount',
+            'ticket_count', 'hours_worked', 'status', 'notes',
+            'due_date', 'payment_date', 'created_at', 'updated_at',
+        ]
+        read_only_fields = ['id', 'tax_amount', 'total_amount', 'created_at', 'updated_at']
+
+    def get_company_name(self, obj):
+        return obj.company.name if obj.company else None
+
+    def _calc_totals(self, data):
+        subtotal = data.get('subtotal', 0) or 0
+        tax_rate = data.get('tax_rate', 0) or 0
+        tax_amount = round(float(subtotal) * float(tax_rate) / 100, 2)
+        data['tax_amount'] = tax_amount
+        data['total_amount'] = round(float(subtotal) + tax_amount, 2)
+        return data
+
+    def create(self, validated_data):
+        self._calc_totals(validated_data)
+        return super().create(validated_data)
+
+    def update(self, instance, validated_data):
+        self._calc_totals(validated_data)
+        return super().update(instance, validated_data)
 
 
 class DashboardMetricsSerializer(serializers.Serializer):

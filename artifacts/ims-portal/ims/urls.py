@@ -6,6 +6,7 @@ router = DefaultRouter()
 router.register(r'companies', views.CompanyViewSet, basename='company')
 router.register(r'users', views.UserViewSet, basename='user')
 router.register(r'incidents', views.IncidentViewSet, basename='incident')
+router.register(r'invoices', views.InvoiceViewSet, basename='invoice')
 
 urlpatterns = [
     path('auth/login/', views.LoginView.as_view(), name='login'),

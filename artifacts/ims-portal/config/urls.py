@@ -3,7 +3,11 @@ from django.urls import path, include
 from django.views.generic import RedirectView
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
-from ims.portal_views import portal_login_view, portal_index_view
+from ims.portal_views import (
+    portal_login_view, portal_index_view,
+    portal_incidents_view, portal_companies_view,
+    portal_users_view, portal_invoices_view, portal_reports_view,
+)
 
 urlpatterns = [
     # Django admin
@@ -13,16 +17,22 @@ urlpatterns = [
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
     path('api/docs/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
 
-    # JWT Token endpoints (standard simplejwt paths)
+    # JWT Token endpoints
     path('api/auth/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/auth/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
 
     # IMS REST API
     path('api/', include('ims.urls')),
 
-    # Portal frontend: root redirects to login
+    # Portal frontend pages
     path('login/', portal_login_view, name='portal-login'),
     path('dashboard/', portal_index_view, name='portal-dashboard'),
-    # Root redirects to login page
+    path('incidents/', portal_incidents_view, name='portal-incidents'),
+    path('companies/', portal_companies_view, name='portal-companies'),
+    path('users/', portal_users_view, name='portal-users'),
+    path('invoices/', portal_invoices_view, name='portal-invoices'),
+    path('reports/', portal_reports_view, name='portal-reports'),
+
+    # Root → login
     path('', RedirectView.as_view(url='/portal/login/', permanent=False), name='portal-root'),
 ]
