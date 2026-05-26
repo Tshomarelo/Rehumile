@@ -14,6 +14,6 @@ def portal_login_view(request):
 
 
 def portal_index_view(request):
-    """Serve the main dashboard page (requires JS auth check)."""
-    index_html = (STATIC_DIR / 'index.html').read_text()
-    return HttpResponse(index_html, content_type='text/html')
+    """Serve the Rehumile HQ dashboard (requires JS auth check)."""
+    html = (STATIC_DIR / 'hq-dashboard.html').read_text()
+    return HttpResponse(html, content_type='text/html')
