@@ -191,7 +191,7 @@
   async function loadCompanies(){
     try{
       const r=await api('/portal/api/companies/');
-      const data=await r.json();
+      const _j=await r.json(); const data=Array.isArray(_j)?_j:(_j.results||[]);
       document.getElementById('tableLoading').style.display='none';
       document.getElementById('companyCount').textContent=data.length+' record'+(data.length!==1?'s':'');
       if(!data.length){ document.getElementById('tableEmpty').style.display='block'; return; }

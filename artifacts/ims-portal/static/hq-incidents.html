@@ -233,7 +233,7 @@
   async function loadIncidents(){
     try{
       const r = await api('/portal/api/incidents/');
-      allIncidents = await r.json();
+      const _ij=await r.json(); allIncidents=Array.isArray(_ij)?_ij:(_ij.results||[]);
       renderTable(allIncidents);
     }catch(e){ if(e.message!=='Unauth') showAlert('pageAlert','Failed to load incidents.'); }
   }
@@ -261,7 +261,7 @@
   async function loadCompanies(){
     try{
       const r = await api('/portal/api/companies/');
-      const companies = await r.json();
+      const _cj=await r.json(); const companies=Array.isArray(_cj)?_cj:(_cj.results||[]);
       const sel = document.getElementById('c_company');
       sel.innerHTML='<option value="">Select company…</option>'+companies.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
     }catch{}
@@ -319,7 +319,7 @@
     // Load agents
     try{
       const r2 = await api('/portal/api/users/');
-      const users = await r2.json();
+      const _uj=await r2.json(); const users=Array.isArray(_uj)?_uj:(_uj.results||[]);
       const agents = users.filter(u=>u.role==='agent'||u.role==='admin');
       document.getElementById('d_agent').innerHTML='<option value="">Select agent…</option>'+agents.map(a=>`<option value="${a.id}">${((a.first_name||'')+' '+(a.last_name||'')).trim()||a.email}</option>`).join('');
       if(inc.assigned_to) document.getElementById('d_agent').value=inc.assigned_to;
@@ -327,7 +327,7 @@
     // Load comments
     try{
       const r3 = await api(`/portal/api/incidents/${id}/comments/`);
-      const comments = await r3.json();
+      const _cmj=await r3.json(); const comments=Array.isArray(_cmj)?_cmj:(_cmj.results||[]);
       document.getElementById('commentsList').innerHTML=comments.length?comments.map(c=>`
         <div class="border rounded p-2 mb-2 ${c.is_internal?'bg-warning bg-opacity-10':''}">
           <div class="d-flex justify-content-between"><strong class="small">${c.author_name}</strong><small class="text-muted">${fmtDate(c.created_at)}</small></div>
