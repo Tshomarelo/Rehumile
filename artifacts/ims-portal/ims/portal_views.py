@@ -36,3 +36,33 @@ def portal_invoices_view(request):
 
 def portal_reports_view(request):
     return _serve('hq-reports.html')
+
+
+# ── Client portal pages ──────────────────────────────────────────────────────
+
+def client_dashboard_view(request):
+    return _serve('client-dashboard.html')
+
+
+def client_tickets_view(request):
+    return _serve('client-tickets.html')
+
+
+def client_create_ticket_view(request):
+    return _serve('client-create-ticket.html')
+
+
+def client_ticket_detail_view(request):
+    return _serve('client-ticket-detail.html')
+
+
+def client_billing_view(request):
+    return _serve('client-billing.html')
+
+
+def client_profile_view(request):
+    return _serve('client-profile.html')
+
+
+def client_contact_view(request):
+    return _serve('client-contact.html')

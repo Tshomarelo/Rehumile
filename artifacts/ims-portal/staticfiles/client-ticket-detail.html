@@ -1,233 +1,121 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-  <meta charset="utf-8">
-  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta charset="utf-8"><meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-  <meta name="description" content="Ticket Details - ITIL Incident Management System">
-  <meta name="author" content="IMS">
-  <link rel="shortcut icon" href="img/icons/icon-48x48.png" />
-  <title>Ticket #TKT-00124 | IMS Client</title>
-  <link href="css/app.css" rel="stylesheet">
+  <link rel="shortcut icon" href="/portal/static/img/icons/icon-48x48.png"/>
+  <title>Ticket Details | Rehumile IMS</title>
+  <link href="/portal/static/css/app.css" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+  <style>
+    .timeline { list-style:none; padding-left:0; position:relative; }
+    .timeline:before { content:''; position:absolute; left:12px; top:0; bottom:0; width:2px; background:#e9ecef; }
+    .timeline-item { position:relative; padding-left:40px; margin-bottom:15px; }
+    .timeline-dot { position:absolute; left:7px; top:10px; width:12px; height:12px; border-radius:50%; background:#50181E; border:2px solid #fff; box-shadow:0 0 0 2px #50181E; }
+    .timeline-dot.agent { background:#0d6efd; box-shadow:0 0 0 2px #0d6efd; }
+    .timeline-dot.client { background:#198754; box-shadow:0 0 0 2px #198754; }
+  </style>
 </head>
-
 <body>
-  <div class="wrapper">
-    <nav id="sidebar" class="sidebar js-sidebar">
-      <div class="sidebar-content js-simplebar">
-        <a class="sidebar-brand" href="client-dashboard.html">
-          <span class="align-middle">IMS Client</span>
-        </a>
-
-        <ul class="sidebar-nav">
-          <li class="sidebar-header">
-            Main
-          </li>
-
-          <li class="sidebar-item">
-            <a class="sidebar-link" href="client-dashboard.html">
-              <i class="align-middle" data-feather="sliders"></i> <span class="align-middle">Dashboard</span>
+<div class="wrapper">
+  <nav id="sidebar" class="sidebar js-sidebar">
+    <div class="sidebar-content js-simplebar">
+      <a class="sidebar-brand d-flex align-items-center p-2" href="/portal/client/">
+        <img src="/portal/static/img/rehumile-logo.jpeg" style="height:36px;object-fit:contain" alt="Rehumile TMW">
+      </a>
+      <ul class="sidebar-nav">
+        <li class="sidebar-header">Main</li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/client/"><i class="align-middle" data-feather="sliders"></i> <span class="align-middle">Dashboard</span></a></li>
+        <li class="sidebar-item active"><a class="sidebar-link" href="/portal/client/tickets/"><i class="align-middle" data-feather="list"></i> <span class="align-middle">My Tickets</span></a></li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/client/tickets/create/"><i class="align-middle" data-feather="plus-circle"></i> <span class="align-middle">Create Ticket</span></a></li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/client/billing/"><i class="align-middle" data-feather="file-text"></i> <span class="align-middle">Billing</span></a></li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/client/profile/"><i class="align-middle" data-feather="user"></i> <span class="align-middle">Profile</span></a></li>
+        <li class="sidebar-header">Support</li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/client/contact/"><i class="align-middle" data-feather="help-circle"></i> <span class="align-middle">Contact Support</span></a></li>
+      </ul>
+    </div>
+  </nav>
+  <div class="main">
+    <nav class="navbar navbar-expand navbar-light navbar-bg">
+      <a class="sidebar-toggle js-sidebar-toggle"><i class="hamburger align-self-center"></i></a>
+      <div class="navbar-collapse collapse">
+        <ul class="navbar-nav navbar-align">
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle d-none d-sm-inline-block" href="#" data-bs-toggle="dropdown">
+              <i class="align-middle me-1" data-feather="user"></i><span class="text-dark" id="navUserName">…</span>
             </a>
-          </li>
-
-          <li class="sidebar-item">
-            <a class="sidebar-link" href="client-tickets.html">
-              <i class="align-middle" data-feather="list"></i> <span class="align-middle">My Tickets</span>
-            </a>
-          </li>
-
-          <li class="sidebar-item">
-            <a class="sidebar-link" href="client-create-ticket.html">
-              <i class="align-middle" data-feather="plus-circle"></i> <span class="align-middle">Create Ticket</span>
-            </a>
-          </li>
-
-          <li class="sidebar-item">
-            <a class="sidebar-link" href="client-billing.html">
-              <i class="align-middle" data-feather="file-text"></i> <span class="align-middle">Billing</span>
-            </a>
-          </li>
-
-          <li class="sidebar-item">
-            <a class="sidebar-link" href="client-profile.html">
-              <i class="align-middle" data-feather="user"></i> <span class="align-middle">Profile</span>
-            </a>
-          </li>
-
-          <li class="sidebar-header">
-            Support
-          </li>
-
-          <li class="sidebar-item">
-            <a class="sidebar-link" href="client-contact.html">
-              <i class="align-middle" data-feather="help-circle"></i> <span class="align-middle">Contact Support</span>
-            </a>
+            <div class="dropdown-menu dropdown-menu-end">
+              <span class="dropdown-item-text small text-muted" id="navCompanyName"></span>
+              <div class="dropdown-divider"></div>
+              <a class="dropdown-item" href="/portal/client/profile/"><i class="align-middle me-1" data-feather="user"></i> Profile</a>
+              <div class="dropdown-divider"></div>
+              <a class="dropdown-item" href="#" id="logoutBtn"><i class="align-middle me-1" data-feather="log-out"></i> Sign out</a>
+            </div>
           </li>
         </ul>
       </div>
     </nav>
-
-    <div class="main">
-      <nav class="navbar navbar-expand navbar-light navbar-bg">
-        <a class="sidebar-toggle js-sidebar-toggle">
-          <i class="hamburger align-self-center"></i>
-        </a>
-
-        <div class="navbar-collapse collapse">
-          <ul class="navbar-nav navbar-align">
-            <li class="nav-item dropdown">
-              <a class="nav-icon dropdown-toggle" href="#" id="notificationsDropdown" data-bs-toggle="dropdown">
-                <div class="position-relative">
-                  <i class="align-middle" data-feather="bell"></i>
-                  <span class="indicator">1</span>
-                </div>
-              </a>
-            </li>
-            <li class="nav-item dropdown">
-              <a class="nav-link dropdown-toggle d-none d-sm-inline-block" href="#" data-bs-toggle="dropdown">
-                <img src="img/avatars/avatar.jpg" class="avatar img-fluid rounded me-1" alt="User" /> <span class="text-dark">John Doe</span>
-              </a>
-              <div class="dropdown-menu dropdown-menu-end">
-                <a class="dropdown-item" href="client-profile.html"><i class="align-middle me-1" data-feather="user"></i> Profile</a>
-                <div class="dropdown-divider"></div>
-                <a class="dropdown-item" href="pages-sign-in.html"><i class="align-middle me-1" data-feather="log-out"></i> Log out</a>
-              </div>
-            </li>
-          </ul>
-        </div>
-      </nav>
-
-      <main class="content">
-        <div class="container-fluid p-0">
-
-          <div class="mb-3 d-flex justify-content-between align-items-center">
-            <div>
-              <h1 class="h3 d-inline align-middle">Ticket Details</h1>
-              <span class="text-muted ms-2">#TKT-00124</span>
-            </div>
-            <a href="client-tickets.html" class="btn btn-outline-secondary"><i data-feather="arrow-left"></i> Back to Tickets</a>
+    <main class="content">
+      <div class="container-fluid p-0">
+        <div class="mb-3 d-flex align-items-center justify-content-between">
+          <div>
+            <h1 class="h3 d-inline align-middle"><strong>Ticket Details</strong></h1>
+            <span class="text-muted ms-2" id="ticketIdLabel"></span>
           </div>
+          <a href="/portal/client/tickets/" class="btn btn-outline-secondary btn-sm">
+            <i class="align-middle me-1" data-feather="arrow-left"></i> Back to Tickets
+          </a>
+        </div>
 
+        <div id="loadingMsg" class="text-center py-5 text-muted">Loading ticket…</div>
+
+        <div id="ticketContent" style="display:none">
           <div class="row">
             <div class="col-12 col-lg-8">
-              <!-- Ticket Details -->
+              <!-- Main ticket card -->
               <div class="card mb-3">
                 <div class="card-header">
-                  <h5 class="card-title mb-0">Email server not responding</h5>
+                  <h5 class="card-title mb-0" id="ticketTitle"></h5>
                 </div>
                 <div class="card-body">
                   <div class="row g-3 mb-3">
-                    <div class="col-12 col-md-6">
-                      <strong>Status:</strong> <span class="badge bg-success">Resolved</span>
-                    </div>
-                    <div class="col-12 col-md-6">
-                      <strong>Priority:</strong> <span class="badge bg-warning">High</span>
-                    </div>
-                    <div class="col-12 col-md-6">
-                      <strong>Category:</strong> Network
-                    </div>
-                    <div class="col-12 col-md-6">
-                      <strong>Created:</strong> May 23, 2026
-                    </div>
-                    <div class="col-12 col-md-6">
-                      <strong>Resolved:</strong> May 24, 2026
-                    </div>
+                    <div class="col-6 col-md-3"><strong>Status</strong><br><span id="ticketStatus"></span></div>
+                    <div class="col-6 col-md-3"><strong>Priority</strong><br><span id="ticketPriority"></span></div>
+                    <div class="col-6 col-md-3"><strong>Category</strong><br><span id="ticketCategory" class="text-muted"></span></div>
+                    <div class="col-6 col-md-3"><strong>Created</strong><br><span id="ticketCreated" class="text-muted"></span></div>
                   </div>
-
                   <hr>
-
-                  <h6>Description:</h6>
-                  <p>Users are unable to send or receive emails. The email server appears to be down. This affects all users in the company. Outlook shows "Disconnected" status. Please investigate and restore email service as soon as possible.</p>
-
-                  <hr>
-
-                  <h6>Attachments:</h6>
-                  <div class="row">
-                    <div class="col-12 col-md-4">
-                      <div class="card">
-                        <div class="card-body p-2">
-                          <i data-feather="file-text" class="mb-1"></i>
-                          <div class="small">error_screenshot.png</div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+                  <h6>Description</h6>
+                  <p id="ticketDescription" class="text-muted" style="white-space:pre-wrap"></p>
                 </div>
               </div>
 
-              <!-- Activity Timeline -->
+              <!-- Comments / Timeline -->
               <div class="card mb-3">
                 <div class="card-header">
-                  <h5 class="card-title mb-0">Activity Timeline</h5>
+                  <h5 class="card-title mb-0">Activity &amp; Comments</h5>
                 </div>
                 <div class="card-body">
-                  <ul class="timeline">
-                    <li class="timeline-item">
-                      <div class="timeline-item-point"></div>
-                      <div class="card">
-                        <div class="card-body p-2">
-                          <div class="d-flex justify-content-between">
-                            <strong>Support Agent</strong>
-                            <small class="text-muted">May 24, 2026 14:30</small>
-                          </div>
-                          <p class="mb-0">Ticket resolved. The email server was restarted and is now functioning normally.</p>
-                        </div>
-                      </div>
-                    </li>
-                    <li class="timeline-item">
-                      <div class="timeline-item-point"></div>
-                      <div class="card">
-                        <div class="card-body p-2">
-                          <div class="d-flex justify-content-between">
-                            <strong>Support Agent</strong>
-                            <small class="text-muted">May 24, 2026 09:15</small>
-                          </div>
-                          <p class="mb-0">Investigating the email server issue. Checking logs for root cause.</p>
-                        </div>
-                      </div>
-                    </li>
-                    <li class="timeline-item">
-                      <div class="timeline-item-point"></div>
-                      <div class="card">
-                        <div class="card-body p-2">
-                          <div class="d-flex justify-content-between">
-                            <strong>Support Agent</strong>
-                            <small class="text-muted">May 23, 2026 16:45</small>
-                          </div>
-                          <p class="mb-0">Ticket assigned to support team. Priority escalated to High.</p>
-                        </div>
-                      </div>
-                    </li>
-                    <li class="timeline-item">
-                      <div class="timeline-item-point"></div>
-                      <div class="card">
-                        <div class="card-body p-2">
-                          <div class="d-flex justify-content-between">
-                            <strong>John Doe</strong>
-                            <small class="text-muted">May 23, 2026 14:20</small>
-                          </div>
-                          <p class="mb-0">Ticket created with High priority.</p>
-                        </div>
-                      </div>
-                    </li>
-                  </ul>
+                  <div id="commentsArea">
+                    <p class="text-muted small">Loading comments…</p>
+                  </div>
                 </div>
               </div>
 
-              <!-- Add Reply -->
-              <div class="card">
-                <div class="card-header">
-                  <h5 class="card-title mb-0">Add Reply</h5>
-                </div>
+              <!-- Reply form -->
+              <div class="card" id="replyCard">
+                <div class="card-header"><h5 class="card-title mb-0">Add a Comment</h5></div>
                 <div class="card-body">
+                  <div id="replyAlert" class="alert d-none" role="alert"></div>
                   <form id="replyForm">
                     <div class="mb-3">
-                      <textarea class="form-control" rows="4" placeholder="Type your reply here..."></textarea>
+                      <textarea class="form-control" id="replyText" rows="3" placeholder="Type your comment or question…" required></textarea>
                     </div>
                     <div class="d-flex justify-content-end">
-                      <button type="submit" class="btn btn-primary">Send Reply</button>
+                      <button type="submit" class="btn btn-primary" id="replyBtn">
+                        <span id="replySpinner" class="spinner-border spinner-border-sm me-1 d-none"></span>
+                        Send
+                      </button>
                     </div>
                   </form>
                 </div>
@@ -235,93 +123,137 @@
             </div>
 
             <div class="col-12 col-lg-4">
-              <!-- Ticket Info Card -->
               <div class="card mb-3">
-                <div class="card-header">
-                  <h5 class="card-title mb-0">Ticket Information</h5>
-                </div>
+                <div class="card-header"><h5 class="card-title mb-0">Ticket Information</h5></div>
                 <div class="card-body">
-                  <table class="table table-sm table-borderless">
-                    <tr>
-                      <td><strong>Assigned To:</strong></td>
-                      <td>Sarah Johnson</td>
-                    </tr>
-                    <tr>
-                      <td><strong>SLA Type:</strong></td>
-                      <td>Silver</td>
-                    </tr>
-                    <tr>
-                      <td><strong>SLA Deadline:</strong></td>
-                      <td>May 24, 2026 16:20</td>
-                    </tr>
-                    <tr>
-                      <td><strong>Time Spent:</strong></td>
-                      <td>2.5 hours</td>
-                    </tr>
+                  <table class="table table-sm table-borderless mb-0">
+                    <tr><td class="text-muted">Ticket ID</td><td><code id="infoTicketId"></code></td></tr>
+                    <tr><td class="text-muted">Assigned To</td><td id="infoAssigned"></td></tr>
+                    <tr><td class="text-muted">Company</td><td id="infoCompany"></td></tr>
+                    <tr><td class="text-muted">Updated</td><td id="infoUpdated"></td></tr>
                   </table>
                 </div>
               </div>
-
-              <!-- Company Info Card -->
-              <div class="card">
-                <div class="card-header">
-                  <h5 class="card-title mb-0">Company Information</h5>
-                </div>
-                <div class="card-body">
-                  <p class="mb-1"><strong>Company:</strong> ABC Corporation</p>
-                  <p class="mb-1"><strong>Contact:</strong> John Doe</p>
-                  <p class="mb-0"><strong>Email:</strong> john.doe@abccorp.com</p>
-                </div>
-              </div>
             </div>
           </div>
         </div>
-      </main>
-
-      <footer class="footer">
-        <div class="container-fluid">
-          <div class="row text-muted">
-            <div class="col-6 text-start">
-              <p class="mb-0"><a class="text-muted" href="#"><strong>ITIL Incident Management System</strong></a> &copy;</p>
-            </div>
-          </div>
-        </div>
-      </footer>
-    </div>
+      </div>
+    </main>
+    <footer class="footer"><div class="container-fluid"><p class="mb-0 text-muted">Rehumile TMW IMS &copy; 2025</p></div></footer>
   </div>
+</div>
+<script src="/portal/static/js/app.js"></script>
+<script>
+(function(){
+  const token=localStorage.getItem('ims_access');
+  if(!token){ window.location.href='/portal/login/'; return; }
+  const userData=JSON.parse(localStorage.getItem('ims_user')||'{}');
+  document.getElementById('navUserName').textContent=((userData.first_name||'')+' '+(userData.last_name||'')).trim()||userData.email||'Client';
+  document.getElementById('navCompanyName').textContent=userData.company_name||'';
+  document.getElementById('logoutBtn').onclick=e=>{ e.preventDefault(); localStorage.clear(); window.location.href='/portal/login/'; };
 
-  <script src="js/app.js"></script>
-  <style>
-    .timeline {
-      list-style: none;
-      padding-left: 0;
-      position: relative;
+  const id=new URLSearchParams(window.location.search).get('id');
+  if(!id){ document.getElementById('loadingMsg').textContent='No ticket ID specified.'; return; }
+
+  async function api(url,opts={}){
+    const r=await fetch(url,{...opts,headers:{'Content-Type':'application/json','Authorization':'Bearer '+token,...(opts.headers||{})}});
+    if(r.status===401){ localStorage.clear(); window.location.href='/portal/login/'; throw new Error('Unauth'); }
+    return r;
+  }
+
+  const sBadge=s=>({'open':'<span class="badge bg-warning text-dark">Open</span>','in_progress':'<span class="badge bg-primary">In Progress</span>','resolved':'<span class="badge bg-success">Resolved</span>','closed':'<span class="badge bg-secondary">Closed</span>'}[s]||`<span class="badge bg-secondary">${s}</span>`);
+  const pBadge=p=>({'critical':'<span class="badge bg-danger">Critical</span>','high':'<span class="badge bg-warning text-dark">High</span>','medium':'<span class="badge bg-info text-dark">Medium</span>','low':'<span class="badge bg-secondary">Low</span>'}[p]||`<span class="badge bg-secondary">${p}</span>`);
+  const fmtDate=d=>d?new Date(d).toLocaleDateString('en-ZA',{year:'numeric',month:'short',day:'numeric'}):'—';
+  const fmtDateTime=d=>d?new Date(d).toLocaleString('en-ZA',{year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}):'—';
+  const cap=s=>s?s.charAt(0).toUpperCase()+s.slice(1).replace(/_/g,' '):'—';
+
+  function renderComments(comments){
+    if(!comments||!comments.length){
+      document.getElementById('commentsArea').innerHTML='<p class="text-muted small">No comments yet. Be the first to add one below.</p>';
+      return;
     }
-    .timeline:before {
-      content: '';
-      position: absolute;
-      left: 12px;
-      top: 0;
-      bottom: 0;
-      width: 2px;
-      background: #e9ecef;
-    }
-    .timeline-item {
-      position: relative;
-      padding-left: 40px;
-      margin-bottom: 15px;
-    }
-    .timeline-item-point {
-      position: absolute;
-      left: 7px;
-      top: 10px;
-      width: 12px;
-      height: 12px;
-      border-radius: 50%;
-      background: #495057;
-      border: 3px solid #fff;
-    }
-  </style>
+    const myEmail=userData.email||'';
+    document.getElementById('commentsArea').innerHTML=`<ul class="timeline">${comments.map(c=>{
+      const isMe=c.author_email===myEmail||c.author===userData.id;
+      const role=isMe?'client':'agent';
+      const label=isMe?'You':c.author_name||'Support Agent';
+      return `<li class="timeline-item">
+        <div class="timeline-dot ${role}"></div>
+        <div class="card">
+          <div class="card-body p-2">
+            <div class="d-flex justify-content-between mb-1">
+              <strong class="small">${label}</strong>
+              <small class="text-muted">${fmtDateTime(c.created_at)}</small>
+            </div>
+            <p class="mb-0 small" style="white-space:pre-wrap">${c.comment_text||''}</p>
+          </div>
+        </div>
+      </li>`;
+    }).join('')}</ul>`;
+  }
+
+  async function loadComments(){
+    try{
+      const r=await api(`/portal/api/incidents/${id}/comments/`);
+      if(r.ok){ renderComments(await r.json()); } else { renderComments([]); }
+    }catch(e){ if(e.message!=='Unauth') renderComments([]); }
+    if(window.feather)feather.replace();
+  }
+
+  async function load(){
+    try{
+      const r=await api(`/portal/api/incidents/${id}/`);
+      if(!r.ok){ document.getElementById('loadingMsg').textContent='Ticket not found or you do not have access.'; return; }
+      const t=await r.json();
+      document.getElementById('loadingMsg').style.display='none';
+      document.getElementById('ticketContent').style.display='block';
+
+      document.getElementById('ticketIdLabel').textContent=t.ticket_id||'#'+t.id.slice(0,8);
+      document.title=`${t.ticket_id||'Ticket'} | Rehumile IMS`;
+      document.getElementById('ticketTitle').textContent=t.title;
+      document.getElementById('ticketStatus').innerHTML=sBadge(t.status);
+      document.getElementById('ticketPriority').innerHTML=pBadge(t.priority);
+      document.getElementById('ticketCategory').textContent=cap(t.category);
+      document.getElementById('ticketCreated').textContent=fmtDate(t.created_at);
+      document.getElementById('ticketDescription').textContent=t.description||'(No description provided)';
+
+      document.getElementById('infoTicketId').textContent=t.ticket_id||t.id.slice(0,8);
+      document.getElementById('infoAssigned').textContent=t.assigned_to_name||'Awaiting assignment';
+      document.getElementById('infoCompany').textContent=t.company_name||userData.company_name||'—';
+      document.getElementById('infoUpdated').textContent=fmtDateTime(t.updated_at);
+
+      if(window.feather)feather.replace();
+      loadComments();
+    }catch(e){ if(e.message!=='Unauth') document.getElementById('loadingMsg').textContent='Failed to load ticket.'; }
+  }
+
+  document.getElementById('replyForm').addEventListener('submit',async function(e){
+    e.preventDefault();
+    const btn=document.getElementById('replyBtn');
+    const spin=document.getElementById('replySpinner');
+    const alert=document.getElementById('replyAlert');
+    btn.disabled=true; spin.classList.remove('d-none'); alert.className='alert d-none';
+    try{
+      const r=await api(`/portal/api/incidents/${id}/comments/`,{
+        method:'POST',
+        body:JSON.stringify({comment_text:document.getElementById('replyText').value.trim()})
+      });
+      if(!r.ok){
+        const err=await r.json().catch(()=>({}));
+        alert.className='alert alert-danger'; alert.textContent=Object.values(err).flat().join(' ')||'Failed to post comment.';
+        return;
+      }
+      document.getElementById('replyText').value='';
+      alert.className='alert alert-success'; alert.textContent='Comment posted successfully.';
+      loadComments();
+      setTimeout(()=>{ alert.className='alert d-none'; },3000);
+    }catch(err){
+      if(err.message!=='Unauth'){ alert.className='alert alert-danger'; alert.textContent='Network error.'; }
+    }finally{ btn.disabled=false; spin.classList.add('d-none'); }
+  });
+
+  load();
+})();
+</script>
 </body>
-
 </html>

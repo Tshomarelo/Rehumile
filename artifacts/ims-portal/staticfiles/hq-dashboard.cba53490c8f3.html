@@ -383,6 +383,7 @@
   }
 
   if (userData) {
+    if(!['admin','agent','finance'].includes(userData.role)){ window.location.href='/portal/client/'; return; }
     document.getElementById('navUserName').textContent =
       (userData.first_name + ' ' + userData.last_name).trim() || userData.email;
     document.getElementById('navUserRole').textContent =

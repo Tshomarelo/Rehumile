@@ -1,219 +1,228 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-  <meta charset="utf-8">
-  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta charset="utf-8"><meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-  <meta name="description" content="Profile - ITIL Incident Management System">
-  <meta name="author" content="IMS">
-  <link rel="shortcut icon" href="img/icons/icon-48x48.png" />
-  <title>Profile | IMS Client</title>
-  <link href="css/app.css" rel="stylesheet">
+  <link rel="shortcut icon" href="/portal/static/img/icons/icon-48x48.png"/>
+  <title>Profile | Rehumile IMS</title>
+  <link href="/portal/static/css/app.css" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
 </head>
-
 <body>
-  <div class="wrapper">
-    <nav id="sidebar" class="sidebar js-sidebar">
-      <div class="sidebar-content js-simplebar">
-        <a class="sidebar-brand" href="client-dashboard.html">
-          <span class="align-middle">IMS Client</span>
-        </a>
-
-        <ul class="sidebar-nav">
-          <li class="sidebar-header">
-            Main
-          </li>
-
-          <li class="sidebar-item">
-            <a class="sidebar-link" href="client-dashboard.html">
-              <i class="align-middle" data-feather="sliders"></i> <span class="align-middle">Dashboard</span>
+<div class="wrapper">
+  <nav id="sidebar" class="sidebar js-sidebar">
+    <div class="sidebar-content js-simplebar">
+      <a class="sidebar-brand d-flex align-items-center p-2" href="/portal/client/">
+        <img src="/portal/static/img/rehumile-logo.jpeg" style="height:36px;object-fit:contain" alt="Rehumile TMW">
+      </a>
+      <ul class="sidebar-nav">
+        <li class="sidebar-header">Main</li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/client/"><i class="align-middle" data-feather="sliders"></i> <span class="align-middle">Dashboard</span></a></li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/client/tickets/"><i class="align-middle" data-feather="list"></i> <span class="align-middle">My Tickets</span></a></li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/client/tickets/create/"><i class="align-middle" data-feather="plus-circle"></i> <span class="align-middle">Create Ticket</span></a></li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/client/billing/"><i class="align-middle" data-feather="file-text"></i> <span class="align-middle">Billing</span></a></li>
+        <li class="sidebar-item active"><a class="sidebar-link" href="/portal/client/profile/"><i class="align-middle" data-feather="user"></i> <span class="align-middle">Profile</span></a></li>
+        <li class="sidebar-header">Support</li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/client/contact/"><i class="align-middle" data-feather="help-circle"></i> <span class="align-middle">Contact Support</span></a></li>
+      </ul>
+    </div>
+  </nav>
+  <div class="main">
+    <nav class="navbar navbar-expand navbar-light navbar-bg">
+      <a class="sidebar-toggle js-sidebar-toggle"><i class="hamburger align-self-center"></i></a>
+      <div class="navbar-collapse collapse">
+        <ul class="navbar-nav navbar-align">
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle d-none d-sm-inline-block" href="#" data-bs-toggle="dropdown">
+              <i class="align-middle me-1" data-feather="user"></i><span class="text-dark" id="navUserName">…</span>
             </a>
-          </li>
-
-          <li class="sidebar-item">
-            <a class="sidebar-link" href="client-tickets.html">
-              <i class="align-middle" data-feather="list"></i> <span class="align-middle">My Tickets</span>
-            </a>
-          </li>
-
-          <li class="sidebar-item">
-            <a class="sidebar-link" href="client-create-ticket.html">
-              <i class="align-middle" data-feather="plus-circle"></i> <span class="align-middle">Create Ticket</span>
-            </a>
-          </li>
-
-          <li class="sidebar-item">
-            <a class="sidebar-link" href="client-billing.html">
-              <i class="align-middle" data-feather="file-text"></i> <span class="align-middle">Billing</span>
-            </a>
-          </li>
-
-          <li class="sidebar-item active">
-            <a class="sidebar-link" href="client-profile.html">
-              <i class="align-middle" data-feather="user"></i> <span class="align-middle">Profile</span>
-            </a>
-          </li>
-
-          <li class="sidebar-header">
-            Support
-          </li>
-
-          <li class="sidebar-item">
-            <a class="sidebar-link" href="client-contact.html">
-              <i class="align-middle" data-feather="help-circle"></i> <span class="align-middle">Contact Support</span>
-            </a>
+            <div class="dropdown-menu dropdown-menu-end">
+              <span class="dropdown-item-text small text-muted" id="navCompanyName"></span>
+              <div class="dropdown-divider"></div>
+              <a class="dropdown-item" href="/portal/client/profile/"><i class="align-middle me-1" data-feather="user"></i> Profile</a>
+              <div class="dropdown-divider"></div>
+              <a class="dropdown-item" href="#" id="logoutBtn"><i class="align-middle me-1" data-feather="log-out"></i> Sign out</a>
+            </div>
           </li>
         </ul>
       </div>
     </nav>
-
-    <div class="main">
-      <nav class="navbar navbar-expand navbar-light navbar-bg">
-        <a class="sidebar-toggle js-sidebar-toggle">
-          <i class="hamburger align-self-center"></i>
-        </a>
-
-        <div class="navbar-collapse collapse">
-          <ul class="navbar-nav navbar-align">
-            <li class="nav-item dropdown">
-              <a class="nav-icon dropdown-toggle" href="#" id="notificationsDropdown" data-bs-toggle="dropdown">
-                <div class="position-relative">
-                  <i class="align-middle" data-feather="bell"></i>
-                  <span class="indicator">1</span>
-                </div>
-              </a>
-            </li>
-            <li class="nav-item dropdown">
-              <a class="nav-link dropdown-toggle d-none d-sm-inline-block" href="#" data-bs-toggle="dropdown">
-                <img src="img/avatars/avatar.jpg" class="avatar img-fluid rounded me-1" alt="User" /> <span class="text-dark">John Doe</span>
-              </a>
-              <div class="dropdown-menu dropdown-menu-end">
-                <a class="dropdown-item" href="client-profile.html"><i class="align-middle me-1" data-feather="user"></i> Profile</a>
-                <div class="dropdown-divider"></div>
-                <a class="dropdown-item" href="pages-sign-in.html"><i class="align-middle me-1" data-feather="log-out"></i> Log out</a>
-              </div>
-            </li>
-          </ul>
-        </div>
-      </nav>
-
-      <main class="content">
-        <div class="container-fluid p-0">
-
-          <div class="mb-3">
-            <h1 class="h3 d-inline align-middle">Profile Settings</h1>
-          </div>
-
-          <div class="row">
-            <div class="col-12 col-lg-6">
-              <div class="card">
-                <div class="card-header">
-                  <h5 class="card-title mb-0">User Information</h5>
-                </div>
-                <div class="card-body">
-                  <form id="profileForm">
-                    <div class="mb-3">
-                      <label class="form-label">Email</label>
-                      <input type="email" class="form-control" value="john.doe@abccorp.com" readonly>
+    <main class="content">
+      <div class="container-fluid p-0">
+        <h1 class="h3 mb-3"><strong>My Profile</strong></h1>
+        <div id="profileAlert" class="alert d-none" role="alert"></div>
+        <div class="row">
+          <div class="col-12 col-lg-6">
+            <div class="card mb-3">
+              <div class="card-header"><h5 class="card-title mb-0">Account Information</h5></div>
+              <div class="card-body">
+                <form id="profileForm">
+                  <div class="mb-3">
+                    <label class="form-label">Email address</label>
+                    <input type="email" class="form-control" id="profileEmail" readonly>
+                  </div>
+                  <div class="row">
+                    <div class="col-6 mb-3">
+                      <label for="profileFirstName" class="form-label">First Name</label>
+                      <input type="text" class="form-control" id="profileFirstName">
                     </div>
-
-                    <div class="mb-3">
-                      <label for="firstName" class="form-label">First Name</label>
-                      <input type="text" class="form-control" id="firstName" value="John">
+                    <div class="col-6 mb-3">
+                      <label for="profileLastName" class="form-label">Last Name</label>
+                      <input type="text" class="form-control" id="profileLastName">
                     </div>
-
-                    <div class="mb-3">
-                      <label for="lastName" class="form-label">Last Name</label>
-                      <input type="text" class="form-control" id="lastName" value="Doe">
-                    </div>
-
-                    <div class="mb-3">
-                      <label class="form-label">Role</label>
-                      <input type="text" class="form-control" value="Client User" readonly>
-                    </div>
-
-                    <div class="mb-3">
-                      <label class="form-label">Company</label>
-                      <input type="text" class="form-control" value="ABC Corporation" readonly>
-                    </div>
-
-                    <button type="submit" class="btn btn-primary">Save Changes</button>
-                  </form>
-                </div>
+                  </div>
+                  <div class="mb-3">
+                    <label class="form-label">Role</label>
+                    <input type="text" class="form-control" id="profileRole" readonly>
+                  </div>
+                  <div class="mb-3">
+                    <label class="form-label">Company</label>
+                    <input type="text" class="form-control" id="profileCompany" readonly>
+                  </div>
+                  <button type="submit" class="btn btn-primary" id="saveProfileBtn">
+                    <span id="saveSpinner" class="spinner-border spinner-border-sm me-1 d-none"></span>
+                    Save Changes
+                  </button>
+                </form>
               </div>
             </div>
-
-            <div class="col-12 col-lg-6">
-              <div class="card mb-3">
-                <div class="card-header">
-                  <h5 class="card-title mb-0">Change Password</h5>
-                </div>
-                <div class="card-body">
-                  <form id="passwordForm">
-                    <div class="mb-3">
-                      <label for="currentPassword" class="form-label">Current Password</label>
-                      <input type="password" class="form-control" id="currentPassword" required>
-                    </div>
-
-                    <div class="mb-3">
-                      <label for="newPassword" class="form-label">New Password</label>
-                      <input type="password" class="form-control" id="newPassword" required>
-                      <div class="form-text">Minimum 8 characters</div>
-                    </div>
-
-                    <div class="mb-3">
-                      <label for="confirmPassword" class="form-label">Confirm New Password</label>
-                      <input type="password" class="form-control" id="confirmPassword" required>
-                    </div>
-
-                    <button type="submit" class="btn btn-primary">Update Password</button>
-                  </form>
-                </div>
+          </div>
+          <div class="col-12 col-lg-6">
+            <div class="card mb-3">
+              <div class="card-header"><h5 class="card-title mb-0">Change Password</h5></div>
+              <div class="card-body">
+                <div id="pwAlert" class="alert d-none" role="alert"></div>
+                <form id="passwordForm">
+                  <div class="mb-3">
+                    <label for="currentPw" class="form-label">Current Password</label>
+                    <input type="password" class="form-control" id="currentPw" required>
+                  </div>
+                  <div class="mb-3">
+                    <label for="newPw" class="form-label">New Password</label>
+                    <input type="password" class="form-control" id="newPw" required minlength="8">
+                    <div class="form-text">Minimum 8 characters.</div>
+                  </div>
+                  <div class="mb-3">
+                    <label for="confirmPw" class="form-label">Confirm New Password</label>
+                    <input type="password" class="form-control" id="confirmPw" required>
+                  </div>
+                  <button type="submit" class="btn btn-primary" id="savePwBtn">
+                    <span id="pwSpinner" class="spinner-border spinner-border-sm me-1 d-none"></span>
+                    Update Password
+                  </button>
+                </form>
               </div>
-
-              <div class="card">
-                <div class="card-header">
-                  <h5 class="card-title mb-0">Contact Support</h5>
-                </div>
-                <div class="card-body">
-                  <p><strong>Email:</strong> support@ims.com</p>
-                  <p><strong>Phone:</strong> +1 (555) 123-4567</p>
-                  <p><strong>Hours:</strong> Mon-Fri, 8AM-6PM</p>
-                  <hr>
-                  <p class="mb-0"><small>For urgent issues, please reference your ticket ID when contacting support.</small></p>
-                </div>
+            </div>
+            <div class="card">
+              <div class="card-header"><h5 class="card-title mb-0">Need Help?</h5></div>
+              <div class="card-body">
+                <p class="mb-1"><i class="align-middle me-2" data-feather="mail"></i><strong>Email:</strong> support@rehumile.co.za</p>
+                <p class="mb-1"><i class="align-middle me-2" data-feather="phone"></i><strong>Phone:</strong> +27 (0) 11 XXX XXXX</p>
+                <p class="mb-0"><i class="align-middle me-2" data-feather="clock"></i><strong>Hours:</strong> Mon–Fri, 8:00–17:00 SAST</p>
+                <hr>
+                <a href="/portal/client/contact/" class="btn btn-sm btn-outline-primary">Contact Support</a>
               </div>
             </div>
           </div>
         </div>
-      </main>
-
-      <footer class="footer">
-        <div class="container-fluid">
-          <div class="row text-muted">
-            <div class="col-6 text-start">
-              <p class="mb-0"><a class="text-muted" href="#"><strong>ITIL Incident Management System</strong></a> &copy;</p>
-            </div>
-          </div>
-        </div>
-      </footer>
-    </div>
+      </div>
+    </main>
+    <footer class="footer"><div class="container-fluid"><p class="mb-0 text-muted">Rehumile TMW IMS &copy; 2025</p></div></footer>
   </div>
+</div>
+<script src="/portal/static/js/app.js"></script>
+<script>
+(function(){
+  const token=localStorage.getItem('ims_access');
+  if(!token){ window.location.href='/portal/login/'; return; }
+  const userData=JSON.parse(localStorage.getItem('ims_user')||'{}');
+  document.getElementById('navUserName').textContent=((userData.first_name||'')+' '+(userData.last_name||'')).trim()||userData.email||'Client';
+  document.getElementById('navCompanyName').textContent=userData.company_name||'';
+  document.getElementById('logoutBtn').onclick=e=>{ e.preventDefault(); localStorage.clear(); window.location.href='/portal/login/'; };
 
-  <script src="js/app.js"></script>
-  <script>
-    document.getElementById('profileForm').addEventListener('submit', function(e) {
-      e.preventDefault();
-      alert('Profile updated successfully!');
-    });
+  async function api(url,opts={}){
+    const r=await fetch(url,{...opts,headers:{'Content-Type':'application/json','Authorization':'Bearer '+token,...(opts.headers||{})}});
+    if(r.status===401){ localStorage.clear(); window.location.href='/portal/login/'; throw new Error('Unauth'); }
+    return r;
+  }
 
-    document.getElementById('passwordForm').addEventListener('submit', function(e) {
-      e.preventDefault();
-      alert('Password updated successfully!');
-    });
-  </script>
+  function showAlert(el,msg,type){
+    el.className='alert alert-'+type;
+    el.textContent=msg;
+    setTimeout(()=>{ el.className='alert d-none'; },4000);
+  }
+
+  // Load profile from API
+  async function loadProfile(){
+    try{
+      const r=await api('/portal/api/auth/me/');
+      if(r.ok){
+        const u=await r.json();
+        document.getElementById('profileEmail').value=u.email||'';
+        document.getElementById('profileFirstName').value=u.first_name||'';
+        document.getElementById('profileLastName').value=u.last_name||'';
+        document.getElementById('profileRole').value=(u.role||'client').charAt(0).toUpperCase()+(u.role||'client').slice(1);
+        document.getElementById('profileCompany').value=u.company_name||userData.company_name||'';
+      }
+    }catch(e){ /* fallback to localStorage */ }
+    // Fallback: populate from localStorage
+    if(!document.getElementById('profileEmail').value){
+      document.getElementById('profileEmail').value=userData.email||'';
+      document.getElementById('profileFirstName').value=userData.first_name||'';
+      document.getElementById('profileLastName').value=userData.last_name||'';
+      document.getElementById('profileRole').value=(userData.role||'client').charAt(0).toUpperCase()+(userData.role||'client').slice(1);
+      document.getElementById('profileCompany').value=userData.company_name||'';
+    }
+  }
+
+  document.getElementById('profileForm').addEventListener('submit',async function(e){
+    e.preventDefault();
+    const btn=document.getElementById('saveProfileBtn');
+    const spin=document.getElementById('saveSpinner');
+    const alert=document.getElementById('profileAlert');
+    btn.disabled=true; spin.classList.remove('d-none');
+    try{
+      const r=await api('/portal/api/auth/me/',{
+        method:'PATCH',
+        body:JSON.stringify({
+          first_name:document.getElementById('profileFirstName').value.trim(),
+          last_name:document.getElementById('profileLastName').value.trim(),
+        })
+      });
+      if(!r.ok){ const e=await r.json().catch(()=>({})); showAlert(alert,Object.values(e).flat().join(' ')||'Update failed.','danger'); return; }
+      const updated=await r.json();
+      userData.first_name=updated.first_name||userData.first_name;
+      userData.last_name=updated.last_name||userData.last_name;
+      localStorage.setItem('ims_user',JSON.stringify(userData));
+      document.getElementById('navUserName').textContent=((updated.first_name||'')+' '+(updated.last_name||'')).trim()||updated.email||'Client';
+      showAlert(alert,'Profile updated successfully.','success');
+    }catch(err){ if(err.message!=='Unauth') showAlert(alert,'Network error.','danger'); }
+    finally{ btn.disabled=false; spin.classList.add('d-none'); }
+  });
+
+  document.getElementById('passwordForm').addEventListener('submit',async function(e){
+    e.preventDefault();
+    const alert=document.getElementById('pwAlert');
+    const newPw=document.getElementById('newPw').value;
+    const confirmPw=document.getElementById('confirmPw').value;
+    if(newPw!==confirmPw){ showAlert(alert,'New passwords do not match.','danger'); return; }
+    const btn=document.getElementById('savePwBtn');
+    const spin=document.getElementById('pwSpinner');
+    btn.disabled=true; spin.classList.remove('d-none');
+    try{
+      const r=await api('/portal/api/auth/change-password/',{
+        method:'POST',
+        body:JSON.stringify({old_password:document.getElementById('currentPw').value,new_password:newPw})
+      });
+      if(!r.ok){ const e=await r.json().catch(()=>({})); showAlert(alert,Object.values(e).flat().join(' ')||'Password change failed.','danger'); return; }
+      showAlert(alert,'Password updated successfully.','success');
+      document.getElementById('passwordForm').reset();
+    }catch(err){ if(err.message!=='Unauth') showAlert(alert,'Network error.','danger'); }
+    finally{ btn.disabled=false; spin.classList.add('d-none'); }
+  });
+
+  loadProfile();
+})();
+</script>
 </body>
-
 </html>

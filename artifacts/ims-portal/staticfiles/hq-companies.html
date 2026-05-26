@@ -169,6 +169,7 @@
   const token = localStorage.getItem('ims_access');
   if(!token){ window.location.href='/portal/login/'; return; }
   const userData = JSON.parse(localStorage.getItem('ims_user')||'{}');
+  if(!['admin','agent','finance'].includes(userData.role)){ window.location.href='/portal/client/'; return; }
   document.getElementById('navUserName').textContent=((userData.first_name||'')+' '+(userData.last_name||'')).trim()||userData.email||'User';
   document.getElementById('navUserRole').textContent=(userData.role||'').toUpperCase();
   document.getElementById('logoutBtn').onclick=e=>{ e.preventDefault(); localStorage.clear(); window.location.href='/portal/login/'; };

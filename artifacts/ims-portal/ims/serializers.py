@@ -81,11 +81,12 @@ class UserCreateSerializer(serializers.ModelSerializer):
 
 class IncidentCommentSerializer(serializers.ModelSerializer):
     author_name = serializers.SerializerMethodField()
+    author_email = serializers.SerializerMethodField()
 
     class Meta:
         model = IncidentComment
         fields = [
-            'id', 'incident', 'author', 'author_name',
+            'id', 'incident', 'author', 'author_name', 'author_email',
             'comment_text', 'is_internal', 'is_edited',
             'edited_at', 'created_at',
         ]
@@ -95,6 +96,9 @@ class IncidentCommentSerializer(serializers.ModelSerializer):
         if obj.author:
             return f"{obj.author.first_name} {obj.author.last_name}".strip() or obj.author.email
         return 'Unknown'
+
+    def get_author_email(self, obj):
+        return obj.author.email if obj.author else None
 
 
 class IncidentSerializer(serializers.ModelSerializer):

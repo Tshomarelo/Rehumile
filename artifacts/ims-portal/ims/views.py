@@ -65,6 +65,8 @@ class LoginView(APIView):
                 'first_name': user.first_name,
                 'last_name': user.last_name,
                 'role': user.role,
+                'company_id': str(user.company.id) if user.company else None,
+                'company_name': user.company.name if user.company else None,
             }
         })
 
@@ -98,6 +100,38 @@ class MeView(APIView):
             'company': str(user.company.id) if user.company else None,
             'company_name': user.company.name if user.company else None,
         })
+
+    def patch(self, request):
+        user = request.user
+        allowed_fields = {'first_name', 'last_name'}
+        for field in allowed_fields:
+            if field in request.data:
+                setattr(user, field, request.data[field])
+        user.save()
+        return self.get(request)
+
+
+class ChangePasswordView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        user = request.user
+        old_password = request.data.get('old_password', '')
+        new_password = request.data.get('new_password', '')
+
+        if not user.check_password(old_password):
+            return Response(
+                {'old_password': ['Current password is incorrect.']},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        if len(new_password) < 8:
+            return Response(
+                {'new_password': ['Password must be at least 8 characters.']},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        user.set_password(new_password)
+        user.save()
+        return Response({'detail': 'Password updated successfully.'})
 
 
 # ============================================================================
@@ -290,16 +324,25 @@ class IncidentViewSet(viewsets.ModelViewSet):
 class InvoiceViewSet(viewsets.ModelViewSet):
     """
     Invoice management.
-    - List/retrieve: HQ staff (admin, agent, finance)
-    - Create/update/delete: HQ staff
+    - List/retrieve: HQ staff (admin, agent, finance) OR clients (own company)
+    - Create/update/delete: HQ staff only
     """
     serializer_class = InvoiceSerializer
 
     def get_permissions(self):
-        return [IsHQStaff()]
+        if self.action in ('create', 'update', 'partial_update', 'destroy'):
+            return [IsHQStaff()]
+        return [IsAuthenticated()]
 
     def get_queryset(self):
-        return Invoice.objects.select_related('company').order_by('-created_at')
+        user = self.request.user
+        qs = Invoice.objects.select_related('company').order_by('-created_at')
+        if user.role in ('admin', 'agent', 'finance'):
+            return qs
+        # Clients only see their own company's invoices
+        if user.company:
+            return qs.filter(company=user.company)
+        return qs.none()
 
 
 # ============================================================================
