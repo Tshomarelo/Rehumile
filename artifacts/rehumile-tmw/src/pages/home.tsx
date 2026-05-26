@@ -2,7 +2,7 @@ import React from "react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Mail, Phone, ChevronDown, Check, Activity, ShieldCheck, Database, Laptop, Terminal, Cpu, HardDrive, Wifi, MonitorSmartphone, GraduationCap, ArrowRight, Globe, Lock, Cloud, Settings } from "lucide-react";
+import { Mail, Phone, ChevronDown, Check, Activity, ShieldCheck, Database, Laptop, Terminal, Cpu, HardDrive, Wifi, MonitorSmartphone, GraduationCap, ArrowRight, Globe, Lock, Cloud } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 // Assets
