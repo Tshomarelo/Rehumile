@@ -1,0 +1,74 @@
+Create a professional, modern, responsive website for an IT company named "Rehumile TMW". The core pillars of the business are "CONSULTING - DEVELOPMENT - TRAINING". The website must be elegant, clean, and use a high-end technical design language.
+
+### 🎨 BRANDING & COLOR PALETTE:
+- Primary Maroon Accent: #50181E (Used for headers, primary buttons, structural accents)
+- Secondary Gold Accent: #B38F43 (Used for premium tags, hover states, and CTA accents)
+- Backgrounds: Use clean white (#ffffff) and subtle light-grey (#fafafa) sections. 
+- Typography: Sharp, modern sans-serif (e.g., 'Segoe UI' or Inter).
+
+### 📐 LAYOUT STRUCTURE:
+
+1. UTILITY TOP BAR:
+- Simple, clean right-aligned text containing: "📞 068 397 3484" using the maroon color font.
+
+2. NAVIGATION BAR:
+- Left-aligned placeholder for an enhanced logo ("Rehumile TMW").
+- Desktop menu items: Home (Active), Services (Dropdown), Pricing, Portfolio, About Us.
+- Right-aligned "Logout (rtmw)" styled button.
+- Sticky/Fixed at the top on scroll, with a clean drop shadow.
+- The "Services" link must show a dropdown menu with: Website Development, Custom Software Development, Hardware & IT Support, Point of Sale (POS), Cyber Security, Cloud Solutions.
+
+3. HERO SECTION (MAIN BANNER):
+- Full-bleed background image placeholder representing a high-end technical landscape, rolling hills, or a waving brand flag.
+- Central Overlay Box: Must be transparent/semi-dark overlay with NO hard brown borders, allowing the text to stand out sharply against the background.
+- Main Heading: "Enterprise-Grade IT Solutions Built to Power Your Business" (Rendered in gold/white).
+- Subheading: "From robust network infrastructure and bulletproof cybersecurity to custom software and seamless POS systems—we manage your technology so you can focus on growth."
+- CTA Buttons: Two centered, rounded buttons:
+  * Button 1: "Request a Free IT Consultation" (Solid Maroon with Gold border/text hints)
+  * Button 2: "Explore Our Services" (Ghost button with fine Gold border)
+
+4. COMPREHENSIVE PRICING & SERVICES SECTION:
+Organize the service modules into clean grids or stacked technical cards:
+
+A. HARDWARE SERVICES CARD:
+- PC/Laptop Troubleshooting & Detailed Diagnostic Report -> R249.99
+- Virus Removal Process + Firmware Updates + Both Support Assist -> R379.99
+- Remote Assistance + Firmware/Computer Health Check (per 30 min) -> R119.99
+- Local House Call / Assistance Fee (Excluding Services & Products) -> R249.99
+- Printer Installation & Maintenance -> From R299.99
+
+B. PRODUCTS & PACKAGES CARD:
+- Latest Windows 11 OS Upgrade -> R599.99
+- Windows 10 OS Upgrade -> R479.00
+- Ms Office 365 (Latest) Permanent Subscription -> R349.99
+- Ms Office 2019 Permanent Subscription -> R299.99
+- Ms Office 2016 Permanent Subscription -> R269.99
+
+C. POINT OF SALE (POS) SERVICES CARD (Rural-Friendly Setup):
+- Include a prominent gold/yellow info alert box stating: "Hardware Transparency Notice: To keep your costs low, clients purchase their own hardware equipment from trusted suppliers. We provide full procurement consultation followed by expert on-site installation, software provisioning, and staff training."
+- Basic Retail Software Provisioning (Single-terminal offline standalone inventory) -> R1 499.00 (Once-off)
+- Hardware Peripherals Configuration (Printer, scanner, cash drawer setup) -> R699.99
+- Smart Speedpoint Integration (Linking independent card machines like Yoco/iKhokha) -> R349.99
+- On-Site Operations & Staff Training (Cashing up, product logging, reporting) -> R450.00
+
+D. COMBOS & CURRENT PROMOTIONS:
+- Rehumile Combo 01: Ms Office 365 Permanent + Desired Apps + Support assist + Windows/Firmware Updates -> R1 299.99
+- Rehumile Combo 02: Windows 10/11 Upgrade + Ms Office 365 Permanent + Basic Support -> R999.99
+- Rehumile POS Combo 03: POS Software Setup + Peripheral Configuration + Staff Training + Initial Stock Import -> R2 249.99
+- Current Banner Promo: "Discounted Strategic Consultation Block (5 Hrs) - Now R349.99!"
+
+5. CORE VALUES SECTION:
+- Display key business pillars cleanly:
+  * Consulting: Business IT alignment, Workflow Optimization, Technology Roadmap planning.
+  * Development: Custom Software Solutions, Platform and Application development.
+  * Training: Comprehensive IT Training Modules, Skill Enhancement, Staff Development.
+  * Case Studies / Community: Project Studies and local engineering/development promotion initiatives.
+  * Communication: Improved engineering and development communications systems.
+
+6. FOOTER:
+- Left: "CONTACT US | info@rehumiletmw.co.za | +27 68 397 3484"
+- Right: "Connect with Us" (Social Icons placeholder) and "© 2026 Rehumile TMW. All rights reserved."
+
+### 💻 TECHNICAL STACK REQUIREMENTS:
+- Build using standard HTML5 semantic elements, CSS3 variables for the color palette, and vanilla JavaScript for the mobile menu toggle and desktop dropdown functionalities. Ensure it is fully responsive across mobile, tablet, and desktop devices.
+-

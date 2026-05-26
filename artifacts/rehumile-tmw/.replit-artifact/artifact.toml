@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "Rehumile TMW"
+version = "1.0.0"
+id = "artifacts/rehumile-tmw"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 26039
+
+[services.development]
+run = "pnpm --filter @workspace/rehumile-tmw run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/rehumile-tmw", "run", "build" ]
+publicDir = "artifacts/rehumile-tmw/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "26039"
+BASE_PATH = "/"
