@@ -9,7 +9,7 @@ class Command(BaseCommand):
     help = 'Seed an initial admin superuser for the IMS portal'
 
     def handle(self, *args, **options):
-        email = 'admin@rehumiletmw.co.za'
+        email = 'admin@rehumile.co.za'
         password = config('IMS_ADMIN_PASSWORD')  # mandatory — no insecure fallback
 
         if User.objects.filter(email=email).exists():
