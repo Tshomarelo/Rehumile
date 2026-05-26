@@ -1,0 +1,50 @@
+# Core Django
+Django==4.2.0
+djangorestframework==3.14.0
+django-cors-headers==4.0.0
+django-filter==23.2
+
+# Database
+psycopg2-binary>=2.9.9
+dj-database-url==2.0.0
+
+# Authentication & JWT
+djangorestframework-simplejwt==5.2.2
+PyJWT==2.8.0
+
+# Utilities
+python-decouple==3.8
+Pillow>=11.0.0
+django-phonenumber-field==7.2.0
+phonenumbers==8.13.0
+
+# API Documentation
+drf-spectacular==0.26.2
+
+# Background Tasks
+celery==5.3.1
+redis==4.5.5
+
+# File Storage
+boto3==1.26.137
+
+# Code Quality & Testing
+pytest==7.4.0
+pytest-django==4.5.2
+factory-boy==3.3.0
+pytest-cov==4.1.0
+black==23.7.0
+flake8==6.0.0
+isort==5.12.0
+pylint==2.17.5
+
+# Production Server
+gunicorn==21.2.0
+whitenoise==6.5.0
+
+# Monitoring & Logging
+sentry-sdk==1.28.0
+
+# Utils
+python-dateutil==2.8.2
+pytz==2023.3

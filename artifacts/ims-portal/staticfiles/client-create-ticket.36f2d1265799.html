@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta name="description" content="Create Ticket - ITIL Incident Management System">
+  <meta name="author" content="IMS">
+  <link rel="shortcut icon" href="img/icons/icon-48x48.png" />
+  <title>Create Ticket | IMS Client</title>
+  <link href="css/app.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+</head>
+
+<body>
+  <div class="wrapper">
+    <nav id="sidebar" class="sidebar js-sidebar">
+      <div class="sidebar-content js-simplebar">
+        <a class="sidebar-brand" href="client-dashboard.html">
+          <span class="align-middle">IMS Client</span>
+        </a>
+
+        <ul class="sidebar-nav">
+          <li class="sidebar-header">
+            Main
+          </li>
+
+          <li class="sidebar-item">
+            <a class="sidebar-link" href="client-dashboard.html">
+              <i class="align-middle" data-feather="sliders"></i> <span class="align-middle">Dashboard</span>
+            </a>
+          </li>
+
+          <li class="sidebar-item">
+            <a class="sidebar-link" href="client-tickets.html">
+              <i class="align-middle" data-feather="list"></i> <span class="align-middle">My Tickets</span>
+            </a>
+          </li>
+
+          <li class="sidebar-item active">
+            <a class="sidebar-link" href="client-create-ticket.html">
+              <i class="align-middle" data-feather="plus-circle"></i> <span class="align-middle">Create Ticket</span>
+            </a>
+          </li>
+
+          <li class="sidebar-item">
+            <a class="sidebar-link" href="client-billing.html">
+              <i class="align-middle" data-feather="file-text"></i> <span class="align-middle">Billing</span>
+            </a>
+          </li>
+
+          <li class="sidebar-item">
+            <a class="sidebar-link" href="client-profile.html">
+              <i class="align-middle" data-feather="user"></i> <span class="align-middle">Profile</span>
+            </a>
+          </li>
+
+          <li class="sidebar-header">
+            Support
+          </li>
+
+          <li class="sidebar-item">
+            <a class="sidebar-link" href="client-contact.html">
+              <i class="align-middle" data-feather="help-circle"></i> <span class="align-middle">Contact Support</span>
+            </a>
+          </li>
+        </ul>
+      </div>
+    </nav>
+
+    <div class="main">
+      <nav class="navbar navbar-expand navbar-light navbar-bg">
+        <a class="sidebar-toggle js-sidebar-toggle">
+          <i class="hamburger align-self-center"></i>
+        </a>
+
+        <div class="navbar-collapse collapse">
+          <ul class="navbar-nav navbar-align">
+            <li class="nav-item dropdown">
+              <a class="nav-icon dropdown-toggle" href="#" id="notificationsDropdown" data-bs-toggle="dropdown">
+                <div class="position-relative">
+                  <i class="align-middle" data-feather="bell"></i>
+                  <span class="indicator">2</span>
+                </div>
+              </a>
+            </li>
+            <li class="nav-item dropdown">
+              <a class="nav-link dropdown-toggle d-none d-sm-inline-block" href="#" data-bs-toggle="dropdown">
+                <img src="img/avatars/avatar.jpg" class="avatar img-fluid rounded me-1" alt="User" /> <span class="text-dark">John Doe</span>
+              </a>
+              <div class="dropdown-menu dropdown-menu-end">
+                <a class="dropdown-item" href="client-profile.html"><i class="align-middle me-1" data-feather="user"></i> Profile</a>
+                <a class="dropdown-item" href="#"><i class="align-middle me-1" data-feather="settings"></i> Settings</a>
+                <div class="dropdown-divider"></div>
+                <a class="dropdown-item" href="pages-sign-in.html"><i class="align-middle me-1" data-feather="log-out"></i> Log out</a>
+              </div>
+            </li>
+          </ul>
+        </div>
+      </nav>
+
+      <main class="content">
+        <div class="container-fluid p-0">
+
+          <div class="mb-3">
+            <h1 class="h3 d-inline align-middle">Create New Ticket</h1>
+          </div>
+
+          <div class="card">
+            <div class="card-body">
+              <form id="createTicketForm">
+                <div class="row">
+                  <div class="col-12 col-md-8">
+                    <div class="mb-3">
+                      <label for="ticketTitle" class="form-label">Title <span class="text-danger">*</span></label>
+                      <input type="text" class="form-control" id="ticketTitle" placeholder="Brief description of the issue" required>
+                    </div>
+
+                    <div class="mb-3">
+                      <label for="ticketDescription" class="form-label">Description <span class="text-danger">*</span></label>
+                      <textarea class="form-control" id="ticketDescription" rows="6" placeholder="Detailed description of the issue..." required></textarea>
+                    </div>
+
+                    <div class="mb-3">
+                      <label for="ticketCategory" class="form-label">Category <span class="text-danger">*</span></label>
+                      <select class="form-select" id="ticketCategory" required>
+                        <option value="">Select a category</option>
+                        <option value="hardware">Hardware</option>
+                        <option value="software">Software</option>
+                        <option value="network">Network</option>
+                        <option value="other">Other</option>
+                      </select>
+                    </div>
+
+                    <div class="mb-3">
+                      <label for="ticketPriority" class="form-label">Priority <span class="text-danger">*</span></label>
+                      <select class="form-select" id="ticketPriority" required>
+                        <option value="medium">Medium (Default)</option>
+                        <option value="low">Low</option>
+                        <option value="high">High</option>
+                        <option value="critical">Critical</option>
+                      </select>
+                    </div>
+
+                    <div class="mb-3">
+                      <label for="ticketAttachments" class="form-label">Attachments</label>
+                      <input type="file" class="form-control" id="ticketAttachments" multiple accept=".jpg,.jpeg,.png,.pdf,.doc,.docx">
+                      <div class="form-text">Max file size: 10MB. Supported formats: JPG, PNG, PDF, DOC, DOCX</div>
+                    </div>
+                  </div>
+
+                  <div class="col-12 col-md-4">
+                    <div class="card bg-light">
+                      <div class="card-header">
+                        <h5 class="card-title mb-0">Ticket Guidelines</h5>
+                      </div>
+                      <div class="card-body">
+                        <h6 class="text-muted">Before submitting:</h6>
+                        <ul class="text-muted small">
+                          <li>Provide a clear, descriptive title</li>
+                          <li>Include all relevant details in the description</li>
+                          <li>Attach screenshots if applicable</li>
+                          <li>Select the appropriate category and priority</li>
+                        </ul>
+                        <hr>
+                        <h6 class="text-muted">Priority Levels:</h6>
+                        <ul class="text-muted small">
+                          <li><span class="badge bg-low">Low</span> - Minor issue, minimal impact</li>
+                          <li><span class="badge bg-info">Medium</span> - Standard priority</li>
+                          <li><span class="badge bg-warning">High</span> - Significant impact</li>
+                          <li><span class="badge bg-danger">Critical</span> - System down, urgent</li>
+                        </ul>
+                        <hr>
+                        <p class="text-muted small mb-0">After submission, a ticket ID will be generated and you'll receive a confirmation email.</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <hr>
+
+                <div class="d-flex justify-content-end">
+                  <a href="client-tickets.html" class="btn btn-secondary me-2">Cancel</a>
+                  <button type="submit" class="btn btn-primary">Submit Ticket</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      </main>
+
+      <footer class="footer">
+        <div class="container-fluid">
+          <div class="row text-muted">
+            <div class="col-6 text-start">
+              <p class="mb-0"><a class="text-muted" href="#"><strong>ITIL Incident Management System</strong></a> &copy;</p>
+            </div>
+          </div>
+        </div>
+      </footer>
+    </div>
+  </div>
+
+  <script src="js/app.js"></script>
+  <script>
+    document.getElementById('createTicketForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+      alert('Ticket submitted successfully! Ticket ID: #TKT-' + Math.floor(10000 + Math.random() * 90000));
+      window.location.href = 'client-tickets.html';
+    });
+  </script>
+</body>
+
+</html>
