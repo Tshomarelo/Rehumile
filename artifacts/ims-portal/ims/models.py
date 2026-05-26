@@ -676,7 +676,15 @@ class Invoice(models.Model):
         related_name='invoices',
         db_index=True
     )
-    
+    incident = models.ForeignKey(
+        'Incident',
+        on_delete=models.SET_NULL,
+        related_name='invoices',
+        null=True,
+        blank=True,
+        db_index=True
+    )
+
     # Billing Period
     billing_period_start = models.DateField(db_index=True)
     billing_period_end = models.DateField(db_index=True)

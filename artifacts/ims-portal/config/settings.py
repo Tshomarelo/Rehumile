@@ -99,6 +99,22 @@ WHITENOISE_MAX_AGE = 0
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+# ── Email ─────────────────────────────────────────────────────────────────────
+_email_user = config('EMAIL_HOST_USER', default='')
+EMAIL_BACKEND = (
+    'django.core.mail.backends.smtp.EmailBackend'
+    if _email_user
+    else 'django.core.mail.backends.console.EmailBackend'
+)
+EMAIL_HOST = config('EMAIL_HOST', default='smtp.office365.com')
+EMAIL_PORT = config('EMAIL_PORT', default=587, cast=int)
+EMAIL_USE_TLS = config('EMAIL_USE_TLS', default=True, cast=bool)
+EMAIL_USE_SSL = config('EMAIL_USE_SSL', default=False, cast=bool)
+EMAIL_HOST_USER = _email_user
+EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
+DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='noreply@rehumile.co.za')
+SERVER_EMAIL = DEFAULT_FROM_EMAIL
+
 # CORS — allow all origins in dev
 CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOW_CREDENTIALS = True

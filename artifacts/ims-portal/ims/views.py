@@ -1,6 +1,8 @@
 from django.shortcuts import render
 from django.utils import timezone
 from django.contrib.auth import get_user_model
+from django.core.mail import EmailMultiAlternatives
+from django.conf import settings as django_settings
 from rest_framework import viewsets, status, generics
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -9,6 +11,117 @@ from rest_framework.decorators import action
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import authenticate
 import uuid
+
+
+def _send_ticket_notification(incident, user):
+    """Send ticket confirmation email to submitter and admin@rehumile.co.za."""
+    try:
+        submitter_name = f"{user.first_name} {user.last_name}".strip() or user.email
+        company_name = incident.company.name if incident.company else 'N/A'
+        priority_label = incident.get_priority_display().upper()
+        category_label = incident.get_category_display()
+        logged_at = incident.created_at.strftime('%d %b %Y %H:%M') if incident.created_at else ''
+
+        priority_colours = {
+            'critical': ('#dc3545', '#fff'),
+            'high':     ('#fd7e14', '#fff'),
+            'medium':   ('#ffc107', '#212529'),
+            'low':      ('#28a745', '#fff'),
+        }
+        bg, fg = priority_colours.get(incident.priority, ('#6c757d', '#fff'))
+
+        subject = f"[Rehumile IMS] Ticket {incident.ticket_id} Logged: {incident.title}"
+
+        text_body = (
+            f"Dear {submitter_name},\n\n"
+            f"Your support ticket has been successfully logged with Rehumile TMW.\n\n"
+            f"─────────────────────────────────────\n"
+            f"Ticket Reference : {incident.ticket_id}\n"
+            f"Title            : {incident.title}\n"
+            f"Priority         : {priority_label}\n"
+            f"Category         : {category_label}\n"
+            f"Company          : {company_name}\n"
+            f"Status           : Open\n"
+            f"Logged           : {logged_at}\n"
+            f"─────────────────────────────────────\n\n"
+            f"Our team will review your ticket and respond shortly.\n"
+            f"Log in to the client portal to track updates or add comments.\n\n"
+            f"Best regards,\n"
+            f"Rehumile TMW Support Team\n"
+            f"support@rehumile.co.za\n"
+        )
+
+        html_body = f"""<!DOCTYPE html>
+<html><head><meta charset="UTF-8"></head>
+<body style="margin:0;padding:0;background:#f4f4f4;font-family:Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f4;padding:30px 0;">
+    <tr><td align="center">
+      <table width="600" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.1);">
+        <tr><td style="background:#50181E;padding:24px 32px;">
+          <h1 style="margin:0;color:#B38F43;font-size:22px;font-weight:700;letter-spacing:1px;">Rehumile TMW</h1>
+          <p style="margin:4px 0 0;color:rgba(255,255,255,.8);font-size:12px;text-transform:uppercase;letter-spacing:2px;">Consulting &bull; Development &bull; Training</p>
+        </td></tr>
+        <tr><td style="padding:32px;">
+          <p style="color:#333;font-size:15px;margin-top:0;">Dear <strong>{submitter_name}</strong>,</p>
+          <p style="color:#555;font-size:14px;">Your support ticket has been successfully logged. Our team will review it and be in touch shortly.</p>
+          <table width="100%" cellpadding="0" cellspacing="0" style="background:#fafafa;border-radius:6px;border-left:4px solid #50181E;margin:20px 0;">
+            <tr><td style="padding:20px;">
+              <p style="margin:0 0 12px;color:#888;font-size:11px;text-transform:uppercase;letter-spacing:1px;">Ticket Details</p>
+              <table width="100%" cellpadding="5" cellspacing="0" style="font-size:14px;">
+                <tr>
+                  <td style="color:#888;width:130px;vertical-align:top;">Reference</td>
+                  <td><strong style="color:#50181E;font-family:monospace;font-size:16px;">{incident.ticket_id}</strong></td>
+                </tr>
+                <tr>
+                  <td style="color:#888;vertical-align:top;">Title</td>
+                  <td style="color:#333;"><strong>{incident.title}</strong></td>
+                </tr>
+                <tr>
+                  <td style="color:#888;vertical-align:top;">Priority</td>
+                  <td><span style="background:{bg};color:{fg};padding:2px 10px;border-radius:4px;font-size:12px;font-weight:700;">{priority_label}</span></td>
+                </tr>
+                <tr>
+                  <td style="color:#888;vertical-align:top;">Category</td>
+                  <td style="color:#333;">{category_label}</td>
+                </tr>
+                <tr>
+                  <td style="color:#888;vertical-align:top;">Company</td>
+                  <td style="color:#333;">{company_name}</td>
+                </tr>
+                <tr>
+                  <td style="color:#888;vertical-align:top;">Status</td>
+                  <td><span style="background:#28a745;color:#fff;padding:2px 10px;border-radius:4px;font-size:12px;font-weight:700;">OPEN</span></td>
+                </tr>
+                <tr>
+                  <td style="color:#888;vertical-align:top;">Logged</td>
+                  <td style="color:#555;">{logged_at}</td>
+                </tr>
+              </table>
+            </td></tr>
+          </table>
+          <p style="color:#888;font-size:12px;margin-bottom:0;">Please do not reply to this email. Log in to the portal to add comments or track progress.</p>
+        </td></tr>
+        <tr><td style="background:#f8f8f8;padding:14px 32px;border-top:1px solid #eee;text-align:center;">
+          <p style="margin:0;color:#bbb;font-size:11px;">Rehumile TMW IMS &bull; support@rehumile.co.za</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body></html>"""
+
+        recipients = list(dict.fromkeys(
+            e for e in [user.email, 'admin@rehumile.co.za'] if e
+        ))
+        msg = EmailMultiAlternatives(
+            subject=subject,
+            body=text_body,
+            from_email=django_settings.DEFAULT_FROM_EMAIL,
+            to=recipients,
+        )
+        msg.attach_alternative(html_body, 'text/html')
+        msg.send(fail_silently=True)
+    except Exception:
+        pass
 
 from .models import (
     Company, UserProfile, Incident, IncidentComment,
@@ -237,6 +350,10 @@ class IncidentViewSet(viewsets.ModelViewSet):
         user = self.request.user
         qs = Incident.objects.select_related('company', 'submitted_by', 'assigned_to')
         if user.role in ('admin', 'agent', 'finance'):
+            # HQ: allow optional ?company= filter for invoice dropdown etc.
+            company_id = self.request.query_params.get('company')
+            if company_id:
+                qs = qs.filter(company=company_id)
             return qs.order_by('-created_at')
         if user.company:
             return qs.filter(company=user.company).order_by('-created_at')
@@ -267,6 +384,7 @@ class IncidentViewSet(viewsets.ModelViewSet):
         )
         incident.calculate_sla_deadlines()
         incident.save()
+        _send_ticket_notification(incident, user)
 
     @action(detail=True, methods=['patch'], url_path='status')
     def update_status(self, request, pk=None):

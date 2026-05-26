@@ -155,20 +155,30 @@ class IncidentCreateSerializer(serializers.ModelSerializer):
 
 class InvoiceSerializer(serializers.ModelSerializer):
     company_name = serializers.SerializerMethodField()
+    incident_ticket_id = serializers.SerializerMethodField()
+    incident_title = serializers.SerializerMethodField()
 
     class Meta:
         model = Invoice
         fields = [
             'id', 'invoice_number', 'company', 'company_name',
+            'incident', 'incident_ticket_id', 'incident_title',
             'billing_period_start', 'billing_period_end',
             'subtotal', 'tax_rate', 'tax_amount', 'total_amount',
             'ticket_count', 'hours_worked', 'status', 'notes',
             'due_date', 'payment_date', 'created_at', 'updated_at',
         ]
-        read_only_fields = ['id', 'tax_amount', 'total_amount', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'tax_amount', 'total_amount', 'created_at', 'updated_at',
+                            'incident_ticket_id', 'incident_title']
 
     def get_company_name(self, obj):
         return obj.company.name if obj.company else None
+
+    def get_incident_ticket_id(self, obj):
+        return obj.incident.ticket_id if obj.incident else None
+
+    def get_incident_title(self, obj):
+        return obj.incident.title if obj.incident else None
 
     def _calc_totals(self, data):
         subtotal = data.get('subtotal', 0) or 0

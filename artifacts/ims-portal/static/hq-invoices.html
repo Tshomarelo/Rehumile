@@ -67,6 +67,7 @@
               <table class="table table-hover my-0">
                 <thead><tr>
                   <th>Invoice #</th><th>Company</th>
+                  <th class="d-none d-md-table-cell">Ticket Ref</th>
                   <th class="d-none d-md-table-cell">Billing Period</th>
                   <th class="d-none d-md-table-cell">Hours</th>
                   <th>Total (ZAR)</th><th>Status</th>
@@ -104,6 +105,12 @@
             <div class="col-md-6 mb-3">
               <label class="form-label">Invoice Number <span class="text-danger">*</span></label>
               <input type="text" class="form-control" id="f_inv_number" required placeholder="e.g. INV-2025-001">
+            </div>
+          </div>
+          <div class="row">
+            <div class="col-md-12 mb-3">
+              <label class="form-label">Ticket Reference <span class="text-muted small">(optional — link this invoice to a specific ticket)</span></label>
+              <select class="form-select" id="f_incident"><option value="">None / General Invoice</option></select>
             </div>
           </div>
           <div class="row">
@@ -205,8 +212,22 @@ window.calcTotal = function(){
     try{
       const r=await api('/portal/api/companies/');
       const _cj=await r.json(); const data=Array.isArray(_cj)?_cj:(_cj.results||[]);
-      document.getElementById('f_company').innerHTML='<option value="">Select company…</option>'+data.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
+      const sel=document.getElementById('f_company');
+      sel.innerHTML='<option value="">Select company…</option>'+data.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
+      sel.onchange=()=>loadIncidentsForCompany(sel.value);
     }catch{}
+  }
+
+  async function loadIncidentsForCompany(companyId){
+    const sel=document.getElementById('f_incident');
+    if(!companyId){ sel.innerHTML='<option value="">None / General Invoice</option>'; return; }
+    try{
+      const r=await api(`/portal/api/incidents/?company=${companyId}`);
+      const _j=await r.json(); const data=Array.isArray(_j)?_j:(_j.results||[]);
+      sel.innerHTML='<option value="">None / General Invoice</option>'+data.map(i=>`<option value="${i.id}">[${i.ticket_id}] ${i.title}</option>`).join('');
+    }catch{
+      sel.innerHTML='<option value="">None / General Invoice</option>';
+    }
   }
 
   async function loadInvoices(){
@@ -221,6 +242,7 @@ window.calcTotal = function(){
         <tr>
           <td><code>${inv.invoice_number}</code></td>
           <td>${inv.company_name||'—'}</td>
+          <td class="d-none d-md-table-cell">${inv.incident_ticket_id?`<code class="text-danger">${inv.incident_ticket_id}</code>`:'<span class="text-muted">—</span>'}</td>
           <td class="d-none d-md-table-cell">${fmtPeriod(inv.billing_period_start,inv.billing_period_end)}</td>
           <td class="d-none d-md-table-cell">${inv.hours_worked||0}h</td>
           <td><strong>R ${parseFloat(inv.total_amount||0).toFixed(2)}</strong></td>
@@ -265,9 +287,14 @@ window.calcTotal = function(){
     document.getElementById('f_status').value=inv.status||'draft';
     document.getElementById('f_notes').value=inv.notes||'';
     calcTotal();
-    // Set company after load
-    const setComp=()=>{ if(inv.company) document.getElementById('f_company').value=inv.company; };
-    setTimeout(setComp, 300);
+    // Set company then load its tickets, then set incident
+    setTimeout(async()=>{
+      if(inv.company){
+        document.getElementById('f_company').value=inv.company;
+        await loadIncidentsForCompany(inv.company);
+        if(inv.incident) document.getElementById('f_incident').value=inv.incident;
+      }
+    }, 300);
     bootstrap.Modal.getOrCreateInstance(document.getElementById('invoiceModal')).show();
   };
 
@@ -284,10 +311,11 @@ window.calcTotal = function(){
     const due_date=document.getElementById('f_due_date').value||null;
     const status=document.getElementById('f_status').value;
     const notes=document.getElementById('f_notes').value.trim();
+    const incident=document.getElementById('f_incident').value||null;
     if(!company||!invoice_number||!billing_period_start||!billing_period_end){
       showAlert('modalAlert','Company, invoice number, and billing period are required.'); return;
     }
-    const body={company,invoice_number,billing_period_start,billing_period_end,ticket_count,hours_worked,subtotal,tax_rate,due_date,status,notes};
+    const body={company,invoice_number,billing_period_start,billing_period_end,ticket_count,hours_worked,subtotal,tax_rate,due_date,status,notes,incident};
     try{
       const r=id
         ? await api(`/portal/api/invoices/${id}/`,{method:'PATCH',body:JSON.stringify(body)})
