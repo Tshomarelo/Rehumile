@@ -168,8 +168,10 @@
         api('/portal/api/incidents/'),
         api('/portal/api/invoices/'),
       ]);
-      const incidents = await incRes.json();
-      const invoices = await invRes.json();
+      const _incJson = await incRes.json();
+      const incidents = _incJson.results !== undefined ? _incJson.results : _incJson;
+      const _invJson = await invRes.json();
+      const invoices = _invJson.results !== undefined ? _invJson.results : _invJson;
 
       const total = incidents.length;
       const open = incidents.filter(i=>i.status==='open').length;

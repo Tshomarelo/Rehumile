@@ -166,9 +166,9 @@
         api('/portal/api/invoices/'),
       ]);
       const metrics = await mRes.json();
-      const incidents = await incRes.json();
-      const companies = await compRes.json();
-      const invoices = await invRes.json();
+      const _ij=await incRes.json(); const incidents=Array.isArray(_ij)?_ij:(_ij.results||[]);
+      const _cj=await compRes.json(); const companies=Array.isArray(_cj)?_cj:(_cj.results||[]);
+      const _invj=await invRes.json(); const invoices=Array.isArray(_invj)?_invj:(_invj.results||[]);
 
       const total = incidents.length;
       const breached = metrics.sla_breach_count||0;

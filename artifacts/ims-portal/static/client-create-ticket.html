@@ -176,11 +176,12 @@
         return;
       }
       const ticket=await r.json();
-      showAlert('Ticket submitted successfully! Ticket ID: '+(ticket.ticket_id||ticket.id.slice(0,8)),'success');
+      const ref=ticket.ticket_id||(ticket.id?ticket.id.slice(0,8):'submitted');
+      showAlert('Ticket submitted successfully! Reference: '+ref,'success');
       document.getElementById('createTicketForm').reset();
       setTimeout(()=>{ window.location.href='/portal/client/tickets/'; },1500);
     }catch(err){
-      showAlert('Network error. Please check your connection and try again.','danger');
+      showAlert('Submission failed: '+(err.message||'Unknown error. Please try again.'),'danger');
     }finally{
       btn.disabled=false; spin.classList.add('d-none');
     }

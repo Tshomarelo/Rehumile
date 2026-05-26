@@ -141,7 +141,7 @@
   async function load(){
     try{
       const r=await api('/portal/api/invoices/');
-      const invoices=await r.json();
+      const _j=await r.json(); const invoices=_j.results!==undefined?_j.results:_j;
 
       const total=invoices.reduce((s,i)=>s+parseFloat(i.total_amount||0),0);
       const unpaid=invoices.filter(i=>i.status==='sent').reduce((s,i)=>s+parseFloat(i.total_amount||0),0);

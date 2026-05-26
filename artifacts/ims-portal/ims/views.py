@@ -242,6 +242,15 @@ class IncidentViewSet(viewsets.ModelViewSet):
             return qs.filter(company=user.company).order_by('-created_at')
         return qs.filter(submitted_by=user).order_by('-created_at')
 
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        # Return full incident data (not just the create fields)
+        full = IncidentSerializer(serializer.instance, context={'request': request})
+        headers = self.get_success_headers(full.data)
+        return Response(full.data, status=status.HTTP_201_CREATED, headers=headers)
+
     def perform_create(self, serializer):
         user = self.request.user
         company = user.company

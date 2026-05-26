@@ -203,7 +203,7 @@ window.calcTotal = function(){
   async function loadCompanies(){
     try{
       const r=await api('/portal/api/companies/');
-      const data=await r.json();
+      const _cj=await r.json(); const data=Array.isArray(_cj)?_cj:(_cj.results||[]);
       document.getElementById('f_company').innerHTML='<option value="">Select company…</option>'+data.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
     }catch{}
   }
@@ -211,7 +211,7 @@ window.calcTotal = function(){
   async function loadInvoices(){
     try{
       const r=await api('/portal/api/invoices/');
-      const data=await r.json();
+      const _j=await r.json(); const data=Array.isArray(_j)?_j:(_j.results||[]);
       document.getElementById('tableLoading').style.display='none';
       document.getElementById('invoiceCount').textContent=data.length+' record'+(data.length!==1?'s':'');
       if(!data.length){ document.getElementById('tableEmpty').style.display='block'; return; }
