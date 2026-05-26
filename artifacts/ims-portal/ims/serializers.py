@@ -1,11 +1,14 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
+from django.utils.text import slugify
 from .models import Company, UserProfile, Incident, IncidentComment, Invoice
 
 User = get_user_model()
 
 
 class CompanySerializer(serializers.ModelSerializer):
+    slug = serializers.SlugField(required=False, allow_blank=True)
+
     class Meta:
         model = Company
         fields = [
@@ -15,6 +18,29 @@ class CompanySerializer(serializers.ModelSerializer):
             'created_at', 'updated_at',
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']
+
+    def _unique_slug(self, name, exclude_id=None):
+        base = slugify(name)
+        slug, n = base, 1
+        while True:
+            qs = Company.objects.filter(slug=slug)
+            if exclude_id:
+                qs = qs.exclude(id=exclude_id)
+            if not qs.exists():
+                return slug
+            slug = f"{base}-{n}"
+            n += 1
+
+    def create(self, validated_data):
+        if not validated_data.get('slug'):
+            validated_data['slug'] = self._unique_slug(validated_data['name'])
+        return super().create(validated_data)
+
+    def update(self, instance, validated_data):
+        if not validated_data.get('slug'):
+            name = validated_data.get('name', instance.name)
+            validated_data['slug'] = self._unique_slug(name, exclude_id=instance.id)
+        return super().update(instance, validated_data)
 
 
 class UserSerializer(serializers.ModelSerializer):

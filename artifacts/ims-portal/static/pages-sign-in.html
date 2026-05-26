@@ -131,7 +131,12 @@
                                         localStorage.setItem('ims_access', data.access);
                                         localStorage.setItem('ims_refresh', data.refresh);
                                         localStorage.setItem('ims_user', JSON.stringify(data.user));
-                                        window.location.href = '/portal/dashboard/';
+                                        const role = data.user.role;
+                                        if (role === 'client' || role === 'viewer') {
+                                                window.location.href = '/portal/client/';
+                                        } else {
+                                                window.location.href = '/portal/dashboard/';
+                                        }
                                 } else {
                                         errorDiv.textContent = data.detail || 'Login failed. Please check your credentials.';
                                         errorDiv.style.display = 'block';
