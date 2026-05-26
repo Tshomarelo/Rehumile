@@ -2,12 +2,12 @@ import React from "react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Mail, Phone, ChevronDown, Check, Activity, ShieldCheck, Database, Laptop, Terminal, Cpu, HardDrive, Wifi, MonitorSmartphone, GraduationCap, ArrowRight } from "lucide-react";
+import { Mail, Phone, ChevronDown, Check, Activity, ShieldCheck, Database, Laptop, Terminal, Cpu, HardDrive, Wifi, MonitorSmartphone, GraduationCap, ArrowRight, Globe, Lock, Cloud, Settings } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 // Assets
 import logoPath from "@assets/logo_1779827846431.jpeg";
-import bgPath from "@assets/web_background_1779827846433.jpeg";
+import bgPath from "@assets/web_background_1779828478032.jpeg";
 import axxessLogo from "@assets/Axxess_1779827936112.png";
 import microsoftLogo from "@assets/microsoft_1779827936114.png";
 import pythonLogo from "@assets/pythonanywhere_1779827936115.png";
@@ -41,31 +41,37 @@ export default function Home() {
           </Link>
           
           <nav className="hidden md:flex items-center gap-6 font-medium text-sm">
-            <Link href="/" className="text-primary font-semibold">Home</Link>
+            <a href="#home" className="text-primary font-semibold">Home</a>
             
             <DropdownMenu>
               <DropdownMenuTrigger className="flex items-center gap-1 hover:text-secondary transition-colors outline-none cursor-pointer">
                 Services <ChevronDown className="h-3 w-3" />
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start" className="w-56">
-                <DropdownMenuItem className="cursor-pointer"><Terminal className="mr-2 h-4 w-4 text-muted-foreground"/> Website Development</DropdownMenuItem>
-                <DropdownMenuItem className="cursor-pointer"><Cpu className="mr-2 h-4 w-4 text-muted-foreground"/> Custom Software Development</DropdownMenuItem>
-                <DropdownMenuItem className="cursor-pointer"><HardDrive className="mr-2 h-4 w-4 text-muted-foreground"/> Hardware & IT Support</DropdownMenuItem>
-                <DropdownMenuItem className="cursor-pointer"><MonitorSmartphone className="mr-2 h-4 w-4 text-muted-foreground"/> Point of Sale (POS)</DropdownMenuItem>
-                <DropdownMenuItem className="cursor-pointer"><ShieldCheck className="mr-2 h-4 w-4 text-muted-foreground"/> Cyber Security</DropdownMenuItem>
-                <DropdownMenuItem className="cursor-pointer"><Database className="mr-2 h-4 w-4 text-muted-foreground"/> Cloud Solutions</DropdownMenuItem>
+                <DropdownMenuItem className="cursor-pointer" onClick={() => document.getElementById('services')?.scrollIntoView({behavior:'smooth'})}><Terminal className="mr-2 h-4 w-4 text-muted-foreground"/> Website Development</DropdownMenuItem>
+                <DropdownMenuItem className="cursor-pointer" onClick={() => document.getElementById('services')?.scrollIntoView({behavior:'smooth'})}><Cpu className="mr-2 h-4 w-4 text-muted-foreground"/> Custom Software Development</DropdownMenuItem>
+                <DropdownMenuItem className="cursor-pointer" onClick={() => document.getElementById('services')?.scrollIntoView({behavior:'smooth'})}><HardDrive className="mr-2 h-4 w-4 text-muted-foreground"/> Hardware & IT Support</DropdownMenuItem>
+                <DropdownMenuItem className="cursor-pointer" onClick={() => document.getElementById('services')?.scrollIntoView({behavior:'smooth'})}><MonitorSmartphone className="mr-2 h-4 w-4 text-muted-foreground"/> Point of Sale (POS)</DropdownMenuItem>
+                <DropdownMenuItem className="cursor-pointer" onClick={() => document.getElementById('services')?.scrollIntoView({behavior:'smooth'})}><ShieldCheck className="mr-2 h-4 w-4 text-muted-foreground"/> Cyber Security</DropdownMenuItem>
+                <DropdownMenuItem className="cursor-pointer" onClick={() => document.getElementById('services')?.scrollIntoView({behavior:'smooth'})}><Database className="mr-2 h-4 w-4 text-muted-foreground"/> Cloud Solutions</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
 
-            <Link href="#pricing" className="hover:text-secondary transition-colors cursor-pointer">Pricing</Link>
-            <Link href="#portfolio" className="hover:text-secondary transition-colors cursor-pointer">Portfolio</Link>
-            <Link href="#about" className="hover:text-secondary transition-colors cursor-pointer">About Us</Link>
+            <a href="#pricing" onClick={(e) => { e.preventDefault(); document.getElementById('pricing')?.scrollIntoView({behavior:'smooth'}); }} className="hover:text-secondary transition-colors cursor-pointer">Pricing</a>
+            <a href="#portfolio" className="hover:text-secondary transition-colors cursor-pointer">Portfolio</a>
+            <a href="#about" onClick={(e) => { e.preventDefault(); document.getElementById('about')?.scrollIntoView({behavior:'smooth'}); }} className="hover:text-secondary transition-colors cursor-pointer">About Us</a>
           </nav>
 
           <div className="flex items-center gap-4">
-            <Button variant="outline" className="hidden md:flex text-primary border-primary hover:bg-primary/5">
-              Logout (rtmw)
-            </Button>
+            <a
+              href="https://ims.rehumiletmw.co.za"
+              target="_blank"
+              rel="noopener noreferrer"
+              data-testid="button-login-ims"
+              className="hidden md:inline-flex items-center justify-center rounded-md border border-primary px-4 py-2 text-sm font-medium text-primary hover:bg-primary hover:text-white transition-colors duration-200"
+            >
+              Login (rtmw)
+            </a>
           </div>
         </div>
       </header>
@@ -131,79 +137,128 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Core Values Section */}
-      <section className="py-20 bg-background" id="about">
+      {/* Services Section */}
+      <section className="py-20 bg-background" id="services">
         <div className="container mx-auto px-4">
           <div className="text-center mb-16 max-w-2xl mx-auto">
-            <h2 className="text-3xl font-bold text-primary mb-4">The Pillars of Rehumile TMW</h2>
-            <p className="text-muted-foreground">Built on a foundation of technical excellence, strategic foresight, and unwavering reliability.</p>
+            <span className="text-sm font-semibold tracking-widest text-secondary uppercase">What We Do</span>
+            <h2 className="text-3xl font-bold text-primary mt-2 mb-4">Our Core Services</h2>
+            <p className="text-muted-foreground">From strategy to execution, Rehumile TMW delivers end-to-end technology solutions tailored to South African businesses of every size.</p>
           </div>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            <Card className="border-border shadow-sm hover:shadow-md transition-shadow">
+            {/* Website Development */}
+            <Card className="group border-border shadow-sm hover:shadow-lg hover:border-primary/30 transition-all duration-300 flex flex-col">
               <CardHeader>
-                <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
-                  <Activity className="h-6 w-6 text-primary" />
+                <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4 group-hover:bg-primary/20 transition-colors">
+                  <Globe className="h-6 w-6 text-primary" />
                 </div>
-                <CardTitle>Consulting</CardTitle>
+                <CardTitle className="text-lg">Website Development</CardTitle>
               </CardHeader>
-              <CardContent className="text-muted-foreground">
-                Business IT alignment, Workflow Optimization, and Technology Roadmap planning.
+              <CardContent className="flex-1 flex flex-col gap-3">
+                <p className="text-muted-foreground text-sm leading-relaxed">We design and build professional, high-performance websites that reflect your brand and convert visitors into customers — from simple landing pages to complex multi-page platforms.</p>
+                <ul className="space-y-1 mt-2">
+                  {["Responsive mobile-first design","Business & portfolio sites","E-commerce integration","CMS-powered content management","SEO-ready build practices"].map(item => (
+                    <li key={item} className="flex items-center gap-2 text-sm text-muted-foreground"><Check className="h-3.5 w-3.5 text-secondary shrink-0"/>{item}</li>
+                  ))}
+                </ul>
               </CardContent>
             </Card>
 
-            <Card className="border-border shadow-sm hover:shadow-md transition-shadow">
+            {/* Custom Software Development */}
+            <Card className="group border-border shadow-sm hover:shadow-lg hover:border-primary/30 transition-all duration-300 flex flex-col">
               <CardHeader>
-                <div className="h-12 w-12 rounded-lg bg-secondary/10 flex items-center justify-center mb-4">
-                  <Terminal className="h-6 w-6 text-secondary" />
+                <div className="h-12 w-12 rounded-lg bg-secondary/10 flex items-center justify-center mb-4 group-hover:bg-secondary/20 transition-colors">
+                  <Cpu className="h-6 w-6 text-secondary" />
                 </div>
-                <CardTitle>Development</CardTitle>
+                <CardTitle className="text-lg">Custom Software Development</CardTitle>
               </CardHeader>
-              <CardContent className="text-muted-foreground">
-                Custom Software Solutions, Platform and Application development.
+              <CardContent className="flex-1 flex flex-col gap-3">
+                <p className="text-muted-foreground text-sm leading-relaxed">Off-the-shelf software rarely fits every business. We engineer bespoke applications, management systems, and automation tools built around your exact workflow and growth ambitions.</p>
+                <ul className="space-y-1 mt-2">
+                  {["Inventory & stock management systems","Internal business dashboards","Workflow automation tools","API integrations & data pipelines","Cross-platform desktop & web apps"].map(item => (
+                    <li key={item} className="flex items-center gap-2 text-sm text-muted-foreground"><Check className="h-3.5 w-3.5 text-secondary shrink-0"/>{item}</li>
+                  ))}
+                </ul>
               </CardContent>
             </Card>
 
-            <Card className="border-border shadow-sm hover:shadow-md transition-shadow">
+            {/* Hardware & IT Support */}
+            <Card className="group border-border shadow-sm hover:shadow-lg hover:border-primary/30 transition-all duration-300 flex flex-col">
               <CardHeader>
-                <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
-                  <GraduationCap className="h-6 w-6 text-primary" />
+                <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4 group-hover:bg-primary/20 transition-colors">
+                  <HardDrive className="h-6 w-6 text-primary" />
                 </div>
-                <CardTitle>Training</CardTitle>
+                <CardTitle className="text-lg">Hardware & IT Support</CardTitle>
               </CardHeader>
-              <CardContent className="text-muted-foreground">
-                Comprehensive IT Training Modules, Skill Enhancement, Staff Development.
+              <CardContent className="flex-1 flex flex-col gap-3">
+                <p className="text-muted-foreground text-sm leading-relaxed">Fast, reliable hands-on and remote support for all your hardware and software issues. We keep your devices running at peak performance so downtime never costs you business.</p>
+                <ul className="space-y-1 mt-2">
+                  {["PC & laptop diagnostics and repairs","Virus removal & security hardening","Remote & on-site support","Firmware & OS upgrades","Printer & peripheral setup"].map(item => (
+                    <li key={item} className="flex items-center gap-2 text-sm text-muted-foreground"><Check className="h-3.5 w-3.5 text-secondary shrink-0"/>{item}</li>
+                  ))}
+                </ul>
               </CardContent>
             </Card>
 
-            <Card className="border-border shadow-sm hover:shadow-md transition-shadow">
+            {/* Point of Sale */}
+            <Card className="group border-border shadow-sm hover:shadow-lg hover:border-primary/30 transition-all duration-300 flex flex-col">
               <CardHeader>
-                <div className="h-12 w-12 rounded-lg bg-secondary/10 flex items-center justify-center mb-4">
-                  <Wifi className="h-6 w-6 text-secondary" />
+                <div className="h-12 w-12 rounded-lg bg-secondary/10 flex items-center justify-center mb-4 group-hover:bg-secondary/20 transition-colors">
+                  <MonitorSmartphone className="h-6 w-6 text-secondary" />
                 </div>
-                <CardTitle>Case Studies / Community</CardTitle>
+                <CardTitle className="text-lg">Point of Sale (POS)</CardTitle>
               </CardHeader>
-              <CardContent className="text-muted-foreground">
-                Project Studies and local engineering/development promotion initiatives.
+              <CardContent className="flex-1 flex flex-col gap-3">
+                <p className="text-muted-foreground text-sm leading-relaxed">Affordable, rural-friendly POS solutions designed for small retailers, spazas, and emerging businesses. We provision the software, configure your hardware, and train your staff — end to end.</p>
+                <ul className="space-y-1 mt-2">
+                  {["Offline-capable standalone inventory","Cash drawer & scanner configuration","Yoco / iKhokha card machine linking","Stock importing & product setup","Full staff operations training"].map(item => (
+                    <li key={item} className="flex items-center gap-2 text-sm text-muted-foreground"><Check className="h-3.5 w-3.5 text-secondary shrink-0"/>{item}</li>
+                  ))}
+                </ul>
               </CardContent>
             </Card>
 
-            <Card className="border-border shadow-sm hover:shadow-md transition-shadow">
+            {/* Cyber Security */}
+            <Card className="group border-border shadow-sm hover:shadow-lg hover:border-primary/30 transition-all duration-300 flex flex-col">
               <CardHeader>
-                <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
-                  <Mail className="h-6 w-6 text-primary" />
+                <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4 group-hover:bg-primary/20 transition-colors">
+                  <Lock className="h-6 w-6 text-primary" />
                 </div>
-                <CardTitle>Communication</CardTitle>
+                <CardTitle className="text-lg">Cyber Security</CardTitle>
               </CardHeader>
-              <CardContent className="text-muted-foreground">
-                Improved engineering and development communications systems.
+              <CardContent className="flex-1 flex flex-col gap-3">
+                <p className="text-muted-foreground text-sm leading-relaxed">Protecting your business from digital threats is no longer optional. We audit your current posture, eliminate vulnerabilities, and implement layered defences to keep your data and operations secure.</p>
+                <ul className="space-y-1 mt-2">
+                  {["Security audits & risk assessments","Endpoint protection setup","Network access controls","Employee security awareness training","Incident response planning"].map(item => (
+                    <li key={item} className="flex items-center gap-2 text-sm text-muted-foreground"><Check className="h-3.5 w-3.5 text-secondary shrink-0"/>{item}</li>
+                  ))}
+                </ul>
+              </CardContent>
+            </Card>
+
+            {/* Cloud Solutions */}
+            <Card className="group border-border shadow-sm hover:shadow-lg hover:border-primary/30 transition-all duration-300 flex flex-col">
+              <CardHeader>
+                <div className="h-12 w-12 rounded-lg bg-secondary/10 flex items-center justify-center mb-4 group-hover:bg-secondary/20 transition-colors">
+                  <Cloud className="h-6 w-6 text-secondary" />
+                </div>
+                <CardTitle className="text-lg">Cloud Solutions</CardTitle>
+              </CardHeader>
+              <CardContent className="flex-1 flex flex-col gap-3">
+                <p className="text-muted-foreground text-sm leading-relaxed">Move your business to the cloud with confidence. We plan and execute cloud migrations, set up scalable infrastructure, and ensure your team can work from anywhere, securely and reliably.</p>
+                <ul className="space-y-1 mt-2">
+                  {["Cloud migration strategy & execution","Hosted application environments","Backup & disaster recovery","Object storage (Wasabi & S3-compatible)","Microsoft 365 cloud provisioning"].map(item => (
+                    <li key={item} className="flex items-center gap-2 text-sm text-muted-foreground"><Check className="h-3.5 w-3.5 text-secondary shrink-0"/>{item}</li>
+                  ))}
+                </ul>
               </CardContent>
             </Card>
           </div>
         </div>
       </section>
 
-      {/* Pricing & Services Section */}
+      {/* Pricing Section */}
       <section className="py-20 bg-muted" id="pricing">
         <div className="container mx-auto px-4">
           <div className="text-center mb-16 max-w-2xl mx-auto">
@@ -359,6 +414,54 @@ export default function Home() {
                   Discounted Strategic Consultation Block (5 Hrs) - Now R349.99!
                 </div>
               </CardContent>
+            </Card>
+          </div>
+        </div>
+      </section>
+
+      {/* Core Values / About Section */}
+      <section className="py-20 bg-background" id="about">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-16 max-w-2xl mx-auto">
+            <span className="text-sm font-semibold tracking-widest text-secondary uppercase">Who We Are</span>
+            <h2 className="text-3xl font-bold text-primary mt-2 mb-4">The Pillars of Rehumile TMW</h2>
+            <p className="text-muted-foreground">Built on a foundation of technical excellence, strategic foresight, and unwavering commitment to the communities we serve.</p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            <Card className="border-border shadow-sm hover:shadow-md transition-shadow">
+              <CardHeader>
+                <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4"><Activity className="h-6 w-6 text-primary" /></div>
+                <CardTitle>Consulting</CardTitle>
+              </CardHeader>
+              <CardContent className="text-muted-foreground text-sm">Business IT alignment, Workflow Optimization, and Technology Roadmap planning that aligns your technology investments with your strategic goals.</CardContent>
+            </Card>
+            <Card className="border-border shadow-sm hover:shadow-md transition-shadow">
+              <CardHeader>
+                <div className="h-12 w-12 rounded-lg bg-secondary/10 flex items-center justify-center mb-4"><Terminal className="h-6 w-6 text-secondary" /></div>
+                <CardTitle>Development</CardTitle>
+              </CardHeader>
+              <CardContent className="text-muted-foreground text-sm">Custom Software Solutions, Platform and Application development engineered to solve real business problems and scale with your growth.</CardContent>
+            </Card>
+            <Card className="border-border shadow-sm hover:shadow-md transition-shadow">
+              <CardHeader>
+                <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4"><GraduationCap className="h-6 w-6 text-primary" /></div>
+                <CardTitle>Training</CardTitle>
+              </CardHeader>
+              <CardContent className="text-muted-foreground text-sm">Comprehensive IT Training Modules, Skill Enhancement, and Staff Development that empower your team to fully leverage your technology investment.</CardContent>
+            </Card>
+            <Card className="border-border shadow-sm hover:shadow-md transition-shadow">
+              <CardHeader>
+                <div className="h-12 w-12 rounded-lg bg-secondary/10 flex items-center justify-center mb-4"><Wifi className="h-6 w-6 text-secondary" /></div>
+                <CardTitle>Case Studies & Community</CardTitle>
+              </CardHeader>
+              <CardContent className="text-muted-foreground text-sm">Real-world Project Studies and local engineering promotion initiatives — we are proud to invest in the growth of South African technology talent and enterprise.</CardContent>
+            </Card>
+            <Card className="border-border shadow-sm hover:shadow-md transition-shadow">
+              <CardHeader>
+                <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4"><Mail className="h-6 w-6 text-primary" /></div>
+                <CardTitle>Communication</CardTitle>
+              </CardHeader>
+              <CardContent className="text-muted-foreground text-sm">Improved engineering and development communications systems that keep your teams aligned, informed, and collaborating effectively across every channel.</CardContent>
             </Card>
           </div>
         </div>
