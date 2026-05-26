@@ -89,7 +89,8 @@ TIME_ZONE = 'Africa/Johannesburg'
 USE_I18N = True
 USE_TZ = True
 
-# Static files — Express proxy strips /portal prefix, so Django sees /static/
+# The Express proxy strips the /portal prefix before forwarding to Django,
+# so Django sees bare paths (/static/, /login/, /api/, etc.)
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATICFILES_DIRS = [BASE_DIR / 'static']

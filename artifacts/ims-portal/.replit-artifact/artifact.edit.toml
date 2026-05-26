@@ -1,0 +1,14 @@
+kind = "api"
+previewPath = "/portal"
+title = "IMS Portal"
+version = "1.0.0"
+id = "artifacts/ims-portal"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/portal" ]
+localPort = 8000
+
+[services.development]
+run = "cd /home/runner/workspace/artifacts/ims-portal && DJANGO_SETTINGS_MODULE=config.settings python manage.py migrate --noinput && python manage.py seed_admin && python manage.py collectstatic --noinput --clear && gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 2 --timeout 60"
