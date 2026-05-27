@@ -7,7 +7,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 
 // Assets
 import logoPath from "@assets/logo_1779827846431.jpeg";
-import bgPath from "@assets/web_background_1779828478032.jpeg";
+import bgPath from "@assets/web_background_1779903059853.jpeg";
 import axxessLogo from "@assets/Axxess_1779827936112.png";
 import microsoftLogo from "@assets/microsoft_1779827936114.png";
 import pythonLogo from "@assets/pythonanywhere_1779827936115.png";
@@ -119,10 +119,13 @@ export default function Home() {
       </header>
 
       {/* Hero Section */}
-      <section className="relative w-full overflow-hidden bg-black min-h-[600px] flex items-center" id="home">
+      <section className="relative w-full overflow-hidden bg-[#50181E] min-h-[600px] flex items-center" id="home">
         <div className="absolute inset-0">
-          <img src={bgPath} alt="Drakensberg Background" className="w-full h-full object-cover object-center opacity-40" />
-          <div className="absolute inset-0 bg-gradient-to-r from-primary/90 to-black/60 mix-blend-multiply" />
+          <img src={bgPath} alt="Rehumile TMW KwaZulu-Natal Landscape" className="w-full h-full object-cover object-center" />
+          {/* Left-heavy maroon gradient so text is crisp; landscape shows through on the right */}
+          <div className="absolute inset-0 bg-gradient-to-r from-[#50181E] via-[#50181E]/85 to-[#50181E]/25" />
+          {/* Subtle bottom vignette for section edge */}
+          <div className="absolute inset-0 bg-gradient-to-t from-[#50181E]/60 via-transparent to-transparent" />
         </div>
 
         <div className="relative z-10 container mx-auto px-4 md:px-6 py-24 md:py-32">

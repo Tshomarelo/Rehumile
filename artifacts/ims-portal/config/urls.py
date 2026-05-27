@@ -11,7 +11,7 @@ from ims.portal_views import (
     client_ticket_detail_view, client_billing_view, client_profile_view,
     client_contact_view,
 )
-from ims.views import ChangePasswordView
+from ims.views import ChangePasswordView, quote_request_view
 
 urlpatterns = [
     # Django admin
@@ -46,6 +46,9 @@ urlpatterns = [
     path('client/billing/', client_billing_view, name='client-billing'),
     path('client/profile/', client_profile_view, name='client-profile'),
     path('client/contact/', client_contact_view, name='client-contact'),
+
+    # Quote request from main website
+    path('api/quote/', quote_request_view, name='quote-request'),
 
     # Root → login
     path('', RedirectView.as_view(url='/portal/login/', permanent=False), name='portal-root'),

@@ -3,6 +3,9 @@ from django.utils import timezone
 from django.contrib.auth import get_user_model
 from django.core.mail import EmailMultiAlternatives
 from django.conf import settings as django_settings
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_POST
 from rest_framework import viewsets, status, generics
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -11,6 +14,122 @@ from rest_framework.decorators import action
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import authenticate
 import uuid
+import json
+
+
+@csrf_exempt
+@require_POST
+def quote_request_view(request):
+    """Handle quote requests from the main website — used in production (PythonAnywhere)."""
+    try:
+        data = json.loads(request.body)
+    except (json.JSONDecodeError, ValueError):
+        return JsonResponse({'error': 'Invalid JSON.'}, status=400)
+
+    name = data.get('name', '').strip()
+    email = data.get('email', '').strip()
+    phone = data.get('phone', '').strip()
+    company = data.get('company', '').strip()
+    service = data.get('service', '').strip() or 'General Enquiry'
+    message = data.get('message', '').strip()
+
+    if not name or not email or not message:
+        return JsonResponse({'error': 'Name, email and message are required.'}, status=400)
+
+    html_body = f"""
+<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"></head>
+<body style="margin:0;padding:0;background:#f5f5f5;font-family:Arial,sans-serif">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f5f5;padding:32px 0">
+    <tr><td align="center">
+      <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08)">
+        <tr>
+          <td style="background:#50181E;padding:28px 32px">
+            <h1 style="margin:0;color:#B38F43;font-size:22px;font-weight:700;letter-spacing:1px">REHUMILE TMW</h1>
+            <p style="margin:4px 0 0;color:#ffffff;font-size:13px;opacity:0.8">New Quote Request Received</p>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:32px">
+            <table width="100%" cellpadding="0" cellspacing="0">
+              <tr><td style="padding-bottom:16px;border-bottom:1px solid #eee">
+                <p style="margin:0;font-size:13px;color:#888">Full Name</p>
+                <p style="margin:4px 0 0;font-size:16px;color:#222;font-weight:600">{name}</p>
+              </td></tr>
+              <tr><td style="padding:16px 0;border-bottom:1px solid #eee">
+                <p style="margin:0;font-size:13px;color:#888">Email</p>
+                <p style="margin:4px 0 0;font-size:15px;color:#222"><a href="mailto:{email}" style="color:#50181E">{email}</a></p>
+              </td></tr>
+              {'<tr><td style="padding:16px 0;border-bottom:1px solid #eee"><p style="margin:0;font-size:13px;color:#888">Phone</p><p style="margin:4px 0 0;font-size:15px;color:#222">' + phone + '</p></td></tr>' if phone else ''}
+              {'<tr><td style="padding:16px 0;border-bottom:1px solid #eee"><p style="margin:0;font-size:13px;color:#888">Company</p><p style="margin:4px 0 0;font-size:15px;color:#222">' + company + '</p></td></tr>' if company else ''}
+              <tr><td style="padding:16px 0;border-bottom:1px solid #eee">
+                <p style="margin:0;font-size:13px;color:#888">Service Required</p>
+                <p style="margin:4px 0 0;font-size:15px;color:#50181E;font-weight:600">{service}</p>
+              </td></tr>
+              <tr><td style="padding:16px 0">
+                <p style="margin:0;font-size:13px;color:#888">Message</p>
+                <p style="margin:8px 0 0;font-size:15px;color:#333;line-height:1.6;background:#fafafa;padding:12px;border-left:3px solid #B38F43;border-radius:2px">{message.replace(chr(10), '<br>')}</p>
+              </td></tr>
+            </table>
+          </td>
+        </tr>
+        <tr><td style="background:#f9f9f9;padding:16px 32px;border-top:1px solid #eee">
+          <p style="margin:0;font-size:12px;color:#aaa;text-align:center">Submitted via the Rehumile TMW website contact form.</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>"""
+
+    confirm_html = f"""
+<!DOCTYPE html><html>
+<body style="margin:0;padding:0;background:#f5f5f5;font-family:Arial,sans-serif">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f5f5;padding:32px 0">
+    <tr><td align="center">
+      <table width="600" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:8px;overflow:hidden">
+        <tr><td style="background:#50181E;padding:28px 32px">
+          <h1 style="margin:0;color:#B38F43;font-size:22px;font-weight:700">REHUMILE TMW</h1>
+          <p style="margin:4px 0 0;color:#fff;font-size:13px;opacity:0.8">Quote Request Confirmation</p>
+        </td></tr>
+        <tr><td style="padding:32px">
+          <p style="font-size:15px;color:#333">Hi <strong>{name}</strong>,</p>
+          <p style="font-size:15px;color:#333;line-height:1.7">Thank you for reaching out to <strong>Rehumile TMW</strong>. We have received your quote request for <strong style="color:#50181E">{service}</strong> and will be in touch shortly.</p>
+          <p style="font-size:15px;color:#333;line-height:1.7">For urgent matters call <strong>068 397 3484</strong> or email <a href="mailto:infor@rehumile.co.za" style="color:#50181E">infor@rehumile.co.za</a>.</p>
+          <p style="font-size:14px;color:#888;margin-top:24px">Warm regards,<br><strong style="color:#50181E">The Rehumile TMW Team</strong></p>
+        </td></tr>
+        <tr><td style="background:#f9f9f9;padding:16px 32px;border-top:1px solid #eee">
+          <p style="margin:0;font-size:12px;color:#aaa;text-align:center">© 2026 Rehumile TMW · Jozini, KwaZulu-Natal, South Africa</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body></html>"""
+
+    try:
+        msg = EmailMultiAlternatives(
+            subject=f'Quote Request: {service} — {name}',
+            body=f'New quote request from {name} ({email}) for {service}.\n\n{message}',
+            from_email=django_settings.DEFAULT_FROM_EMAIL,
+            to=['infor@rehumile.co.za'],
+            reply_to=[email],
+        )
+        msg.attach_alternative(html_body, 'text/html')
+        msg.send()
+
+        confirm = EmailMultiAlternatives(
+            subject='We received your quote request — Rehumile TMW',
+            body=f'Hi {name}, we received your quote request and will be in touch soon.',
+            from_email=django_settings.DEFAULT_FROM_EMAIL,
+            to=[email],
+        )
+        confirm.attach_alternative(confirm_html, 'text/html')
+        confirm.send()
+
+        return JsonResponse({'success': True})
+    except Exception as exc:
+        return JsonResponse({'error': str(exc)}, status=500)
 
 
 def _send_ticket_notification(incident, user):
