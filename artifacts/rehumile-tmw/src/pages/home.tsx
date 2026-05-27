@@ -1,8 +1,8 @@
-import React from "react";
+import React, { useState } from "react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Mail, Phone, ChevronDown, Check, Activity, ShieldCheck, Database, Laptop, Terminal, Cpu, HardDrive, Wifi, MonitorSmartphone, GraduationCap, ArrowRight, Globe, Lock, Cloud } from "lucide-react";
+import { Mail, Phone, ChevronDown, Check, Activity, ShieldCheck, Database, Laptop, Terminal, Cpu, HardDrive, Wifi, MonitorSmartphone, GraduationCap, ArrowRight, Globe, Lock, Cloud, MapPin, Clock, Send, Loader2 } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 // Assets
@@ -22,7 +22,52 @@ const PARTNER_LOGOS = [
   { src: wasabiLogo, alt: "Wasabi" },
 ];
 
+const SERVICES = [
+  "Website Development",
+  "Custom Software Development",
+  "Hardware & IT Support / Computer Repairs",
+  "Point of Sale (POS) System",
+  "Cyber Security",
+  "Cloud Solutions",
+  "Network Setup & Configuration",
+  "Microsoft 365 / Office Licensing",
+  "Virus Removal & PC Cleanup",
+  "General IT Consultation",
+  "Other",
+];
+
 export default function Home() {
+  const [form, setForm] = useState({ name: "", email: "", phone: "", company: "", service: "", message: "" });
+  const [status, setStatus] = useState<"idle" | "sending" | "success" | "error">("idle");
+  const [errorMsg, setErrorMsg] = useState("");
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    setForm(f => ({ ...f, [e.target.name]: e.target.value }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setStatus("sending");
+    setErrorMsg("");
+    try {
+      const base = import.meta.env.BASE_URL.replace(/\/$/, "");
+      const res = await fetch(`${base}/api/quote`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        throw new Error((d as { error?: string }).error || "Request failed");
+      }
+      setStatus("success");
+      setForm({ name: "", email: "", phone: "", company: "", service: "", message: "" });
+    } catch (err) {
+      setStatus("error");
+      setErrorMsg(err instanceof Error ? err.message : "Something went wrong. Please try again.");
+    }
+  };
+
   return (
     <div className="flex flex-col min-h-screen">
       {/* Utility Top Bar */}
@@ -39,10 +84,10 @@ export default function Home() {
           <Link href="/" className="flex items-center gap-2">
             <img src={logoPath} alt="Rehumile TMW Logo" className="h-10 w-auto object-contain rounded" />
           </Link>
-          
+
           <nav className="hidden md:flex items-center gap-6 font-medium text-sm">
             <a href="#home" className="text-primary font-semibold">Home</a>
-            
+
             <DropdownMenu>
               <DropdownMenuTrigger className="flex items-center gap-1 hover:text-secondary transition-colors outline-none cursor-pointer">
                 Services <ChevronDown className="h-3 w-3" />
@@ -58,8 +103,7 @@ export default function Home() {
             </DropdownMenu>
 
             <a href="#pricing" onClick={(e) => { e.preventDefault(); document.getElementById('pricing')?.scrollIntoView({behavior:'smooth'}); }} className="hover:text-secondary transition-colors cursor-pointer">Pricing</a>
-            <a href="#portfolio" className="hover:text-secondary transition-colors cursor-pointer">Portfolio</a>
-            <a href="#about" onClick={(e) => { e.preventDefault(); document.getElementById('about')?.scrollIntoView({behavior:'smooth'}); }} className="hover:text-secondary transition-colors cursor-pointer">About Us</a>
+            <a href="#contact" onClick={(e) => { e.preventDefault(); document.getElementById('contact')?.scrollIntoView({behavior:'smooth'}); }} className="hover:text-secondary transition-colors cursor-pointer">Contact Us</a>
           </nav>
 
           <div className="flex items-center gap-4">
@@ -75,12 +119,12 @@ export default function Home() {
       </header>
 
       {/* Hero Section */}
-      <section className="relative w-full overflow-hidden bg-black min-h-[600px] flex items-center">
+      <section className="relative w-full overflow-hidden bg-black min-h-[600px] flex items-center" id="home">
         <div className="absolute inset-0">
           <img src={bgPath} alt="Drakensberg Background" className="w-full h-full object-cover object-center opacity-40" />
           <div className="absolute inset-0 bg-gradient-to-r from-primary/90 to-black/60 mix-blend-multiply" />
         </div>
-        
+
         <div className="relative z-10 container mx-auto px-4 md:px-6 py-24 md:py-32">
           <div className="max-w-3xl space-y-6">
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold text-white leading-tight tracking-tight">
@@ -90,11 +134,11 @@ export default function Home() {
               From robust network infrastructure and bulletproof cybersecurity to custom software and seamless POS systems—we manage your technology so you can focus on growth.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 pt-4">
-              <Button size="lg" className="bg-primary hover:bg-primary/90 text-white border border-secondary/30 shadow-lg group">
+              <Button size="lg" onClick={() => document.getElementById('contact')?.scrollIntoView({behavior:'smooth'})} className="bg-primary hover:bg-primary/90 text-white border border-secondary/30 shadow-lg group">
                 Request a Free IT Consultation
                 <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
               </Button>
-              <Button size="lg" variant="outline" className="bg-transparent text-white border-secondary/50 hover:bg-secondary/20 hover:text-white backdrop-blur-sm">
+              <Button size="lg" variant="outline" onClick={() => document.getElementById('services')?.scrollIntoView({behavior:'smooth'})} className="bg-transparent text-white border-secondary/50 hover:bg-secondary/20 hover:text-white backdrop-blur-sm">
                 Explore Our Services
               </Button>
             </div>
@@ -109,26 +153,14 @@ export default function Home() {
         </div>
         <div className="flex w-full overflow-hidden">
           <div className="flex w-[fit-content] animate-marquee items-center">
-            {/* First Set */}
             <div className="flex items-center space-x-12 px-6">
               {PARTNER_LOGOS.map((logo, idx) => (
-                <img 
-                  key={`partner-1-${idx}`} 
-                  src={logo.src} 
-                  alt={logo.alt} 
-                  className="h-10 md:h-12 w-auto object-contain grayscale opacity-70 hover:grayscale-0 hover:opacity-100 transition-all duration-300"
-                />
+                <img key={`partner-1-${idx}`} src={logo.src} alt={logo.alt} className="h-10 md:h-12 w-auto object-contain grayscale opacity-70 hover:grayscale-0 hover:opacity-100 transition-all duration-300" />
               ))}
             </div>
-            {/* Second Set (duplicated for seamless loop) */}
             <div className="flex items-center space-x-12 px-6">
               {PARTNER_LOGOS.map((logo, idx) => (
-                <img 
-                  key={`partner-2-${idx}`} 
-                  src={logo.src} 
-                  alt={logo.alt} 
-                  className="h-10 md:h-12 w-auto object-contain grayscale opacity-70 hover:grayscale-0 hover:opacity-100 transition-all duration-300"
-                />
+                <img key={`partner-2-${idx}`} src={logo.src} alt={logo.alt} className="h-10 md:h-12 w-auto object-contain grayscale opacity-70 hover:grayscale-0 hover:opacity-100 transition-all duration-300" />
               ))}
             </div>
           </div>
@@ -348,11 +380,10 @@ export default function Home() {
               <CardContent className="flex-1 flex flex-col">
                 <div className="bg-secondary/10 border-l-4 border-secondary p-4 rounded-r-md mb-6">
                   <p className="text-sm text-foreground/90 font-medium">
-                    <span className="text-secondary font-bold mr-1">Hardware Transparency Notice:</span> 
+                    <span className="text-secondary font-bold mr-1">Hardware Transparency Notice:</span>
                     To keep your costs low, clients purchase their own hardware equipment from trusted suppliers. We provide full procurement consultation followed by expert on-site installation, software provisioning, and staff training.
                   </p>
                 </div>
-                
                 <ul className="space-y-4">
                   <li className="flex justify-between items-start border-b border-border/50 pb-3">
                     <span className="text-sm">Basic Retail Software Provisioning <span className="text-xs text-muted-foreground block">(Single-terminal offline standalone inventory)</span></span>
@@ -407,7 +438,6 @@ export default function Home() {
                     <span className="font-bold text-lg ml-4 shrink-0 mt-1">R2 249.99</span>
                   </li>
                 </ul>
-                
                 <div className="mt-6 bg-secondary text-secondary-foreground p-4 rounded-md text-center font-bold shadow-inner">
                   Discounted Strategic Consultation Block (5 Hrs) - Now R349.99!
                 </div>
@@ -417,50 +447,213 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Core Values / About Section */}
-      <section className="py-20 bg-background" id="about">
+      {/* Contact Us Section */}
+      <section className="py-20 bg-background" id="contact">
         <div className="container mx-auto px-4">
           <div className="text-center mb-16 max-w-2xl mx-auto">
-            <span className="text-sm font-semibold tracking-widest text-secondary uppercase">Who We Are</span>
-            <h2 className="text-3xl font-bold text-primary mt-2 mb-4">The Pillars of Rehumile TMW</h2>
-            <p className="text-muted-foreground">Built on a foundation of technical excellence, strategic foresight, and unwavering commitment to the communities we serve.</p>
+            <span className="text-sm font-semibold tracking-widest text-secondary uppercase">Get In Touch</span>
+            <h2 className="text-3xl font-bold text-primary mt-2 mb-4">Contact Us</h2>
+            <p className="text-muted-foreground">Ready to sort out your tech? Reach out directly or fill in the form and we'll get back to you quickly.</p>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            <Card className="border-border shadow-sm hover:shadow-md transition-shadow">
-              <CardHeader>
-                <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4"><Activity className="h-6 w-6 text-primary" /></div>
-                <CardTitle>Consulting</CardTitle>
-              </CardHeader>
-              <CardContent className="text-muted-foreground text-sm">Business IT alignment, Workflow Optimization, and Technology Roadmap planning that aligns your technology investments with your strategic goals.</CardContent>
-            </Card>
-            <Card className="border-border shadow-sm hover:shadow-md transition-shadow">
-              <CardHeader>
-                <div className="h-12 w-12 rounded-lg bg-secondary/10 flex items-center justify-center mb-4"><Terminal className="h-6 w-6 text-secondary" /></div>
-                <CardTitle>Development</CardTitle>
-              </CardHeader>
-              <CardContent className="text-muted-foreground text-sm">Custom Software Solutions, Platform and Application development engineered to solve real business problems and scale with your growth.</CardContent>
-            </Card>
-            <Card className="border-border shadow-sm hover:shadow-md transition-shadow">
-              <CardHeader>
-                <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4"><GraduationCap className="h-6 w-6 text-primary" /></div>
-                <CardTitle>Training</CardTitle>
-              </CardHeader>
-              <CardContent className="text-muted-foreground text-sm">Comprehensive IT Training Modules, Skill Enhancement, and Staff Development that empower your team to fully leverage your technology investment.</CardContent>
-            </Card>
-            <Card className="border-border shadow-sm hover:shadow-md transition-shadow">
-              <CardHeader>
-                <div className="h-12 w-12 rounded-lg bg-secondary/10 flex items-center justify-center mb-4"><Wifi className="h-6 w-6 text-secondary" /></div>
-                <CardTitle>Case Studies & Community</CardTitle>
-              </CardHeader>
-              <CardContent className="text-muted-foreground text-sm">Real-world Project Studies and local engineering promotion initiatives — we are proud to invest in the growth of South African technology talent and enterprise.</CardContent>
-            </Card>
-            <Card className="border-border shadow-sm hover:shadow-md transition-shadow">
-              <CardHeader>
-                <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4"><Mail className="h-6 w-6 text-primary" /></div>
-                <CardTitle>Communication</CardTitle>
-              </CardHeader>
-              <CardContent className="text-muted-foreground text-sm">Improved engineering and development communications systems that keep your teams aligned, informed, and collaborating effectively across every channel.</CardContent>
-            </Card>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-start">
+            {/* Contact Details */}
+            <div className="space-y-8">
+              <div>
+                <h3 className="text-xl font-bold text-primary mb-6">Our Contact Details</h3>
+                <div className="space-y-5">
+                  <div className="flex items-start gap-4">
+                    <div className="h-11 w-11 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
+                      <Mail className="h-5 w-5 text-primary" />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-foreground text-sm">Email</p>
+                      <a href="mailto:info@rehumile.co.za" className="text-primary hover:text-secondary transition-colors font-medium">info@rehumile.co.za</a>
+                      <p className="text-xs text-muted-foreground mt-0.5">For quotes, general enquiries & support</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-4">
+                    <div className="h-11 w-11 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
+                      <Phone className="h-5 w-5 text-primary" />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-foreground text-sm">Phone / WhatsApp</p>
+                      <a href="tel:+27683973484" className="text-primary hover:text-secondary transition-colors font-medium">068 397 3484</a>
+                      <p className="text-xs text-muted-foreground mt-0.5">Call or WhatsApp us anytime</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-4">
+                    <div className="h-11 w-11 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
+                      <MapPin className="h-5 w-5 text-primary" />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-foreground text-sm">Location</p>
+                      <p className="text-foreground font-medium">Jozini, KwaZulu-Natal</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">Serving Jozini, Mkuze, Hluhluwe & surrounding areas</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-4">
+                    <div className="h-11 w-11 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
+                      <Clock className="h-5 w-5 text-primary" />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-foreground text-sm">Business Hours</p>
+                      <p className="text-foreground font-medium">Monday – Friday: 08:00 – 17:00</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">Urgent support available on weekends by arrangement</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* About pillars */}
+              <div className="bg-muted rounded-xl p-6 border border-border">
+                <h4 className="font-bold text-primary mb-4 text-sm uppercase tracking-wide">What We Stand For</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {[
+                    { icon: Activity, label: "IT Consulting", desc: "Business alignment & tech roadmaps" },
+                    { icon: Terminal, label: "Development", desc: "Custom software & web platforms" },
+                    { icon: GraduationCap, label: "Training", desc: "Staff tech empowerment" },
+                    { icon: Wifi, label: "Community", desc: "Investing in SA tech talent" },
+                  ].map(({ icon: Icon, label, desc }) => (
+                    <div key={label} className="flex items-start gap-3">
+                      <div className="h-8 w-8 rounded-md bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
+                        <Icon className="h-4 w-4 text-primary" />
+                      </div>
+                      <div>
+                        <p className="font-semibold text-sm text-foreground">{label}</p>
+                        <p className="text-xs text-muted-foreground">{desc}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Quote Request Form */}
+            <div>
+              <Card className="border-border shadow-md">
+                <CardHeader className="border-b border-border bg-muted/40 rounded-t-lg">
+                  <CardTitle className="text-lg text-primary">Request a Quote</CardTitle>
+                  <CardDescription>Tell us what you need and we'll get back to you with a tailored quote — usually within one business day.</CardDescription>
+                </CardHeader>
+                <CardContent className="pt-6">
+                  {status === "success" ? (
+                    <div className="text-center py-10">
+                      <div className="h-16 w-16 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-4">
+                        <Check className="h-8 w-8 text-green-600" />
+                      </div>
+                      <h3 className="text-lg font-bold text-foreground mb-2">Quote Request Sent!</h3>
+                      <p className="text-muted-foreground text-sm max-w-xs mx-auto">Thank you! We've received your request and will be in touch shortly. Check your inbox for a confirmation email.</p>
+                      <Button variant="outline" className="mt-6 border-primary text-primary hover:bg-primary hover:text-white" onClick={() => setStatus("idle")}>
+                        Send Another Request
+                      </Button>
+                    </div>
+                  ) : (
+                    <form onSubmit={handleSubmit} className="space-y-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-foreground mb-1.5">Full Name <span className="text-red-500">*</span></label>
+                          <input
+                            name="name"
+                            value={form.name}
+                            onChange={handleChange}
+                            required
+                            placeholder="Your full name"
+                            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-colors"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-foreground mb-1.5">Email Address <span className="text-red-500">*</span></label>
+                          <input
+                            name="email"
+                            type="email"
+                            value={form.email}
+                            onChange={handleChange}
+                            required
+                            placeholder="you@example.com"
+                            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-colors"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-foreground mb-1.5">Phone / WhatsApp</label>
+                          <input
+                            name="phone"
+                            value={form.phone}
+                            onChange={handleChange}
+                            placeholder="e.g. 068 397 3484"
+                            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-colors"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-foreground mb-1.5">Company / Organisation</label>
+                          <input
+                            name="company"
+                            value={form.company}
+                            onChange={handleChange}
+                            placeholder="Your business name (optional)"
+                            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-colors"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-foreground mb-1.5">Service Required</label>
+                        <select
+                          name="service"
+                          value={form.service}
+                          onChange={handleChange}
+                          className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-colors"
+                        >
+                          <option value="">— Select a service —</option>
+                          {SERVICES.map(s => <option key={s} value={s}>{s}</option>)}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-foreground mb-1.5">Message / Requirements <span className="text-red-500">*</span></label>
+                        <textarea
+                          name="message"
+                          value={form.message}
+                          onChange={handleChange}
+                          required
+                          rows={4}
+                          placeholder="Describe what you need — the more detail, the better your quote will be."
+                          className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-colors resize-none"
+                        />
+                      </div>
+
+                      {status === "error" && (
+                        <div className="rounded-md bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+                          {errorMsg}
+                        </div>
+                      )}
+
+                      <Button
+                        type="submit"
+                        disabled={status === "sending"}
+                        className="w-full bg-primary hover:bg-primary/90 text-white font-semibold py-2.5 shadow-sm"
+                      >
+                        {status === "sending" ? (
+                          <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Sending…</>
+                        ) : (
+                          <><Send className="mr-2 h-4 w-4" /> Send Quote Request</>
+                        )}
+                      </Button>
+
+                      <p className="text-xs text-center text-muted-foreground">
+                        Your details are kept private and only used to respond to your request.
+                      </p>
+                    </form>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
           </div>
         </div>
       </section>
@@ -471,15 +664,14 @@ export default function Home() {
           <div className="flex flex-col md:flex-row items-center gap-4 text-center md:text-left">
             <span className="font-semibold text-white">CONTACT US</span>
             <span className="hidden md:inline text-secondary">•</span>
-            <a href="mailto:info@rehumiletmw.co.za" className="hover:text-secondary transition-colors">info@rehumiletmw.co.za</a>
+            <a href="mailto:info@rehumile.co.za" className="hover:text-secondary transition-colors">info@rehumile.co.za</a>
             <span className="hidden md:inline text-secondary">•</span>
             <a href="tel:+27683973484" className="hover:text-secondary transition-colors">+27 68 397 3484</a>
           </div>
-          
+
           <div className="flex flex-col md:flex-row items-center gap-4">
             <div className="flex items-center gap-4">
               <span className="font-semibold text-white mr-2">Connect with Us</span>
-              {/* Social placeholders */}
               <div className="h-8 w-8 rounded-full bg-white/10 flex items-center justify-center hover:bg-secondary hover:text-white transition-colors cursor-pointer">
                 <span className="sr-only">LinkedIn</span>
                 in
