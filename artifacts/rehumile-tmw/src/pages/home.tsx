@@ -468,7 +468,7 @@ export default function Home() {
                     </div>
                     <div>
                       <p className="font-semibold text-foreground text-sm">Email</p>
-                      <a href="mailto:info@rehumile.co.za" className="text-primary hover:text-secondary transition-colors font-medium">info@rehumile.co.za</a>
+                      <a href="mailto:infor@rehumile.co.za" className="text-primary hover:text-secondary transition-colors font-medium">infor@rehumile.co.za</a>
                       <p className="text-xs text-muted-foreground mt-0.5">For quotes, general enquiries & support</p>
                     </div>
                   </div>
@@ -664,7 +664,7 @@ export default function Home() {
           <div className="flex flex-col md:flex-row items-center gap-4 text-center md:text-left">
             <span className="font-semibold text-white">CONTACT US</span>
             <span className="hidden md:inline text-secondary">•</span>
-            <a href="mailto:info@rehumile.co.za" className="hover:text-secondary transition-colors">info@rehumile.co.za</a>
+            <a href="mailto:infor@rehumile.co.za" className="hover:text-secondary transition-colors">infor@rehumile.co.za</a>
             <span className="hidden md:inline text-secondary">•</span>
             <a href="tel:+27683973484" className="hover:text-secondary transition-colors">+27 68 397 3484</a>
           </div>

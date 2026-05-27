@@ -103,7 +103,7 @@ router.post("/quote", async (req, res) => {
   try {
     await transporter.sendMail({
       from: `"Rehumile TMW Website" <${process.env.EMAIL_HOST_USER || "noreply@rehumile.co.za"}>`,
-      to: "info@rehumile.co.za",
+      to: "infor@rehumile.co.za",
       replyTo: email,
       subject: `Quote Request: ${serviceLabel} — ${name}`,
       html,
