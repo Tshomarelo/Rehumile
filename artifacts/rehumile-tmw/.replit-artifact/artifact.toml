@@ -12,7 +12,7 @@ version = "1.0.0"
 [[services]]
 name = "web"
 paths = [ "/" ]
-localPort = 26039
+localPort = 8080
 
 [services.development]
 run = "pnpm --filter @workspace/rehumile-tmw run dev"

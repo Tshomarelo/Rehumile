@@ -12,6 +12,7 @@ from ims.portal_views import (
     client_contact_view,
 )
 from ims.views import ChangePasswordView, quote_request_view
+from ims.portal_views import website_home_view  # noqa — imported below in urlpatterns
 
 urlpatterns = [
     # Django admin
@@ -50,6 +51,6 @@ urlpatterns = [
     # Quote request from main website
     path('api/quote/', quote_request_view, name='quote-request'),
 
-    # Root → login
-    path('', RedirectView.as_view(url='/portal/login/', permanent=False), name='portal-root'),
+    # Root → main website
+    path('', website_home_view, name='website-home'),
 ]

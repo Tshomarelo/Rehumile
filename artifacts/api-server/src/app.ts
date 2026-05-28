@@ -28,8 +28,8 @@ app.use(
 );
 app.use(cors());
 
-// Proxy /portal requests to the Django IMS Portal server BEFORE body parsers
-// to avoid the request body being consumed before it's forwarded
+// Proxy /portal requests to Django BEFORE body parsers
+// (proxy-middleware must see the raw stream)
 app.use(
   "/portal",
   createProxyMiddleware({
@@ -42,6 +42,16 @@ app.use(
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Express-side API routes (healthz, quote fallback for dev)
 app.use("/api", router);
+
+// Catch-all: proxy the main website, static files, and everything else to Django
+app.use(
+  "/",
+  createProxyMiddleware({
+    target: "http://localhost:8000",
+    changeOrigin: true,
+  }),
+);
 
 export default app;

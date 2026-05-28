@@ -10,6 +10,10 @@ def _serve(filename):
     return HttpResponse(html, content_type='text/html')
 
 
+def website_home_view(request):
+    return _serve('website-home.html')
+
+
 def portal_login_view(request):
     return _serve('pages-sign-in.html')
 
