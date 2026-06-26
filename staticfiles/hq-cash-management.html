@@ -1,0 +1,329 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <link rel="shortcut icon" href="/portal/static/img/icons/icon-48x48.png"/>
+  <title>Cash Management | Rehumile IMS</title>
+  <link href="/portal/static/css/app.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+</head>
+<body>
+<div class="wrapper">
+  <nav id="sidebar" class="sidebar js-sidebar">
+    <div class="sidebar-content js-simplebar">
+      <a class="sidebar-brand d-flex align-items-center p-2" href="/portal/dashboard/">
+        <img src="/portal/static/img/rehumile-logo.jpeg" style="height:36px;object-fit:contain" alt="Rehumile TMW">
+      </a>
+      <ul class="sidebar-nav">
+        <li class="sidebar-header">Operations</li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/"><i class="align-middle" data-feather="sliders"></i> <span class="align-middle">HQ Dashboard</span></a></li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/incidents/"><i class="align-middle" data-feather="alert-circle"></i> <span class="align-middle">Incidents</span></a></li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/companies/"><i class="align-middle" data-feather="briefcase"></i> <span class="align-middle">Companies</span></a></li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/users/"><i class="align-middle" data-feather="users"></i> <span class="align-middle">Users</span></a></li>
+        <li class="sidebar-header">Workshop</li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/job-cards/"><i class="align-middle" data-feather="tool"></i> <span class="align-middle">Job Cards</span></a></li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/inventory/"><i class="align-middle" data-feather="package"></i> <span class="align-middle">Inventory</span></a></li>
+        <li class="sidebar-header">Finance</li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/invoices/"><i class="align-middle" data-feather="file-text"></i> <span class="align-middle">Invoices</span></a></li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/reports/"><i class="align-middle" data-feather="bar-chart-2"></i> <span class="align-middle">Reports</span></a></li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/pos/"><i class="align-middle" data-feather="shopping-cart"></i> <span class="align-middle">POS</span></a></li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/vouchers/"><i class="align-middle" data-feather="wifi"></i> <span class="align-middle">Vouchers</span></a></li>
+        <li class="sidebar-item active"><a class="sidebar-link" href="/portal/dashboard/cash-management/"><i class="align-middle" data-feather="dollar-sign"></i> <span class="align-middle">Cash Management</span></a></li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/financial-analytics/"><i class="align-middle" data-feather="trending-up"></i> <span class="align-middle">Financial Analytics</span></a></li>
+        <li class="sidebar-header">Compliance</li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/compliance/"><i class="align-middle" data-feather="shield"></i> <span class="align-middle">SARS Hub</span></a></li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/vat201/"><i class="align-middle" data-feather="percent"></i> <span class="align-middle">VAT201 Staging</span></a></li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/emp201/"><i class="align-middle" data-feather="layers"></i> <span class="align-middle">EMP201 Payroll</span></a></li>
+        <li class="sidebar-header">HR</li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/hr/"><i class="align-middle" data-feather="user-check"></i> <span class="align-middle">Employee Profiles</span></a></li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/hr/#leave"><i class="align-middle" data-feather="calendar"></i> <span class="align-middle">Leave Management</span></a></li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/playbook/"><i class="align-middle" data-feather="check-square"></i> <span class="align-middle">Operational Playbook</span></a></li>
+        <li class="sidebar-header">System</li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/sla-monitor/"><i class="align-middle" data-feather="alert-triangle"></i> <span class="align-middle">SLA Monitor</span></a></li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/notifications/"><i class="align-middle" data-feather="bell"></i> <span class="align-middle">Notifications</span></a></li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/audit-log/"><i class="align-middle" data-feather="clipboard"></i> <span class="align-middle">Audit Log</span></a></li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/admin/" target="_blank"><i class="align-middle" data-feather="settings"></i> <span class="align-middle">Admin Panel</span></a></li>
+      </ul>
+    </div>
+  </nav>
+  <div class="main">
+    <nav class="navbar navbar-expand navbar-light navbar-bg">
+      <a class="sidebar-toggle js-sidebar-toggle"><i class="hamburger align-self-center"></i></a>
+      <div class="navbar-collapse collapse">
+        <ul class="navbar-nav navbar-align">
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle d-none d-sm-inline-block" href="#" data-bs-toggle="dropdown">
+              <i class="align-middle me-1" data-feather="user"></i><span class="text-dark" id="navUserName">…</span>
+            </a>
+            <div class="dropdown-menu dropdown-menu-end">
+              <span class="dropdown-item-text small text-muted" id="navUserRole"></span>
+              <div class="dropdown-divider"></div>
+              <a class="dropdown-item" href="#" id="logoutBtn"><i class="align-middle me-1" data-feather="log-out"></i> Sign out</a>
+            </div>
+          </li>
+        </ul>
+      </div>
+    </nav>
+    <main class="content">
+      <div class="container-fluid p-0">
+        <div class="d-flex align-items-center justify-content-between mb-3">
+          <h1 class="h3 mb-0"><strong>Cash Management</strong></h1>
+          <div>
+            <button class="btn btn-success btn-sm me-2" id="openShiftBtn">
+              <i class="align-middle me-1" data-feather="sunrise"></i> Open Shift
+            </button>
+            <button class="btn btn-danger btn-sm" id="closeShiftBtn">
+              <i class="align-middle me-1" data-feather="sunset"></i> Close Shift
+            </button>
+          </div>
+        </div>
+
+        <!-- Today's shift status -->
+        <div class="alert" id="shiftStatus" role="alert">Checking shift status…</div>
+
+        <div class="row">
+          <!-- Shift history -->
+          <div class="col-12 col-lg-7">
+            <div class="card mb-3">
+              <div class="card-header"><h5 class="card-title mb-0">Shift History (Last 30 days)</h5></div>
+              <div class="card-body p-0">
+                <div id="shiftLoading" class="text-center py-3 text-muted">Loading…</div>
+                <div class="table-responsive" id="shiftWrapper" style="display:none">
+                  <table class="table table-sm my-0">
+                    <thead><tr><th>Date</th><th>Float</th><th>Cash</th><th>Card</th><th>EFT</th><th>System</th><th>Variance</th><th>Status</th></tr></thead>
+                    <tbody id="shiftTbody"></tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Log transaction -->
+          <div class="col-12 col-lg-5">
+            <div class="card mb-3">
+              <div class="card-header"><h5 class="card-title mb-0">Log Transaction</h5></div>
+              <div class="card-body">
+                <div id="txnAlert" class="alert d-none" role="alert"></div>
+                <div class="mb-2"><label class="form-label">Amount (R) *</label><input class="form-control" id="txnAmount" type="number" step="0.01" min="0" placeholder="0.00"></div>
+                <div class="mb-2"><label class="form-label">Payment Method *</label>
+                  <select class="form-select" id="txnMethod">
+                    <option value="cash">Cash</option><option value="card">Card</option><option value="eft">EFT / Transfer</option>
+                  </select>
+                </div>
+                <div class="mb-2"><label class="form-label">Cash Flow Stream *</label>
+                  <select class="form-select" id="txnStream">
+                    <option value="ocf">OCF — Operating (sales, labour)</option>
+                    <option value="icf">ICF — Investing (equipment)</option>
+                    <option value="fcf">FCF — Financing (owner inject/draw)</option>
+                  </select>
+                </div>
+                <div class="mb-2"><label class="form-label">Description *</label><input class="form-control" id="txnDesc" placeholder="e.g. Laptop repair payment — JC-0012"></div>
+                <div class="mb-2"><label class="form-label">Invoice # (optional)</label><input class="form-control" id="txnInvoice"></div>
+                <button class="btn btn-primary w-100" id="txnSubmit">
+                  <span id="txnSpinner" class="spinner-border spinner-border-sm me-1 d-none"></span>Record Transaction
+                </button>
+              </div>
+            </div>
+
+            <!-- Recent transactions -->
+            <div class="card">
+              <div class="card-header"><h5 class="card-title mb-0">Recent Transactions</h5></div>
+              <div class="card-body p-0">
+                <div id="txnLoading" class="text-center py-3 text-muted">Loading…</div>
+                <div class="table-responsive" id="txnWrapper" style="display:none">
+                  <table class="table table-sm my-0">
+                    <thead><tr><th>Description</th><th>Method</th><th>Stream</th><th>Amount</th></tr></thead>
+                    <tbody id="txnTbody"></tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+    <footer class="footer"><div class="container-fluid"><p class="mb-0 text-muted">Rehumile TMW IMS &copy; 2025</p></div></footer>
+  </div>
+</div>
+
+<!-- Open Shift Modal -->
+<div class="modal fade" id="openShiftModal" tabindex="-1">
+  <div class="modal-dialog modal-sm">
+    <div class="modal-content">
+      <div class="modal-header"><h5 class="modal-title">Open Morning Shift</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-body">
+        <div id="openShiftAlert" class="alert d-none" role="alert"></div>
+        <label class="form-label">Opening Cash Float (R) *</label>
+        <input class="form-control" id="openFloat" type="number" step="0.01" min="0" placeholder="e.g. 500.00">
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button class="btn btn-success" id="openShiftSubmit">Open Shift</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Close Shift Modal -->
+<div class="modal fade" id="closeShiftModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header"><h5 class="modal-title">Close Evening Shift</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-body">
+        <div id="closeShiftAlert" class="alert d-none" role="alert"></div>
+        <p class="text-muted small">Count your physical totals and enter them below for reconciliation.</p>
+        <div class="row g-2 mb-2">
+          <div class="col"><label class="form-label">Physical Cash (R)</label><input class="form-control" id="closeCash" type="number" step="0.01" min="0" value="0"></div>
+          <div class="col"><label class="form-label">Card Slips (R)</label><input class="form-control" id="closeCard" type="number" step="0.01" min="0" value="0"></div>
+        </div>
+        <div class="mb-2"><label class="form-label">EFT / Transfers (R)</label><input class="form-control" id="closeEft" type="number" step="0.01" min="0" value="0"></div>
+        <div class="mb-2"><label class="form-label">Notes</label><textarea class="form-control" id="closeNotes" rows="2"></textarea></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button class="btn btn-danger" id="closeShiftSubmit">Close &amp; Reconcile</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="/portal/static/js/app.js"></script>
+<script>(function(){function _i(){var s=document.querySelector('.js-sidebar'),t=document.querySelector('.js-sidebar-toggle');if(!s||!t)return;t.addEventListener('click',function(){setTimeout(function(){localStorage.setItem('ims_sidebar',s.classList.contains('collapsed')?'open':'closed');},50);});}document.readyState==='loading'?document.addEventListener('DOMContentLoaded',_i):_i();})();</script>
+<script>
+(function(){
+  const token=localStorage.getItem('ims_access');
+  if(!token){window.location.href='/portal/login/';return;}
+  const u=JSON.parse(localStorage.getItem('ims_user')||'{}');
+  document.getElementById('navUserName').textContent=((u.first_name||'')+' '+(u.last_name||'')).trim()||u.email||'Staff';
+  document.getElementById('navUserRole').textContent=u.role||'';
+  document.getElementById('logoutBtn').onclick=e=>{e.preventDefault();localStorage.clear();window.location.href='/portal/login/';};
+  if(!['admin','cashier','finance'].includes(u.role)){window.location.href='/portal/dashboard/';return;}
+
+  const fmtR=n=>n!=null?'R '+parseFloat(n).toFixed(2):'—';
+  const fmtDate=d=>d?new Date(d).toLocaleDateString('en-ZA',{month:'short',day:'numeric'}):'—';
+  const streamBadge={ocf:'<span class="badge bg-primary">OCF</span>',icf:'<span class="badge bg-info text-dark">ICF</span>',fcf:'<span class="badge bg-warning text-dark">FCF</span>'};
+
+  async function api(url,opts={}){
+    const r=await fetch(url,{...opts,headers:{'Content-Type':'application/json','Authorization':'Bearer '+token,...(opts.headers||{})}});
+    if(r.status===401){localStorage.clear();window.location.href='/portal/login/';throw new Error('Unauth');}
+    return r;
+  }
+
+  async function loadShifts(){
+    try{
+      const r=await api('/portal/api/shifts/');const data=await r.json();
+      const shifts=data.results||[];
+      document.getElementById('shiftLoading').style.display='none';
+      if(!shifts.length){document.getElementById('shiftLoading').textContent='No shifts recorded.';return;}
+      document.getElementById('shiftWrapper').style.display='block';
+      // Check today
+      const today=new Date().toISOString().slice(0,10);
+      const todayShift=shifts.find(s=>s.date===today);
+      const statusEl=document.getElementById('shiftStatus');
+      if(todayShift){
+        if(todayShift.is_closed){
+          statusEl.className='alert alert-secondary';
+          statusEl.innerHTML='<strong>Shift closed</strong> for today. Variance: <strong>'+fmtR(todayShift.variance)+'</strong>';
+        }else{
+          statusEl.className='alert alert-success';
+          statusEl.innerHTML='<strong>Shift open</strong> — Float: <strong>'+fmtR(todayShift.opening_float)+'</strong>';
+        }
+      }else{
+        statusEl.className='alert alert-warning';statusEl.textContent='No shift opened today. Click "Open Shift" to begin.';
+      }
+      document.getElementById('shiftTbody').innerHTML=shifts.map(s=>`
+        <tr>
+          <td>${fmtDate(s.date)}</td>
+          <td>${fmtR(s.opening_float)}</td>
+          <td>${fmtR(s.physical_cash_total)}</td>
+          <td>${fmtR(s.card_total)}</td>
+          <td>${fmtR(s.eft_total)}</td>
+          <td>${fmtR(s.system_total)}</td>
+          <td class="${parseFloat(s.variance||0)<0?'text-danger':parseFloat(s.variance||0)>0?'text-success':''}">${fmtR(s.variance)}</td>
+          <td>${s.is_closed?'<span class="badge bg-secondary">Closed</span>':'<span class="badge bg-success">Open</span>'}</td>
+        </tr>`).join('');
+    }catch(e){if(e.message!=='Unauth')document.getElementById('shiftLoading').textContent='Failed to load shifts.';}
+  }
+
+  async function loadTxns(){
+    try{
+      const r=await api('/portal/api/cash-transactions/');const data=await r.json();
+      const txns=(data.results||[]).slice(0,20);
+      document.getElementById('txnLoading').style.display='none';
+      if(!txns.length){document.getElementById('txnLoading').textContent='No transactions yet.';return;}
+      document.getElementById('txnWrapper').style.display='block';
+      document.getElementById('txnTbody').innerHTML=txns.map(t=>`
+        <tr>
+          <td>${t.description}</td>
+          <td>${t.payment_method}</td>
+          <td>${streamBadge[t.cash_flow_stream]||t.cash_flow_stream}</td>
+          <td><strong>${fmtR(t.amount)}</strong></td>
+        </tr>`).join('');
+    }catch(e){}
+  }
+
+  document.getElementById('openShiftBtn').addEventListener('click',()=>{
+    document.getElementById('openShiftAlert').className='alert d-none';
+    new bootstrap.Modal(document.getElementById('openShiftModal')).show();
+  });
+  document.getElementById('closeShiftBtn').addEventListener('click',()=>{
+    document.getElementById('closeShiftAlert').className='alert d-none';
+    new bootstrap.Modal(document.getElementById('closeShiftModal')).show();
+  });
+
+  async function shiftAction(action,data){
+    const alertId=action==='open'?'openShiftAlert':'closeShiftAlert';
+    const submitId=action==='open'?'openShiftSubmit':'closeShiftSubmit';
+    const btn=document.getElementById(submitId);
+    btn.disabled=true;
+    try{
+      const r=await api('/portal/api/shifts/',{method:'POST',body:JSON.stringify({action,...data})});
+      const res=await r.json();
+      if(r.ok){
+        document.getElementById(alertId).className='alert alert-success';
+        document.getElementById(alertId).textContent=res.detail||(action==='open'?'Shift opened.':'Shift closed. Variance: '+res.variance);
+        loadShifts();loadTxns();
+      }else{
+        document.getElementById(alertId).className='alert alert-danger';
+        document.getElementById(alertId).textContent=res.detail||'Error.';
+      }
+    }catch(e){if(e.message!=='Unauth'){document.getElementById(alertId).className='alert alert-danger';document.getElementById(alertId).textContent='Network error.';}}
+    finally{btn.disabled=false;}
+  }
+
+  document.getElementById('openShiftSubmit').addEventListener('click',()=>{
+    shiftAction('open',{opening_float:document.getElementById('openFloat').value});
+  });
+  document.getElementById('closeShiftSubmit').addEventListener('click',()=>{
+    shiftAction('close',{
+      physical_cash_total:document.getElementById('closeCash').value,
+      card_total:document.getElementById('closeCard').value,
+      eft_total:document.getElementById('closeEft').value,
+      notes:document.getElementById('closeNotes').value,
+    });
+  });
+
+  document.getElementById('txnSubmit').addEventListener('click',async()=>{
+    const btn=document.getElementById('txnSubmit');
+    const spin=document.getElementById('txnSpinner');
+    const alert=document.getElementById('txnAlert');
+    btn.disabled=true;spin.classList.remove('d-none');alert.className='alert d-none';
+    try{
+      const r=await api('/portal/api/cash-transactions/',{method:'POST',body:JSON.stringify({
+        amount:document.getElementById('txnAmount').value,
+        payment_method:document.getElementById('txnMethod').value,
+        cash_flow_stream:document.getElementById('txnStream').value,
+        description:document.getElementById('txnDesc').value.trim(),
+      })});
+      if(r.ok){alert.className='alert alert-success';alert.textContent='Transaction recorded.';document.getElementById('txnDesc').value='';document.getElementById('txnAmount').value='';loadTxns();}
+      else{const err=await r.json().catch(()=>({}));alert.className='alert alert-danger';alert.textContent=err.detail||JSON.stringify(err);}
+    }catch(e){if(e.message!=='Unauth'){alert.className='alert alert-danger';alert.textContent='Network error.';}}
+    finally{btn.disabled=false;spin.classList.add('d-none');}
+  });
+
+  loadShifts();loadTxns();
+})();
+</script>
+</body>
+</html>

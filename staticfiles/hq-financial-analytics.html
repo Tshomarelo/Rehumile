@@ -1,0 +1,268 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <link rel="shortcut icon" href="/portal/static/img/icons/icon-48x48.png"/>
+  <title>Financial Analytics | Rehumile IMS</title>
+  <link href="/portal/static/css/app.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+  <style>
+    .metric-card .card-body{text-align:center}
+    .gpm-ring{width:120px;height:120px;border-radius:50%;background:conic-gradient(#198754 0%,#e9ecef 0%);margin:0 auto;display:flex;align-items:center;justify-content:center;font-size:1.5rem;font-weight:700;box-shadow:0 0 0 8px #fff,0 0 0 12px #e9ecef}
+  </style>
+</head>
+<body>
+<div class="wrapper">
+  <nav id="sidebar" class="sidebar js-sidebar">
+    <div class="sidebar-content js-simplebar">
+      <a class="sidebar-brand d-flex align-items-center p-2" href="/portal/dashboard/">
+        <img src="/portal/static/img/rehumile-logo.jpeg" style="height:36px;object-fit:contain" alt="Rehumile TMW">
+      </a>
+      <ul class="sidebar-nav">
+        <li class="sidebar-header">Operations</li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/"><i class="align-middle" data-feather="sliders"></i> <span class="align-middle">HQ Dashboard</span></a></li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/incidents/"><i class="align-middle" data-feather="alert-circle"></i> <span class="align-middle">Incidents</span></a></li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/companies/"><i class="align-middle" data-feather="briefcase"></i> <span class="align-middle">Companies</span></a></li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/users/"><i class="align-middle" data-feather="users"></i> <span class="align-middle">Users</span></a></li>
+        <li class="sidebar-header">Workshop</li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/job-cards/"><i class="align-middle" data-feather="tool"></i> <span class="align-middle">Job Cards</span></a></li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/inventory/"><i class="align-middle" data-feather="package"></i> <span class="align-middle">Inventory</span></a></li>
+        <li class="sidebar-header">Finance</li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/invoices/"><i class="align-middle" data-feather="file-text"></i> <span class="align-middle">Invoices</span></a></li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/reports/"><i class="align-middle" data-feather="bar-chart-2"></i> <span class="align-middle">Reports</span></a></li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/pos/"><i class="align-middle" data-feather="shopping-cart"></i> <span class="align-middle">POS</span></a></li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/vouchers/"><i class="align-middle" data-feather="wifi"></i> <span class="align-middle">Vouchers</span></a></li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/cash-management/"><i class="align-middle" data-feather="dollar-sign"></i> <span class="align-middle">Cash Management</span></a></li>
+        <li class="sidebar-item active"><a class="sidebar-link" href="/portal/dashboard/financial-analytics/"><i class="align-middle" data-feather="trending-up"></i> <span class="align-middle">Financial Analytics</span></a></li>
+        <li class="sidebar-header">Compliance</li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/compliance/"><i class="align-middle" data-feather="shield"></i> <span class="align-middle">SARS Hub</span></a></li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/vat201/"><i class="align-middle" data-feather="percent"></i> <span class="align-middle">VAT201 Staging</span></a></li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/emp201/"><i class="align-middle" data-feather="layers"></i> <span class="align-middle">EMP201 Payroll</span></a></li>
+        <li class="sidebar-header">HR</li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/hr/"><i class="align-middle" data-feather="user-check"></i> <span class="align-middle">Employee Profiles</span></a></li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/hr/#leave"><i class="align-middle" data-feather="calendar"></i> <span class="align-middle">Leave Management</span></a></li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/playbook/"><i class="align-middle" data-feather="check-square"></i> <span class="align-middle">Operational Playbook</span></a></li>
+        <li class="sidebar-header">System</li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/sla-monitor/"><i class="align-middle" data-feather="alert-triangle"></i> <span class="align-middle">SLA Monitor</span></a></li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/notifications/"><i class="align-middle" data-feather="bell"></i> <span class="align-middle">Notifications</span></a></li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/audit-log/"><i class="align-middle" data-feather="clipboard"></i> <span class="align-middle">Audit Log</span></a></li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/admin/" target="_blank"><i class="align-middle" data-feather="settings"></i> <span class="align-middle">Admin Panel</span></a></li>
+      </ul>
+    </div>
+  </nav>
+  <div class="main">
+    <nav class="navbar navbar-expand navbar-light navbar-bg">
+      <a class="sidebar-toggle js-sidebar-toggle"><i class="hamburger align-self-center"></i></a>
+      <div class="navbar-collapse collapse">
+        <ul class="navbar-nav navbar-align">
+          <li class="nav-item"><span class="nav-link text-muted small" id="periodLabel"></span></li>
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle d-none d-sm-inline-block" href="#" data-bs-toggle="dropdown">
+              <i class="align-middle me-1" data-feather="user"></i><span class="text-dark" id="navUserName">…</span>
+            </a>
+            <div class="dropdown-menu dropdown-menu-end">
+              <span class="dropdown-item-text small text-muted" id="navUserRole"></span>
+              <div class="dropdown-divider"></div>
+              <a class="dropdown-item" href="#" id="logoutBtn"><i class="align-middle me-1" data-feather="log-out"></i> Sign out</a>
+            </div>
+          </li>
+        </ul>
+      </div>
+    </nav>
+    <main class="content">
+      <div class="container-fluid p-0">
+        <h1 class="h3 mb-3"><strong>Financial Analytics</strong></h1>
+        <div id="analyticsLoading" class="text-center py-5 text-muted">Computing metrics…</div>
+        <div id="analyticsContent" style="display:none">
+
+          <!-- Revenue row -->
+          <div class="row mb-3">
+            <div class="col-sm-6 col-lg-3">
+              <div class="card metric-card"><div class="card-body">
+                <h5 class="card-title text-success">Paid Revenue</h5>
+                <h2 id="kpiPaid" class="text-success">—</h2>
+                <p class="text-muted small mb-0">Settled this month</p>
+              </div></div>
+            </div>
+            <div class="col-sm-6 col-lg-3">
+              <div class="card metric-card"><div class="card-body">
+                <h5 class="card-title text-warning">Pending</h5>
+                <h2 id="kpiPending" class="text-warning">—</h2>
+                <p class="text-muted small mb-0">Invoices sent</p>
+              </div></div>
+            </div>
+            <div class="col-sm-6 col-lg-3">
+              <div class="card metric-card"><div class="card-body">
+                <h5 class="card-title text-danger">Overdue</h5>
+                <h2 id="kpiOverdue" class="text-danger">—</h2>
+                <p class="text-muted small mb-0">Requires follow-up</p>
+              </div></div>
+            </div>
+            <div class="col-sm-6 col-lg-3">
+              <div class="card metric-card"><div class="card-body">
+                <h5 class="card-title">Gross Profit</h5>
+                <h2 id="kpiGP">—</h2>
+                <p class="text-muted small mb-0" id="kpiGPLabel">After direct costs</p>
+              </div></div>
+            </div>
+          </div>
+
+          <!-- GPM ring + Cash flows -->
+          <div class="row mb-3">
+            <div class="col-12 col-lg-4">
+              <div class="card h-100">
+                <div class="card-header"><h5 class="card-title mb-0">Gross Profit Margin</h5></div>
+                <div class="card-body d-flex flex-column align-items-center justify-content-center">
+                  <div class="gpm-ring" id="gpmRing"><span id="gpmPct">—%</span></div>
+                  <p class="mt-3 text-muted small text-center">GPM = (Revenue − Direct Costs) ÷ Revenue × 100</p>
+                </div>
+              </div>
+            </div>
+            <div class="col-12 col-lg-8">
+              <div class="card h-100">
+                <div class="card-header"><h5 class="card-title mb-0">Cash Flow Streams</h5></div>
+                <div class="card-body">
+                  <div class="row text-center mb-3">
+                    <div class="col-4">
+                      <div class="p-3 rounded bg-primary bg-opacity-10">
+                        <div class="text-primary fw-bold small mb-1">OCF</div>
+                        <div class="h4 mb-0" id="ocfAmt">—</div>
+                        <div class="text-muted small">Operating</div>
+                      </div>
+                    </div>
+                    <div class="col-4">
+                      <div class="p-3 rounded bg-info bg-opacity-10">
+                        <div class="text-info fw-bold small mb-1">ICF</div>
+                        <div class="h4 mb-0" id="icfAmt">—</div>
+                        <div class="text-muted small">Investing</div>
+                      </div>
+                    </div>
+                    <div class="col-4">
+                      <div class="p-3 rounded bg-warning bg-opacity-10">
+                        <div class="text-warning fw-bold small mb-1">FCF</div>
+                        <div class="h4 mb-0" id="fcfAmt">—</div>
+                        <div class="text-muted small">Financing</div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="mb-2">
+                    <div class="d-flex justify-content-between small mb-1"><span>OCF vs Total</span><span id="ocfPct">—</span></div>
+                    <div class="progress" style="height:8px"><div class="progress-bar bg-primary" id="ocfBar" style="width:0%"></div></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Job card funnel + Low stock -->
+          <div class="row">
+            <div class="col-12 col-lg-6">
+              <div class="card mb-3">
+                <div class="card-header"><h5 class="card-title mb-0">Job Card Pipeline (This Month)</h5></div>
+                <div class="card-body p-0">
+                  <table class="table table-sm mb-0">
+                    <tbody id="jcPipelineTbody"></tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+            <div class="col-12 col-lg-6">
+              <div class="card mb-3">
+                <div class="card-header"><h5 class="card-title mb-0 text-danger">Low Stock Alerts</h5></div>
+                <div class="card-body p-0">
+                  <div id="lowStockEmpty" class="text-center py-3 text-muted" style="display:none">
+                    <i data-feather="check-circle" style="color:#198754"></i> All stock levels OK
+                  </div>
+                  <table class="table table-sm mb-0" id="lowStockTable" style="display:none">
+                    <thead><tr><th>Item</th><th>On Hand</th><th>Reorder At</th></tr></thead>
+                    <tbody id="lowStockTbody"></tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </main>
+    <footer class="footer"><div class="container-fluid"><p class="mb-0 text-muted">Rehumile TMW IMS &copy; 2025</p></div></footer>
+  </div>
+</div>
+<script src="/portal/static/js/app.js"></script>
+<script>(function(){function _i(){var s=document.querySelector('.js-sidebar'),t=document.querySelector('.js-sidebar-toggle');if(!s||!t)return;t.addEventListener('click',function(){setTimeout(function(){localStorage.setItem('ims_sidebar',s.classList.contains('collapsed')?'open':'closed');},50);});}document.readyState==='loading'?document.addEventListener('DOMContentLoaded',_i):_i();})();</script>
+<script>
+(function(){
+  const token=localStorage.getItem('ims_access');
+  if(!token){window.location.href='/portal/login/';return;}
+  const u=JSON.parse(localStorage.getItem('ims_user')||'{}');
+  document.getElementById('navUserName').textContent=((u.first_name||'')+' '+(u.last_name||'')).trim()||u.email||'Staff';
+  document.getElementById('navUserRole').textContent=u.role||'';
+  document.getElementById('logoutBtn').onclick=e=>{e.preventDefault();localStorage.clear();window.location.href='/portal/login/';};
+  if(!['admin','finance'].includes(u.role)){window.location.href='/portal/dashboard/';return;}
+
+  const fmtR=n=>'R '+parseFloat(n||0).toLocaleString('en-ZA',{minimumFractionDigits:2,maximumFractionDigits:2});
+  const jcLabels={logged:'Logged',in_progress:'In Progress',awaiting_parts:'Awaiting Parts',ready:'Ready for Collection',paid_released:'Paid & Released'};
+  const jcColors={logged:'secondary',in_progress:'primary',awaiting_parts:'warning',ready:'info',paid_released:'success'};
+
+  async function api(url){
+    const r=await fetch(url,{headers:{'Authorization':'Bearer '+token}});
+    if(r.status===401){localStorage.clear();window.location.href='/portal/login/';throw new Error('Unauth');}
+    return r;
+  }
+
+  async function load(){
+    try{
+      const r=await api('/portal/api/financial-analytics/');
+      if(!r.ok){document.getElementById('analyticsLoading').textContent='Access denied.';return;}
+      const d=await r.json();
+
+      document.getElementById('periodLabel').textContent='Period: '+d.period.start+' to '+d.period.end;
+      document.getElementById('analyticsLoading').style.display='none';
+      document.getElementById('analyticsContent').style.display='block';
+
+      document.getElementById('kpiPaid').textContent=fmtR(d.revenue.paid);
+      document.getElementById('kpiPending').textContent=fmtR(d.revenue.pending);
+      document.getElementById('kpiOverdue').textContent=fmtR(d.revenue.overdue);
+      document.getElementById('kpiGP').textContent=fmtR(d.gross_profit);
+      document.getElementById('kpiGP').className='h2 '+(d.gross_profit>=0?'text-success':'text-danger');
+      document.getElementById('kpiGPLabel').textContent='GPM: '+d.gpm_percent+'%';
+
+      const gpm=Math.max(0,Math.min(100,d.gpm_percent));
+      document.getElementById('gpmRing').style.background=`conic-gradient(#198754 ${gpm}%,#e9ecef 0%)`;
+      document.getElementById('gpmPct').textContent=d.gpm_percent+'%';
+
+      document.getElementById('ocfAmt').textContent=fmtR(d.cash_flows.ocf);
+      document.getElementById('icfAmt').textContent=fmtR(d.cash_flows.icf);
+      document.getElementById('fcfAmt').textContent=fmtR(d.cash_flows.fcf);
+      const totalFlow=d.cash_flows.ocf+d.cash_flows.icf+d.cash_flows.fcf||1;
+      const ocfPct=Math.round(d.cash_flows.ocf/totalFlow*100);
+      document.getElementById('ocfPct').textContent=ocfPct+'%';
+      document.getElementById('ocfBar').style.width=ocfPct+'%';
+
+      document.getElementById('jcPipelineTbody').innerHTML=Object.entries(d.job_cards).map(([s,n])=>`
+        <tr>
+          <td><span class="badge bg-${jcColors[s]||'secondary'}">${jcLabels[s]||s}</span></td>
+          <td><strong>${n}</strong></td>
+          <td><div class="progress" style="height:6px"><div class="progress-bar bg-${jcColors[s]||'secondary'}" style="width:${Math.min(100,n*10)}%"></div></div></td>
+        </tr>`).join('');
+
+      if(d.low_stock_alerts&&d.low_stock_alerts.length){
+        document.getElementById('lowStockTable').style.display='table';
+        document.getElementById('lowStockTbody').innerHTML=d.low_stock_alerts.map(i=>`
+          <tr class="table-danger">
+            <td>${i.name}</td>
+            <td><strong class="text-danger">${i.quantity_on_hand}</strong></td>
+            <td>${i.reorder_level}</td>
+          </tr>`).join('');
+      }else{
+        document.getElementById('lowStockEmpty').style.display='block';
+      }
+      if(window.feather)feather.replace();
+    }catch(e){if(e.message!=='Unauth')document.getElementById('analyticsLoading').textContent='Failed to load analytics.';}
+  }
+  load();
+})();
+</script>
+</body>
+</html>

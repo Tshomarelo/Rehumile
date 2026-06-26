@@ -1,0 +1,266 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <link rel="shortcut icon" href="/portal/static/img/icons/icon-48x48.png"/>
+  <title>Reports | Rehumile IMS</title>
+  <link href="/portal/static/css/app.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+</head>
+<body>
+<div class="wrapper">
+  <nav id="sidebar" class="sidebar js-sidebar">
+    <div class="sidebar-content js-simplebar">
+      <a class="sidebar-brand d-flex align-items-center p-2" href="/portal/dashboard/">
+        <img src="/portal/static/img/rehumile-logo.jpeg" style="height:36px;object-fit:contain" alt="Rehumile TMW">
+      </a>
+      <ul class="sidebar-nav">
+        <li class="sidebar-header">Operations</li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/"><i class="align-middle" data-feather="sliders"></i> <span class="align-middle">HQ Dashboard</span></a></li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/incidents/"><i class="align-middle" data-feather="alert-circle"></i> <span class="align-middle">Incidents</span></a></li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/companies/"><i class="align-middle" data-feather="briefcase"></i> <span class="align-middle">Companies</span></a></li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/users/"><i class="align-middle" data-feather="users"></i> <span class="align-middle">Users</span></a></li>
+        <li class="sidebar-header">Workshop</li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/job-cards/"><i class="align-middle" data-feather="tool"></i> <span class="align-middle">Job Cards</span></a></li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/inventory/"><i class="align-middle" data-feather="package"></i> <span class="align-middle">Inventory</span></a></li>
+        <li class="sidebar-header">Finance</li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/invoices/"><i class="align-middle" data-feather="file-text"></i> <span class="align-middle">Invoices</span></a></li>
+        <li class="sidebar-item active"><a class="sidebar-link" href="/portal/reports/"><i class="align-middle" data-feather="bar-chart-2"></i> <span class="align-middle">Reports</span></a></li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/pos/"><i class="align-middle" data-feather="shopping-cart"></i> <span class="align-middle">POS</span></a></li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/vouchers/"><i class="align-middle" data-feather="wifi"></i> <span class="align-middle">Vouchers</span></a></li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/cash-management/"><i class="align-middle" data-feather="dollar-sign"></i> <span class="align-middle">Cash Management</span></a></li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/financial-analytics/"><i class="align-middle" data-feather="trending-up"></i> <span class="align-middle">Financial Analytics</span></a></li>
+        <li class="sidebar-header">Compliance</li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/compliance/"><i class="align-middle" data-feather="shield"></i> <span class="align-middle">SARS Hub</span></a></li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/vat201/"><i class="align-middle" data-feather="percent"></i> <span class="align-middle">VAT201 Staging</span></a></li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/emp201/"><i class="align-middle" data-feather="layers"></i> <span class="align-middle">EMP201 Payroll</span></a></li>
+        <li class="sidebar-header">HR</li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/hr/"><i class="align-middle" data-feather="user-check"></i> <span class="align-middle">Employee Profiles</span></a></li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/hr/#leave"><i class="align-middle" data-feather="calendar"></i> <span class="align-middle">Leave Management</span></a></li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/playbook/"><i class="align-middle" data-feather="check-square"></i> <span class="align-middle">Operational Playbook</span></a></li>
+        <li class="sidebar-header">System</li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/sla-monitor/"><i class="align-middle" data-feather="alert-triangle"></i> <span class="align-middle">SLA Monitor</span></a></li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/notifications/"><i class="align-middle" data-feather="bell"></i> <span class="align-middle">Notifications</span></a></li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/audit-log/"><i class="align-middle" data-feather="clipboard"></i> <span class="align-middle">Audit Log</span></a></li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/admin/" target="_blank"><i class="align-middle" data-feather="settings"></i> <span class="align-middle">Admin Panel</span></a></li>
+      </ul>
+    </div>
+  </nav>
+  <div class="main">
+    <nav class="navbar navbar-expand navbar-light navbar-bg">
+      <a class="sidebar-toggle js-sidebar-toggle"><i class="hamburger align-self-center"></i></a>
+      <div class="navbar-collapse collapse">
+        <ul class="navbar-nav navbar-align">
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle d-none d-sm-inline-block" href="#" data-bs-toggle="dropdown">
+              <i class="align-middle me-1" data-feather="user"></i><span class="text-dark" id="navUserName">…</span>
+            </a>
+            <div class="dropdown-menu dropdown-menu-end">
+              <span class="dropdown-item-text small text-muted" id="navUserRole"></span>
+              <div class="dropdown-divider"></div>
+              <a class="dropdown-item" href="#" id="logoutBtn"><i class="align-middle me-1" data-feather="log-out"></i> Sign out</a>
+            </div>
+          </li>
+        </ul>
+      </div>
+    </nav>
+    <main class="content">
+      <div class="container-fluid p-0">
+        <div class="d-flex align-items-center justify-content-between mb-3">
+          <h1 class="h3 mb-0"><strong>Reports</strong> &amp; Analytics</h1>
+          <button class="btn btn-sm btn-outline-secondary" id="refreshBtn">
+            <i class="align-middle me-1" data-feather="refresh-cw"></i> Refresh
+          </button>
+        </div>
+        <div id="pageAlert"></div>
+
+        <!-- KPI Row -->
+        <div class="row">
+          <div class="col-sm-6 col-xl-3">
+            <div class="card"><div class="card-body">
+              <div class="row"><div class="col mt-0"><h5 class="card-title">Total Incidents</h5></div>
+              <div class="col-auto"><div class="stat text-primary"><i class="align-middle" data-feather="alert-circle"></i></div></div></div>
+              <h1 class="mt-1 mb-3" id="kpiTotal">—</h1>
+              <div class="mb-0"><span class="text-muted" id="kpiActiveSpan">— active</span></div>
+            </div></div>
+          </div>
+          <div class="col-sm-6 col-xl-3">
+            <div class="card"><div class="card-body">
+              <div class="row"><div class="col mt-0"><h5 class="card-title">SLA Compliance</h5></div>
+              <div class="col-auto"><div class="stat text-success"><i class="align-middle" data-feather="shield"></i></div></div></div>
+              <h1 class="mt-1 mb-3" id="kpiSla">—%</h1>
+              <div class="mb-0"><span class="text-muted" id="kpiBreachSpan">— breaches</span></div>
+            </div></div>
+          </div>
+          <div class="col-sm-6 col-xl-3">
+            <div class="card"><div class="card-body">
+              <div class="row"><div class="col mt-0"><h5 class="card-title">Companies</h5></div>
+              <div class="col-auto"><div class="stat text-warning"><i class="align-middle" data-feather="briefcase"></i></div></div></div>
+              <h1 class="mt-1 mb-3" id="kpiCompanies">—</h1>
+              <div class="mb-0"><span class="text-muted">Active client accounts</span></div>
+            </div></div>
+          </div>
+          <div class="col-sm-6 col-xl-3">
+            <div class="card"><div class="card-body">
+              <div class="row"><div class="col mt-0"><h5 class="card-title">Total Invoiced</h5></div>
+              <div class="col-auto"><div class="stat text-info"><i class="align-middle" data-feather="dollar-sign"></i></div></div></div>
+              <h1 class="mt-1 mb-3" id="kpiRevenue">R —</h1>
+              <div class="mb-0"><span class="text-muted">Paid invoices</span></div>
+            </div></div>
+          </div>
+        </div>
+
+        <!-- Charts Row -->
+        <div class="row">
+          <div class="col-12 col-lg-5">
+            <div class="card flex-fill">
+              <div class="card-header"><h5 class="card-title mb-0">Incidents by Status</h5></div>
+              <div class="card-body"><div class="chart"><canvas id="statusChart"></canvas></div></div>
+            </div>
+          </div>
+          <div class="col-12 col-lg-7">
+            <div class="card flex-fill">
+              <div class="card-header"><h5 class="card-title mb-0">Incidents by Priority</h5></div>
+              <div class="card-body"><div class="chart"><canvas id="priorityChart"></canvas></div></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Category breakdown + Company table -->
+        <div class="row">
+          <div class="col-12 col-lg-5">
+            <div class="card flex-fill">
+              <div class="card-header"><h5 class="card-title mb-0">Incidents by Category</h5></div>
+              <div class="card-body"><div class="chart"><canvas id="categoryChart"></canvas></div></div>
+            </div>
+          </div>
+          <div class="col-12 col-lg-7">
+            <div class="card flex-fill">
+              <div class="card-header"><h5 class="card-title mb-0">Incidents by Company</h5></div>
+              <div class="card-body p-0">
+                <table class="table table-sm my-0">
+                  <thead><tr><th>Company</th><th>Total</th><th>Open</th><th>Resolved</th><th>SLA Breach</th></tr></thead>
+                  <tbody id="companyReportTbody"><tr><td colspan="5" class="text-center text-muted py-3">Loading…</td></tr></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </main>
+    <footer class="footer"><div class="container-fluid"><p class="mb-0 text-muted">Rehumile TMW IMS &copy; 2025</p></div></footer>
+  </div>
+</div>
+
+<script src="/portal/static/js/app.js"></script>
+<script>(function(){function _i(){var s=document.querySelector('.js-sidebar'),t=document.querySelector('.js-sidebar-toggle');if(!s||!t)return;if(window.innerWidth<992&&localStorage.getItem('ims_sidebar')==='open')s.classList.add('collapsed');t.addEventListener('click',function(){setTimeout(function(){localStorage.setItem('ims_sidebar',s.classList.contains('collapsed')?'open':'closed');},50);});}document.readyState==='loading'?document.addEventListener('DOMContentLoaded',_i):_i();})();</script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+(function(){
+  const token = localStorage.getItem('ims_access');
+  if(!token){ window.location.href='/portal/login/'; return; }
+  const userData = JSON.parse(localStorage.getItem('ims_user')||'{}');
+  if(!['admin','agent','finance'].includes(userData.role)){ window.location.href='/portal/client/'; return; }
+  document.getElementById('navUserName').textContent=((userData.first_name||'')+' '+(userData.last_name||'')).trim()||userData.email||'User';
+  document.getElementById('navUserRole').textContent=(userData.role||'').toUpperCase();
+  document.getElementById('logoutBtn').onclick=e=>{ e.preventDefault(); localStorage.clear(); window.location.href='/portal/login/'; };
+
+  async function api(url, opts={}){
+    const r=await fetch(url,{...opts,headers:{'Content-Type':'application/json','Authorization':'Bearer '+token,...(opts.headers||{})}});
+    if(r.status===401){ localStorage.clear(); window.location.href='/portal/login/'; throw new Error('Unauth'); }
+    return r;
+  }
+
+  let charts={};
+  function destroyChart(id){ if(charts[id]){ charts[id].destroy(); delete charts[id]; } }
+
+  async function loadReports(){
+    try{
+      const [mRes, incRes, compRes, invRes] = await Promise.all([
+        api('/portal/api/dashboard/metrics/'),
+        api('/portal/api/incidents/'),
+        api('/portal/api/companies/'),
+        api('/portal/api/invoices/'),
+      ]);
+      const metrics = await mRes.json();
+      const _ij=await incRes.json(); const incidents=Array.isArray(_ij)?_ij:(_ij.results||[]);
+      const _cj=await compRes.json(); const companies=Array.isArray(_cj)?_cj:(_cj.results||[]);
+      const _invj=await invRes.json(); const invoices=Array.isArray(_invj)?_invj:(_invj.results||[]);
+
+      const total = incidents.length;
+      const breached = metrics.sla_breach_count||0;
+      const compliance = total>0?Math.round(((total-breached)/total)*100):100;
+
+      document.getElementById('kpiTotal').textContent=total;
+      document.getElementById('kpiActiveSpan').textContent=(metrics.total_active||0)+' active';
+      document.getElementById('kpiSla').textContent=compliance+'%';
+      document.getElementById('kpiBreachSpan').textContent=breached+' breach'+(breached!==1?'es':'');
+      document.getElementById('kpiCompanies').textContent=companies.length;
+
+      const paidTotal=invoices.filter(i=>i.status==='paid').reduce((s,i)=>s+parseFloat(i.total_amount||0),0);
+      document.getElementById('kpiRevenue').textContent='R '+paidTotal.toFixed(2);
+
+      // Status chart
+      destroyChart('statusChart');
+      charts.statusChart=new Chart(document.getElementById('statusChart'),{
+        type:'doughnut',
+        data:{
+          labels:['Open','In Progress','Resolved','Closed'],
+          datasets:[{data:[metrics.open_count||0,metrics.in_progress_count||0,metrics.resolved_count||0,incidents.filter(i=>i.status==='closed').length],backgroundColor:['#ffc107','#0d6efd','#198754','#6c757d']}]
+        },
+        options:{maintainAspectRatio:false,plugins:{legend:{position:'bottom'}}}
+      });
+
+      // Priority chart
+      const prio={critical:0,high:0,medium:0,low:0};
+      incidents.forEach(i=>{ if(prio[i.priority]!==undefined) prio[i.priority]++; });
+      destroyChart('priorityChart');
+      charts.priorityChart=new Chart(document.getElementById('priorityChart'),{
+        type:'bar',
+        data:{
+          labels:['Critical','High','Medium','Low'],
+          datasets:[{label:'Incidents',data:[prio.critical,prio.high,prio.medium,prio.low],backgroundColor:['#dc3545','#fd7e14','#0d6efd','#6c757d']}]
+        },
+        options:{maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{stepSize:1}}}}
+      });
+
+      // Category chart
+      const cats={};
+      incidents.forEach(i=>{ cats[i.category]=(cats[i.category]||0)+1; });
+      destroyChart('categoryChart');
+      charts.categoryChart=new Chart(document.getElementById('categoryChart'),{
+        type:'pie',
+        data:{
+          labels:Object.keys(cats).map(k=>k.charAt(0).toUpperCase()+k.slice(1)),
+          datasets:[{data:Object.values(cats),backgroundColor:['#0d6efd','#198754','#ffc107','#dc3545','#6f42c1','#6c757d']}]
+        },
+        options:{maintainAspectRatio:false,plugins:{legend:{position:'bottom'}}}
+      });
+
+      // Company report table
+      const compMap={};
+      incidents.forEach(i=>{
+        const name=i.company_name||'Unknown';
+        if(!compMap[name]) compMap[name]={total:0,open:0,resolved:0,breach:0};
+        compMap[name].total++;
+        if(i.status==='open') compMap[name].open++;
+        if(i.status==='resolved') compMap[name].resolved++;
+        if(i.is_sla_breached) compMap[name].breach++;
+      });
+      const rows=Object.entries(compMap).sort((a,b)=>b[1].total-a[1].total);
+      document.getElementById('companyReportTbody').innerHTML=rows.length
+        ?rows.map(([name,d])=>`<tr><td>${name}</td><td>${d.total}</td><td>${d.open}</td><td>${d.resolved}</td><td>${d.breach>0?`<span class="text-danger">${d.breach}</span>`:'0'}</td></tr>`).join('')
+        :'<tr><td colspan="5" class="text-center text-muted">No incident data yet.</td></tr>';
+
+    }catch(e){ if(e.message!=='Unauth') console.error('Reports error:',e); }
+  }
+
+  document.getElementById('refreshBtn').onclick=loadReports;
+  loadReports();
+})();
+</script>
+</body>
+</html>
+

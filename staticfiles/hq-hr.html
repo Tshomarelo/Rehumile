@@ -1,0 +1,311 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <link rel="shortcut icon" href="/portal/static/img/icons/icon-48x48.png"/>
+  <title>HR &amp; Employee Profiles | Rehumile IMS</title>
+  <link href="/portal/static/css/app.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+  <style>
+    .emp-card{border-left:4px solid #375a7f;cursor:pointer;transition:box-shadow .2s}.emp-card:hover{box-shadow:0 4px 12px rgba(0,0,0,.12)}
+    .leave-bar-wrap{background:#e9ecef;border-radius:4px;height:8px;width:100%}
+    .leave-bar{height:8px;border-radius:4px;background:#375a7f}
+    .leave-bar.danger{background:#dc3545}
+    .popia-banner{background:#fff3cd;border:1px solid #ffc107;border-radius:6px;padding:10px 14px;font-size:.83rem}
+    .tab-pane{display:none}.tab-pane.active{display:block}
+    .nav-tabs .nav-link{cursor:pointer}
+  </style>
+</head>
+<body>
+<div class="wrapper">
+  <nav id="sidebar" class="sidebar js-sidebar">
+    <div class="sidebar-content js-simplebar">
+      <a class="sidebar-brand d-flex align-items-center p-2" href="/portal/dashboard/">
+        <img src="/portal/static/img/rehumile-logo.jpeg" style="height:36px;object-fit:contain" alt="Rehumile TMW">
+      </a>
+      <ul class="sidebar-nav">
+        <li class="sidebar-header">Operations</li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/"><i class="align-middle" data-feather="sliders"></i> <span class="align-middle">HQ Dashboard</span></a></li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/incidents/"><i class="align-middle" data-feather="alert-circle"></i> <span class="align-middle">Incidents</span></a></li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/companies/"><i class="align-middle" data-feather="briefcase"></i> <span class="align-middle">Companies</span></a></li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/users/"><i class="align-middle" data-feather="users"></i> <span class="align-middle">Users</span></a></li>
+        <li class="sidebar-header">Workshop</li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/job-cards/"><i class="align-middle" data-feather="tool"></i> <span class="align-middle">Job Cards</span></a></li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/inventory/"><i class="align-middle" data-feather="package"></i> <span class="align-middle">Inventory</span></a></li>
+        <li class="sidebar-header">Finance</li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/invoices/"><i class="align-middle" data-feather="file-text"></i> <span class="align-middle">Invoices</span></a></li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/reports/"><i class="align-middle" data-feather="bar-chart-2"></i> <span class="align-middle">Reports</span></a></li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/pos/"><i class="align-middle" data-feather="shopping-cart"></i> <span class="align-middle">POS</span></a></li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/vouchers/"><i class="align-middle" data-feather="wifi"></i> <span class="align-middle">Vouchers</span></a></li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/cash-management/"><i class="align-middle" data-feather="dollar-sign"></i> <span class="align-middle">Cash Management</span></a></li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/financial-analytics/"><i class="align-middle" data-feather="trending-up"></i> <span class="align-middle">Financial Analytics</span></a></li>
+        <li class="sidebar-header">Compliance</li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/compliance/"><i class="align-middle" data-feather="shield"></i> <span class="align-middle">SARS Hub</span></a></li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/vat201/"><i class="align-middle" data-feather="percent"></i> <span class="align-middle">VAT201 Staging</span></a></li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/emp201/"><i class="align-middle" data-feather="layers"></i> <span class="align-middle">EMP201 Payroll</span></a></li>
+        <li class="sidebar-header">HR</li>
+        <li class="sidebar-item active"><a class="sidebar-link" href="/portal/dashboard/hr/"><i class="align-middle" data-feather="user-check"></i> <span class="align-middle">Employee Profiles</span></a></li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/hr/#leave"><i class="align-middle" data-feather="calendar"></i> <span class="align-middle">Leave Management</span></a></li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/playbook/"><i class="align-middle" data-feather="check-square"></i> <span class="align-middle">Operational Playbook</span></a></li>
+        <li class="sidebar-header">System</li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/sla-monitor/"><i class="align-middle" data-feather="alert-triangle"></i> <span class="align-middle">SLA Monitor</span></a></li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/notifications/"><i class="align-middle" data-feather="bell"></i> <span class="align-middle">Notifications</span></a></li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/audit-log/"><i class="align-middle" data-feather="clipboard"></i> <span class="align-middle">Audit Log</span></a></li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/admin/" target="_blank"><i class="align-middle" data-feather="settings"></i> <span class="align-middle">Admin Panel</span></a></li>
+      </ul>
+    </div>
+  </nav>
+  <div class="main">
+    <nav class="navbar navbar-expand navbar-light navbar-bg">
+      <a class="sidebar-toggle js-sidebar-toggle"><i class="hamburger align-self-center"></i></a>
+      <div class="navbar-collapse collapse">
+        <ul class="navbar-nav navbar-align">
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle d-none d-sm-inline-block" href="#" data-bs-toggle="dropdown">
+              <i class="align-middle me-1" data-feather="user"></i><span class="text-dark" id="navUserName">…</span>
+            </a>
+            <div class="dropdown-menu dropdown-menu-end">
+              <span class="dropdown-item-text small text-muted" id="navUserRole"></span>
+              <div class="dropdown-divider"></div>
+              <a class="dropdown-item" href="#" id="logoutBtn"><i class="align-middle me-1" data-feather="log-out"></i> Sign out</a>
+            </div>
+          </li>
+        </ul>
+      </div>
+    </nav>
+    <main class="content">
+      <div class="container-fluid p-0">
+        <div class="d-flex align-items-center justify-content-between mb-2">
+          <h1 class="h3 mb-0"><strong>HR &amp; Payroll</strong></h1>
+          <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addEmpModal">
+            <i class="align-middle me-1" data-feather="user-plus"></i> Add Employee
+          </button>
+        </div>
+        <div class="popia-banner mb-3">
+          <i data-feather="lock" style="width:14px"></i> <strong>POPIA Notice:</strong> This section contains legally protected personal information. Access is restricted to Owner and HR Administrator roles. All changes are audit-logged.
+        </div>
+        <div id="pageAlert"></div>
+
+        <!-- Tabs -->
+        <ul class="nav nav-tabs mb-3" id="hrTabs">
+          <li class="nav-item"><a class="nav-link active" onclick="switchTab('employees')">Employee Profiles</a></li>
+          <li class="nav-item"><a class="nav-link" onclick="switchTab('leave')">Leave Requests</a></li>
+        </ul>
+
+        <!-- Employees Tab -->
+        <div id="tab-employees" class="tab-pane active">
+          <div id="empCards" class="row g-3">
+            <div class="col-12 text-center text-muted py-4">Loading employees…</div>
+          </div>
+        </div>
+
+        <!-- Leave Tab -->
+        <div id="tab-leave" class="tab-pane">
+          <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+              <h6 class="mb-0">Leave Requests</h6>
+              <select class="form-select form-select-sm" id="leaveFilter" style="width:auto">
+                <option value="">All Statuses</option>
+                <option value="pending">Pending</option>
+                <option value="approved">Approved</option>
+                <option value="rejected">Rejected</option>
+              </select>
+            </div>
+            <div class="card-body p-0">
+              <table class="table table-hover mb-0">
+                <thead><tr><th>Employee</th><th>Type</th><th>From</th><th>To</th><th>Days</th><th>Status</th><th>Actions</th></tr></thead>
+                <tbody id="leaveTbody"><tr><td colspan="7" class="text-center text-muted py-3">Loading…</td></tr></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<!-- Add Employee Modal -->
+<div class="modal fade" id="addEmpModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header"><h5 class="modal-title">New Employee Profile</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-body">
+        <div class="row g-2">
+          <div class="col-md-6"><label class="form-label">First Name</label><input class="form-control" id="empFirst"></div>
+          <div class="col-md-6"><label class="form-label">Last Name</label><input class="form-control" id="empLast"></div>
+          <div class="col-md-6"><label class="form-label">SA ID Number</label><input class="form-control" id="empId" maxlength="13"></div>
+          <div class="col-md-6"><label class="form-label">Tax Reference Number</label><input class="form-control" id="empTax"></div>
+          <div class="col-md-6"><label class="form-label">Job Title</label><input class="form-control" id="empTitle"></div>
+          <div class="col-md-6"><label class="form-label">Employment Type</label>
+            <select class="form-select" id="empType">
+              <option value="full_time">Full-Time Permanent</option>
+              <option value="part_time">Part-Time</option>
+              <option value="contract">Fixed-Term Contract</option>
+              <option value="hourly">Hourly / Casual</option>
+            </select>
+          </div>
+          <div class="col-md-6"><label class="form-label">Gross Monthly Salary (R)</label><input class="form-control" type="number" id="empSalary" step="0.01"></div>
+          <div class="col-md-6"><label class="form-label">Start Date</label><input class="form-control" type="date" id="empStart"></div>
+          <div class="col-md-6"><label class="form-label">Bank Name</label><input class="form-control" id="empBank"></div>
+          <div class="col-md-3"><label class="form-label">Account Number</label><input class="form-control" id="empAccNum"></div>
+          <div class="col-md-3"><label class="form-label">Branch Code</label><input class="form-control" id="empBranch"></div>
+          <div class="col-md-6"><label class="form-label">Contact Number</label><input class="form-control" id="empContact"></div>
+          <div class="col-md-6"><label class="form-label">Next of Kin Name</label><input class="form-control" id="empKinName"></div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button class="btn btn-primary" id="btnSaveEmp">Save Profile</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="/portal/static/js/app.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
+<script>
+const API = '/portal/api';
+const tok = () => localStorage.getItem('ims_access');
+const fmt = n => 'R ' + parseFloat(n||0).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,',');
+
+async function apiFetch(url, opts={}) {
+  opts.headers = {...(opts.headers||{}), 'Authorization':'Bearer '+tok(), 'Content-Type':'application/json'};
+  const r = await fetch(url, opts);
+  if (r.status === 401) { location.href='/portal/login/'; return null; }
+  return r;
+}
+
+async function loadUser() {
+  const r = await apiFetch(API+'/auth/me/');
+  if (!r) return;
+  const d = await r.json();
+  document.getElementById('navUserName').textContent = d.full_name||d.username||'User';
+  document.getElementById('navUserRole').textContent = d.role||'';
+}
+
+function switchTab(name) {
+  document.querySelectorAll('.tab-pane').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('#hrTabs .nav-link').forEach(a=>a.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  document.querySelector(`[onclick="switchTab('${name}')"]`).classList.add('active');
+  if (name==='leave') loadLeave();
+}
+
+async function loadEmployees() {
+  const r = await apiFetch(API+'/employees/');
+  if (!r) return;
+  const list = await r.json();
+  const cont = document.getElementById('empCards');
+  if (!list.length) { cont.innerHTML='<div class="col-12 text-center text-muted py-4">No employees yet. Add the first profile.</div>'; return; }
+  cont.innerHTML = list.map(e => {
+    const paye = calcPAYE(parseFloat(e.gross_monthly_salary||0));
+    const uif = Math.min(parseFloat(e.gross_monthly_salary||0)*0.01, 1476).toFixed(2);
+    const net = (parseFloat(e.gross_monthly_salary||0)-paye-parseFloat(uif)).toFixed(2);
+    return `<div class="col-md-6 col-xl-4">
+      <div class="card emp-card h-100 p-3" onclick="viewEmployee('${e.id}')">
+        <div class="d-flex justify-content-between align-items-start mb-2">
+          <div>
+            <strong>${e.first_name} ${e.last_name}</strong><br>
+            <small class="text-muted">${e.job_title||'—'} &bull; ${e.employee_number}</small>
+          </div>
+          <span class="badge ${e.is_active?'bg-success':'bg-secondary'}">${e.is_active?'Active':'Inactive'}</span>
+        </div>
+        <div class="small">
+          <div class="d-flex justify-content-between"><span>Gross:</span><strong>${fmt(e.gross_monthly_salary)}</strong></div>
+          <div class="d-flex justify-content-between text-danger"><span>PAYE:</span><strong>-${fmt(paye)}</strong></div>
+          <div class="d-flex justify-content-between"><span>UIF (emp):</span><strong>-${fmt(uif)}</strong></div>
+          <div class="d-flex justify-content-between border-top pt-1 mt-1"><span><strong>Net Pay:</strong></span><strong class="text-success">${fmt(net)}</strong></div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+  feather.replace();
+}
+
+function calcPAYE(monthly) {
+  const annual = monthly * 12;
+  if (annual <= 95750) return 0;
+  const brackets = [[237100,0,0.18],[370500,237100,0.26],[512800,370500,0.31],[673000,512800,0.36],[857900,673000,0.39],[1817000,857900,0.41],[Infinity,1817000,0.45]];
+  const bases = [0,42678,77362,121475,179147,251258,644489];
+  let tax = 0;
+  for (let i=0;i<brackets.length;i++) {
+    if (annual<=brackets[i][0]) { tax=bases[i]+(annual-brackets[i][1])*brackets[i][2]; break; }
+  }
+  return Math.max(tax-17235,0)/12;
+}
+
+async function viewEmployee(id) {
+  const r = await apiFetch(API+'/employees/'+id+'/');
+  if (!r) return;
+  const e = await r.json();
+  alert(`${e.first_name} ${e.last_name}\nID: ${e.id_number}\nTax No: ${e.tax_reference_number}\nBank: ${e.bank_name} — ${e.bank_account_number}\nContact: ${e.contact_number}\n\nLeave Balances:\n${e.leave_balances.map(b=>`${b.leave_type}: ${parseFloat(b.available_days||b.total_days-b.used_days).toFixed(1)} days available`).join('\n')}`);
+}
+
+async function loadLeave() {
+  const r = await apiFetch(API+'/leave-requests/');
+  if (!r) return;
+  const list = await r.json();
+  const tbody = document.getElementById('leaveTbody');
+  if (!list.length) { tbody.innerHTML='<tr><td colspan="7" class="text-center text-muted py-3">No leave requests.</td></tr>'; return; }
+  tbody.innerHTML = list.map(l => {
+    const bc = {pending:'bg-warning',approved:'bg-success',rejected:'bg-danger',cancelled:'bg-secondary'}[l.status]||'bg-secondary';
+    return `<tr>
+      <td>${l.employee__first_name} ${l.employee__last_name}</td>
+      <td class="text-capitalize">${(l.leave_type||'').replace('_',' ')}</td>
+      <td>${l.start_date}</td>
+      <td>${l.end_date}</td>
+      <td>${parseFloat(l.days_requested).toFixed(1)}</td>
+      <td><span class="badge ${bc} text-white">${l.status}</span></td>
+      <td>${l.status==='pending'?`
+        <button class="btn btn-xs btn-sm btn-outline-success me-1" onclick="reviewLeave('${l.id}','approve')">Approve</button>
+        <button class="btn btn-xs btn-sm btn-outline-danger" onclick="reviewLeave('${l.id}','reject')">Reject</button>`:'—'}
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+async function reviewLeave(id, action) {
+  const note = action==='reject' ? (prompt('Rejection reason:') || '') : '';
+  const r = await apiFetch(API+'/leave-requests/'+id+'/', {method:'PATCH', body:JSON.stringify({action, note})});
+  if (!r) return;
+  loadLeave();
+}
+
+document.getElementById('btnSaveEmp').addEventListener('click', async () => {
+  const body = {
+    first_name: document.getElementById('empFirst').value,
+    last_name: document.getElementById('empLast').value,
+    id_number: document.getElementById('empId').value,
+    tax_reference_number: document.getElementById('empTax').value,
+    job_title: document.getElementById('empTitle').value,
+    employment_type: document.getElementById('empType').value,
+    gross_monthly_salary: document.getElementById('empSalary').value,
+    start_date: document.getElementById('empStart').value,
+    bank_name: document.getElementById('empBank').value,
+    bank_account_number: document.getElementById('empAccNum').value,
+    bank_branch_code: document.getElementById('empBranch').value,
+    contact_number: document.getElementById('empContact').value,
+    next_of_kin_name: document.getElementById('empKinName').value,
+  };
+  const r = await apiFetch(API+'/employees/', {method:'POST', body:JSON.stringify(body)});
+  if (!r) return;
+  const d = await r.json();
+  if (d.error) { alert(d.error); return; }
+  bootstrap.Modal.getInstance(document.getElementById('addEmpModal')).hide();
+  loadEmployees();
+});
+
+document.getElementById('logoutBtn').addEventListener('click', e => {
+  e.preventDefault(); localStorage.removeItem('ims_access'); localStorage.removeItem('ims_refresh'); location.href='/portal/login/';
+});
+
+// Handle #leave hash
+if (location.hash === '#leave') switchTab('leave');
+
+if (!tok()) location.href='/portal/login/';
+loadUser(); loadEmployees();
+feather.replace();
+</script>
+</body>
+</html>

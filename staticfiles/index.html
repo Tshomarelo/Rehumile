@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rehumile TMW — IT Services &amp; Solutions</title>
+  <meta name="description" content="Rehumile TMW provides professional IT support, hardware repairs, network solutions, and software services in South Africa.">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="shortcut icon" href="/portal/static/img/icons/icon-48x48.png"/>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    :root{--primary:#1a3c5e;--accent:#e8a020;--text:#2d3748;--muted:#718096;--bg:#f7fafc;--white:#fff;--card-shadow:0 4px 20px rgba(26,60,94,.10)}
+    body{font-family:'Inter',sans-serif;color:var(--text);background:var(--white);line-height:1.6}
+    a{color:inherit;text-decoration:none}
+
+    /* NAV */
+    nav{position:sticky;top:0;z-index:100;background:var(--white);border-bottom:1px solid #e2e8f0;padding:0 5%}
+    .nav-inner{display:flex;align-items:center;justify-content:space-between;height:68px}
+    .nav-logo{display:flex;align-items:center;gap:12px}
+    .nav-logo img{height:42px;object-fit:contain}
+    .nav-logo span{font-weight:700;font-size:1.1rem;color:var(--primary)}
+    .nav-links{display:flex;gap:28px;list-style:none}
+    .nav-links a{font-size:.92rem;font-weight:500;color:var(--muted);transition:color .2s}
+    .nav-links a:hover{color:var(--primary)}
+    .nav-cta{display:flex;gap:10px}
+    .btn{display:inline-flex;align-items:center;gap:6px;padding:9px 20px;border-radius:6px;font-size:.9rem;font-weight:600;cursor:pointer;transition:all .2s;border:none}
+    .btn-outline{border:2px solid var(--primary);color:var(--primary);background:transparent}
+    .btn-outline:hover{background:var(--primary);color:#fff}
+    .btn-primary{background:var(--primary);color:#fff}
+    .btn-primary:hover{background:#163252}
+    .btn-accent{background:var(--accent);color:#fff}
+    .btn-accent:hover{background:#d4901c}
+
+    /* HERO */
+    .hero{background:linear-gradient(135deg,var(--primary) 0%,#2a5a8e 100%);color:#fff;padding:90px 5% 80px;position:relative;overflow:hidden}
+    .hero::after{content:'';position:absolute;right:-100px;top:-80px;width:500px;height:500px;background:rgba(255,255,255,.05);border-radius:50%}
+    .hero-inner{max-width:1200px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr;gap:60px;align-items:center}
+    .hero-badge{display:inline-block;background:rgba(232,160,32,.2);border:1px solid var(--accent);color:var(--accent);padding:5px 14px;border-radius:20px;font-size:.78rem;font-weight:600;letter-spacing:.5px;margin-bottom:16px}
+    .hero h1{font-size:2.6rem;font-weight:700;line-height:1.2;margin-bottom:20px}
+    .hero h1 span{color:var(--accent)}
+    .hero p{font-size:1.05rem;color:rgba(255,255,255,.82);margin-bottom:32px;max-width:480px}
+    .hero-actions{display:flex;gap:14px;flex-wrap:wrap}
+    .hero-card{background:rgba(255,255,255,.08);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,.15);border-radius:16px;padding:28px;position:relative;z-index:1}
+    .hero-stat{margin-bottom:20px}
+    .hero-stat:last-child{margin-bottom:0}
+    .hero-stat-num{font-size:2rem;font-weight:700;color:var(--accent)}
+    .hero-stat-label{font-size:.82rem;color:rgba(255,255,255,.7)}
+
+    /* SERVICES */
+    section{padding:72px 5%}
+    .section-inner{max-width:1200px;margin:0 auto}
+    .section-label{font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--accent);margin-bottom:10px}
+    .section-title{font-size:2rem;font-weight:700;color:var(--primary);margin-bottom:14px}
+    .section-sub{color:var(--muted);max-width:560px;margin-bottom:48px}
+    .services-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:24px}
+    .service-card{background:var(--white);border:1px solid #e2e8f0;border-radius:12px;padding:28px;transition:all .25s;cursor:default}
+    .service-card:hover{border-color:var(--primary);box-shadow:var(--card-shadow);transform:translateY(-3px)}
+    .service-icon{width:48px;height:48px;background:linear-gradient(135deg,var(--primary),#2a5a8e);border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:16px;font-size:1.4rem}
+    .service-card h3{font-size:1.05rem;font-weight:600;color:var(--primary);margin-bottom:8px}
+    .service-card p{font-size:.88rem;color:var(--muted);line-height:1.6}
+
+    /* HOW IT WORKS */
+    .how-bg{background:var(--bg)}
+    .steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:32px;counter-reset:step}
+    .step{text-align:center;counter-increment:step;position:relative}
+    .step::before{content:counter(step);display:block;width:48px;height:48px;background:var(--primary);color:#fff;border-radius:50%;font-size:1.1rem;font-weight:700;line-height:48px;margin:0 auto 16px}
+    .step h4{font-size:1rem;font-weight:600;color:var(--primary);margin-bottom:8px}
+    .step p{font-size:.88rem;color:var(--muted)}
+
+    /* PORTAL CTA */
+    .portal-section{background:linear-gradient(135deg,var(--primary),#2a5a8e);color:#fff}
+    .portal-inner{max-width:1200px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr;gap:60px;align-items:center}
+    .portal-features{list-style:none;margin:24px 0 32px}
+    .portal-features li{padding:8px 0;font-size:.92rem;color:rgba(255,255,255,.85);display:flex;align-items:center;gap:10px}
+    .portal-features li::before{content:'✓';background:var(--accent);color:#fff;width:20px;height:20px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:700;flex-shrink:0}
+    .portal-mockup{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:12px;padding:24px}
+    .mock-bar{background:rgba(255,255,255,.15);border-radius:6px;height:10px;margin-bottom:12px}
+    .mock-bar.short{width:60%}.mock-bar.medium{width:80%}
+    .mock-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+    .mock-card{background:rgba(255,255,255,.1);border-radius:6px;padding:14px;text-align:center}
+    .mock-card-num{font-size:1.4rem;font-weight:700;color:var(--accent)}
+    .mock-card-label{font-size:.7rem;color:rgba(255,255,255,.6)}
+
+    /* CONTACT */
+    .contact-grid{display:grid;grid-template-columns:1fr 1fr;gap:60px;align-items:start}
+    .contact-info p{color:var(--muted);margin-bottom:24px}
+    .contact-detail{display:flex;align-items:flex-start;gap:14px;margin-bottom:20px}
+    .contact-detail-icon{width:40px;height:40px;background:var(--primary);color:#fff;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:1rem}
+    .contact-detail-text strong{display:block;font-size:.88rem;color:var(--primary);margin-bottom:2px}
+    .contact-detail-text span{font-size:.88rem;color:var(--muted)}
+    .contact-form{background:var(--bg);border-radius:12px;padding:32px}
+    .form-group{margin-bottom:16px}
+    .form-label{display:block;font-size:.83rem;font-weight:600;color:var(--primary);margin-bottom:6px}
+    .form-control{width:100%;padding:10px 14px;border:1px solid #e2e8f0;border-radius:6px;font-size:.9rem;font-family:inherit;transition:border .2s}
+    .form-control:focus{outline:none;border-color:var(--primary)}
+    textarea.form-control{min-height:110px;resize:vertical}
+    #formSuccess{display:none}
+
+    /* FOOTER */
+    footer{background:var(--primary);color:rgba(255,255,255,.75);padding:40px 5% 24px}
+    .footer-inner{max-width:1200px;margin:0 auto}
+    .footer-top{display:grid;grid-template-columns:2fr 1fr 1fr;gap:40px;margin-bottom:32px}
+    .footer-brand img{height:36px;margin-bottom:12px}
+    .footer-brand p{font-size:.85rem;line-height:1.7}
+    .footer-col h5{font-weight:600;color:#fff;margin-bottom:14px;font-size:.9rem}
+    .footer-col ul{list-style:none}
+    .footer-col ul li{margin-bottom:8px;font-size:.85rem}
+    .footer-col a:hover{color:#fff}
+    .footer-bottom{border-top:1px solid rgba(255,255,255,.12);padding-top:20px;display:flex;justify-content:space-between;align-items:center;font-size:.8rem}
+    .footer-accent{display:inline-block;width:32px;height:3px;background:var(--accent);border-radius:2px}
+
+    @media(max-width:768px){
+      .hero-inner,.portal-inner,.contact-grid,.footer-top{grid-template-columns:1fr}
+      .hero h1{font-size:1.9rem}
+      .hero-card,.portal-mockup{display:none}
+      nav .nav-links,.nav-cta .btn-outline{display:none}
+    }
+  </style>
+</head>
+<body>
+
+<!-- Navigation -->
+<nav>
+  <div class="nav-inner">
+    <div class="nav-logo">
+      <img src="/portal/static/img/rehumile-logo.jpeg" alt="Rehumile TMW">
+      <span>Rehumile TMW</span>
+    </div>
+    <ul class="nav-links">
+      <li><a href="#services">Services</a></li>
+      <li><a href="#how-it-works">How It Works</a></li>
+      <li><a href="#portal">Client Portal</a></li>
+      <li><a href="#contact">Contact</a></li>
+    </ul>
+    <div class="nav-cta">
+      <a class="btn btn-outline" href="/portal/login/">Sign In</a>
+      <a class="btn btn-accent" href="#contact">Get a Quote</a>
+    </div>
+  </div>
+</nav>
+
+<!-- Hero -->
+<section class="hero">
+  <div class="hero-inner">
+    <div>
+      <div class="hero-badge">🇿🇦 South African IT Specialists</div>
+      <h1>Your Trusted IT Partner for <span>Business &amp; Repairs</span></h1>
+      <p>From hardware repairs and network installations to full IT support contracts — Rehumile TMW keeps your business running and your data secure.</p>
+      <div class="hero-actions">
+        <a class="btn btn-accent" href="#contact">Get a Free Quote</a>
+        <a class="btn btn-outline" style="color:#fff;border-color:rgba(255,255,255,.5)" href="/portal/login/">Client Portal Login</a>
+      </div>
+    </div>
+    <div class="hero-card">
+      <div class="hero-stat">
+        <div class="hero-stat-num">500+</div>
+        <div class="hero-stat-label">Devices Repaired</div>
+      </div>
+      <div class="hero-stat">
+        <div class="hero-stat-num">98%</div>
+        <div class="hero-stat-label">Client Satisfaction Rate</div>
+      </div>
+      <div class="hero-stat">
+        <div class="hero-stat-num">24h</div>
+        <div class="hero-stat-label">Average Turnaround Time</div>
+      </div>
+      <div class="hero-stat" style="margin-bottom:0">
+        <div class="hero-stat-num">5+</div>
+        <div class="hero-stat-label">Years in Business</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Services -->
+<section id="services">
+  <div class="section-inner">
+    <div class="section-label">What We Do</div>
+    <h2 class="section-title">Professional IT Services</h2>
+    <p class="section-sub">We provide end-to-end IT solutions for individuals and businesses — from walk-in repairs to managed service contracts.</p>
+    <div class="services-grid">
+      <div class="service-card">
+        <div class="service-icon">🖥️</div>
+        <h3>Hardware Repairs</h3>
+        <p>Laptop screen replacements, motherboard repairs, data recovery, component-level diagnostics, and more.</p>
+      </div>
+      <div class="service-card">
+        <div class="service-icon">🌐</div>
+        <h3>Network &amp; Connectivity</h3>
+        <p>LAN/WAN installations, Wi-Fi setup, fibre configuration, network security, and remote monitoring.</p>
+      </div>
+      <div class="service-card">
+        <div class="service-icon">☁️</div>
+        <h3>Software &amp; Cloud</h3>
+        <p>OS installations, cloud migrations, Microsoft 365 deployment, backup solutions, and software licensing.</p>
+      </div>
+      <div class="service-card">
+        <div class="service-icon">🛡️</div>
+        <h3>IT Security</h3>
+        <p>Antivirus deployment, firewall configuration, security audits, and POPIA compliance consulting.</p>
+      </div>
+      <div class="service-card">
+        <div class="service-icon">📋</div>
+        <h3>Managed IT Support</h3>
+        <p>Monthly retainer contracts with SLA guarantees, remote helpdesk, and scheduled maintenance visits.</p>
+      </div>
+      <div class="service-card">
+        <div class="service-icon">📦</div>
+        <h3>Parts &amp; Accessories</h3>
+        <p>In-store stock of RAM, SSDs, screens, thermal paste, cables, and other IT consumables at competitive prices.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- How It Works -->
+<section id="how-it-works" class="how-bg">
+  <div class="section-inner">
+    <div class="section-label">The Process</div>
+    <h2 class="section-title">How We Work</h2>
+    <p class="section-sub">Simple, transparent, and fast — here's what to expect when you bring your device to us.</p>
+    <div class="steps">
+      <div class="step">
+        <h4>Drop Off / Book</h4>
+        <p>Walk in with your device or submit a support ticket through the client portal. We log it immediately.</p>
+      </div>
+      <div class="step">
+        <h4>Diagnose &amp; Quote</h4>
+        <p>Our technicians run a full diagnostic and send you a transparent quote before any work begins.</p>
+      </div>
+      <div class="step">
+        <h4>Repair &amp; Test</h4>
+        <p>We carry out the repair, run quality checks, and update your job card status in real time via the portal.</p>
+      </div>
+      <div class="step">
+        <h4>Collect &amp; Invoice</h4>
+        <p>Pick up your device, pay securely, and receive your invoice and warranty certificate on the spot.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Portal CTA -->
+<section id="portal" class="portal-section">
+  <div class="portal-inner">
+    <div>
+      <div class="section-label" style="color:var(--accent)">Client Portal</div>
+      <h2 class="section-title" style="color:#fff">Track Your Jobs &amp; Invoices Online</h2>
+      <p style="color:rgba(255,255,255,.8)">Registered clients get access to a dedicated portal where you can monitor every job, view invoices, and communicate with our team — all in one place.</p>
+      <ul class="portal-features">
+        <li>Submit and track support tickets in real time</li>
+        <li>View job card status updates from our workshop</li>
+        <li>Download and pay invoices online</li>
+        <li>Access your full service history</li>
+        <li>Get notified on every status change</li>
+      </ul>
+      <div style="display:flex;gap:12px;flex-wrap:wrap">
+        <a class="btn btn-accent" href="/portal/login/">Login to Portal</a>
+        <a class="btn btn-outline" style="color:#fff;border-color:rgba(255,255,255,.4)" href="#contact">Request Access</a>
+      </div>
+    </div>
+    <div class="portal-mockup">
+      <div class="mock-bar medium"></div>
+      <div class="mock-bar short" style="margin-bottom:20px"></div>
+      <div class="mock-grid">
+        <div class="mock-card"><div class="mock-card-num">4</div><div class="mock-card-label">Open Tickets</div></div>
+        <div class="mock-card"><div class="mock-card-num">12</div><div class="mock-card-label">Resolved</div></div>
+        <div class="mock-card"><div class="mock-card-num">R 2,400</div><div class="mock-card-label">Outstanding</div></div>
+        <div class="mock-card"><div class="mock-card-num">100%</div><div class="mock-card-label">SLA Met</div></div>
+      </div>
+      <div class="mock-bar" style="margin-bottom:8px"></div>
+      <div class="mock-bar medium" style="margin-bottom:8px"></div>
+      <div class="mock-bar short"></div>
+    </div>
+  </div>
+</section>
+
+<!-- Contact -->
+<section id="contact">
+  <div class="section-inner">
+    <div class="contact-grid">
+      <div class="contact-info">
+        <div class="section-label">Get In Touch</div>
+        <h2 class="section-title">Request a Quote or Support</h2>
+        <p>Fill in the form and we'll get back to you within 24 hours. For urgent repairs, call us directly.</p>
+        <div class="contact-detail">
+          <div class="contact-detail-icon">📍</div>
+          <div class="contact-detail-text"><strong>Workshop Location</strong><span>Gauteng, South Africa</span></div>
+        </div>
+        <div class="contact-detail">
+          <div class="contact-detail-icon">✉️</div>
+          <div class="contact-detail-text"><strong>Email</strong><span>info@rehumile.co.za</span></div>
+        </div>
+        <div class="contact-detail">
+          <div class="contact-detail-icon">🕒</div>
+          <div class="contact-detail-text"><strong>Business Hours</strong><span>Mon–Fri 08:00–17:00 | Sat 09:00–13:00</span></div>
+        </div>
+        <div style="margin-top:28px">
+          <a class="btn btn-primary" href="/portal/login/" style="margin-right:10px">Client Portal</a>
+          <a class="btn btn-outline" href="mailto:info@rehumile.co.za">Email Us</a>
+        </div>
+      </div>
+      <div class="contact-form">
+        <h4 style="color:var(--primary);font-size:1.1rem;margin-bottom:20px">Send Us a Message</h4>
+        <div id="formSuccess" class="alert" style="background:#d4edda;color:#155724;padding:12px;border-radius:6px;margin-bottom:16px">
+          ✅ Message sent! We'll respond within 24 hours.
+        </div>
+        <form id="quoteForm">
+          <div class="form-group">
+            <label class="form-label">Your Name</label>
+            <input class="form-control" type="text" id="qName" placeholder="Full name" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Email Address</label>
+            <input class="form-control" type="email" id="qEmail" placeholder="you@example.com" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Phone Number</label>
+            <input class="form-control" type="tel" id="qPhone" placeholder="0XX XXX XXXX">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Service Needed</label>
+            <select class="form-control" id="qService">
+              <option value="">Select a service…</option>
+              <option>Hardware Repair</option>
+              <option>Network Installation</option>
+              <option>Software Support</option>
+              <option>Managed IT Contract</option>
+              <option>Security Audit</option>
+              <option>General Enquiry</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Message</label>
+            <textarea class="form-control" id="qMessage" placeholder="Describe what you need…"></textarea>
+          </div>
+          <button class="btn btn-primary" type="submit" id="qSubmit" style="width:100%;justify-content:center">Send Message</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Footer -->
+<footer>
+  <div class="footer-inner">
+    <div class="footer-top">
+      <div class="footer-brand">
+        <img src="/portal/static/img/rehumile-logo.jpeg" alt="Rehumile TMW">
+        <p>Professional IT services and solutions for businesses and individuals in South Africa.</p>
+        <div class="footer-accent" style="margin-top:16px"></div>
+      </div>
+      <div class="footer-col">
+        <h5>Services</h5>
+        <ul>
+          <li><a href="#services">Hardware Repairs</a></li>
+          <li><a href="#services">Network Solutions</a></li>
+          <li><a href="#services">Managed IT Support</a></li>
+          <li><a href="#services">IT Security</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h5>Portal</h5>
+        <ul>
+          <li><a href="/portal/login/">Client Login</a></li>
+          <li><a href="#contact">Request Access</a></li>
+          <li><a href="#contact">Get a Quote</a></li>
+          <li><a href="mailto:info@rehumile.co.za">Contact Us</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>&copy; 2025 Rehumile TMW. All rights reserved.</span>
+      <span>Built with ❤️ in South Africa</span>
+    </div>
+  </div>
+</footer>
+
+<script>
+// Smooth scrolling
+document.querySelectorAll('a[href^="#"]').forEach(a => {
+  a.addEventListener('click', e => {
+    const target = document.querySelector(a.getAttribute('href'));
+    if (target) { e.preventDefault(); target.scrollIntoView({behavior:'smooth'}); }
+  });
+});
+
+// Quote form submission
+document.getElementById('quoteForm').addEventListener('submit', async function(e) {
+  e.preventDefault();
+  const btn = document.getElementById('qSubmit');
+  btn.disabled = true; btn.textContent = 'Sending…';
+  try {
+    const r = await fetch('/portal/api/quote/', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        name: document.getElementById('qName').value,
+        email: document.getElementById('qEmail').value,
+        phone: document.getElementById('qPhone').value,
+        service: document.getElementById('qService').value,
+        message: document.getElementById('qMessage').value,
+      })
+    });
+    if (r.ok) {
+      document.getElementById('formSuccess').style.display = 'block';
+      document.getElementById('quoteForm').reset();
+    } else { throw new Error('Server error'); }
+  } catch {
+    alert('Failed to send. Please email us directly at info@rehumile.co.za');
+  } finally { btn.disabled = false; btn.textContent = 'Send Message'; }
+});
+</script>
+
+</body>
+</html>

@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <link rel="shortcut icon" href="/portal/static/img/icons/icon-48x48.png" />
+  <title>HQ Dashboard | Rehumile IMS</title>
+  <!-- AdminKit theme -->
+  <link href="/portal/static/css/app.css" rel="stylesheet">
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+  <!-- Feather icons -->
+  <script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
+  <style>
+    /* ── Critical layout CSS — ensures render even if app.css loads slow ── */
+    *{box-sizing:border-box}
+    body{font-family:'Inter',system-ui,sans-serif;background:#f5f7fb;margin:0}
+    .wrapper{display:flex;min-height:100vh}
+    /* Sidebar */
+    .sidebar{width:260px;min-width:260px;background:#222e3c;display:flex;flex-direction:column;position:fixed;top:0;bottom:0;left:0;z-index:100;overflow-y:auto;transition:width .2s}
+    .sidebar-brand{display:flex;align-items:center;padding:16px 20px;border-bottom:1px solid rgba(255,255,255,.07);text-decoration:none}
+    .sidebar-brand img{height:36px;object-fit:contain}
+    .sidebar-nav{list-style:none;padding:8px 0;margin:0;flex:1}
+    .sidebar-header{padding:10px 20px 4px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:rgba(255,255,255,.35)}
+    .sidebar-item{margin:1px 0}
+    .sidebar-link{display:flex;align-items:center;gap:10px;padding:9px 20px;color:rgba(255,255,255,.75);text-decoration:none;font-size:.875rem;border-left:3px solid transparent;transition:all .15s}
+    .sidebar-link:hover,.sidebar-item.active .sidebar-link{color:#fff;background:rgba(255,255,255,.06);border-left-color:#3b82f6}
+    .sidebar-link svg{width:18px;height:18px;flex-shrink:0}
+    /* Topbar */
+    .main{flex:1;margin-left:260px;display:flex;flex-direction:column;min-width:0}
+    .navbar{background:#fff;border-bottom:1px solid #e5e7eb;padding:0 24px;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50}
+    .navbar-left{display:flex;align-items:center;gap:12px}
+    .nav-user{display:flex;align-items:center;gap:8px;cursor:pointer;padding:6px 10px;border-radius:6px;border:1px solid #e5e7eb;font-size:.875rem;color:#374151;background:#fff;position:relative}
+    .nav-user:hover{background:#f9fafb}
+    .user-dropdown{display:none;position:absolute;right:0;top:calc(100% + 6px);background:#fff;border:1px solid #e5e7eb;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.12);min-width:200px;z-index:200;overflow:hidden}
+    .user-dropdown.open{display:block}
+    .user-dropdown-header{padding:12px 16px;border-bottom:1px solid #f3f4f6}
+    .user-dropdown-name{font-weight:600;font-size:.875rem;color:#111827}
+    .user-dropdown-role{font-size:.75rem;color:#6b7280;text-transform:capitalize}
+    .user-dropdown-item{display:flex;align-items:center;gap:8px;padding:10px 16px;font-size:.875rem;color:#374151;cursor:pointer;text-decoration:none}
+    .user-dropdown-item:hover{background:#f9fafb;color:#111827}
+    /* Content */
+    .content{padding:24px;flex:1}
+    .page-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:24px}
+    .page-title{font-size:1.5rem;font-weight:700;color:#111827;margin:0}
+    .page-subtitle{font-size:.875rem;color:#6b7280;margin:4px 0 0}
+    /* KPI Cards */
+    .kpi-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px;margin-bottom:24px}
+    .kpi-card{background:#fff;border-radius:12px;padding:20px;border:1px solid #e5e7eb;display:flex;flex-direction:column;gap:12px;transition:box-shadow .2s}
+    .kpi-card:hover{box-shadow:0 4px 16px rgba(0,0,0,.08)}
+    .kpi-icon{width:44px;height:44px;border-radius:10px;display:flex;align-items:center;justify-content:center}
+    .kpi-icon svg{width:22px;height:22px}
+    .kpi-icon.blue{background:#dbeafe;color:#2563eb}
+    .kpi-icon.green{background:#dcfce7;color:#16a34a}
+    .kpi-icon.amber{background:#fef3c7;color:#d97706}
+    .kpi-icon.red{background:#fee2e2;color:#dc2626}
+    .kpi-icon.purple{background:#ede9fe;color:#7c3aed}
+    .kpi-icon.teal{background:#ccfbf1;color:#0f766e}
+    .kpi-value{font-size:1.875rem;font-weight:700;color:#111827;line-height:1}
+    .kpi-label{font-size:.8125rem;color:#6b7280;font-weight:500}
+    .kpi-delta{font-size:.75rem;font-weight:600;display:inline-flex;align-items:center;gap:3px;margin-top:2px}
+    .kpi-delta.up{color:#16a34a}.kpi-delta.down{color:#dc2626}.kpi-delta.neutral{color:#6b7280}
+    /* Charts */
+    .charts-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;margin-bottom:24px}
+    @media(max-width:900px){.charts-grid{grid-template-columns:1fr}}
+    .chart-card{background:#fff;border-radius:12px;border:1px solid #e5e7eb;padding:20px}
+    .chart-card.wide{grid-column:span 2}
+    @media(max-width:900px){.chart-card.wide{grid-column:span 1}}
+    .chart-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+    .chart-title{font-size:.9375rem;font-weight:600;color:#111827}
+    .chart-subtitle{font-size:.75rem;color:#9ca3af}
+    .chart-wrap{position:relative;height:220px}
+    /* Tables */
+    .table-card{background:#fff;border-radius:12px;border:1px solid #e5e7eb;overflow:hidden;margin-bottom:16px}
+    .table-card-header{padding:16px 20px;border-bottom:1px solid #f3f4f6;display:flex;align-items:center;justify-content:space-between}
+    .table-card-title{font-size:.9375rem;font-weight:600;color:#111827}
+    table.dash-table{width:100%;border-collapse:collapse}
+    table.dash-table th{padding:10px 16px;text-align:left;font-size:.75rem;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:.04em;background:#f9fafb;border-bottom:1px solid #f3f4f6}
+    table.dash-table td{padding:12px 16px;font-size:.875rem;color:#374151;border-bottom:1px solid #f9fafb}
+    table.dash-table tr:last-child td{border-bottom:none}
+    table.dash-table tr:hover td{background:#fafafa}
+    /* Badges */
+    .badge{display:inline-flex;align-items:center;padding:3px 8px;border-radius:999px;font-size:.6875rem;font-weight:600;white-space:nowrap}
+    .badge-blue{background:#dbeafe;color:#1d4ed8}
+    .badge-green{background:#dcfce7;color:#15803d}
+    .badge-amber{background:#fef3c7;color:#b45309}
+    .badge-red{background:#fee2e2;color:#b91c1c}
+    .badge-gray{background:#f3f4f6;color:#4b5563}
+    .badge-purple{background:#ede9fe;color:#6d28d9}
+    /* Skeleton loader */
+    .skeleton{background:linear-gradient(90deg,#f3f4f6 25%,#e5e7eb 50%,#f3f4f6 75%);background-size:200% 100%;animation:skel 1.5s infinite;border-radius:4px;height:1em}
+    @keyframes skel{0%{background-position:200% 0}100%{background-position:-200% 0}}
+    /* Live indicator */
+    .live-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#22c55e;animation:pulse 2s infinite}
+    @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+    /* Activity feed */
+    .activity-item{display:flex;gap:12px;padding:12px 0;border-bottom:1px solid #f9fafb}
+    .activity-item:last-child{border-bottom:none}
+    .activity-dot{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+    .activity-dot svg{width:15px;height:15px}
+    .activity-body{flex:1;min-width:0}
+    .activity-title{font-size:.8125rem;font-weight:600;color:#111827}
+    .activity-time{font-size:.75rem;color:#9ca3af;margin-top:1px}
+    /* Two-col layout at bottom */
+    .bottom-grid{display:grid;grid-template-columns:2fr 1fr;gap:16px}
+    @media(max-width:900px){.bottom-grid{grid-template-columns:1fr}}
+    /* Stat ring */
+    .ring-wrap{display:flex;flex-direction:column;align-items:center;gap:4px}
+    .ring-label{font-size:.75rem;color:#6b7280;text-align:center}
+    .ring-value{font-size:1.25rem;font-weight:700;color:#111827}
+    .pipeline-bar{height:6px;border-radius:3px;background:#e5e7eb;overflow:hidden;margin-top:4px}
+    .pipeline-fill{height:100%;border-radius:3px;transition:width .6s}
+    .empty-state{text-align:center;padding:40px;color:#9ca3af}
+    /* Scrollbar collapse for sidebar toggle */
+    @media(max-width:768px){
+      .sidebar{width:0;min-width:0;overflow:hidden}
+      .main{margin-left:0}
+      .sidebar.open{width:260px;min-width:260px}
+    }
+  </style>
+</head>
+<body>
+<div class="wrapper">
+  <!-- ══════════ SIDEBAR ══════════ -->
+  <nav class="sidebar" id="sidebar">
+    <a class="sidebar-brand" href="/portal/dashboard/">
+      <img src="/portal/static/img/rehumile-logo.jpeg" alt="Rehumile TMW">
+    </a>
+    <ul class="sidebar-nav">
+      <li class="sidebar-header">Operations</li>
+      <li class="sidebar-item active"><a class="sidebar-link" href="/portal/dashboard/"><i data-feather="sliders"></i><span>HQ Dashboard</span></a></li>
+      <li class="sidebar-item"><a class="sidebar-link" href="/portal/incidents/"><i data-feather="alert-circle"></i><span>Incidents</span></a></li>
+      <li class="sidebar-item"><a class="sidebar-link" href="/portal/companies/"><i data-feather="briefcase"></i><span>Companies</span></a></li>
+      <li class="sidebar-item"><a class="sidebar-link" href="/portal/users/"><i data-feather="users"></i><span>Users</span></a></li>
+      <li class="sidebar-header">Workshop</li>
+      <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/job-cards/"><i data-feather="tool"></i><span>Job Cards</span></a></li>
+      <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/inventory/"><i data-feather="package"></i><span>Inventory</span></a></li>
+      <li class="sidebar-header">Finance</li>
+      <li class="sidebar-item"><a class="sidebar-link" href="/portal/invoices/"><i data-feather="file-text"></i><span>Invoices</span></a></li>
+      <li class="sidebar-item"><a class="sidebar-link" href="/portal/reports/"><i data-feather="bar-chart-2"></i><span>Reports</span></a></li>
+      <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/pos/"><i data-feather="shopping-cart"></i><span>POS</span></a></li>
+      <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/vouchers/"><i data-feather="wifi"></i><span>Vouchers</span></a></li>
+      <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/cash-management/"><i data-feather="dollar-sign"></i><span>Cash Management</span></a></li>
+      <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/financial-analytics/"><i data-feather="trending-up"></i><span>Financial Analytics</span></a></li>
+      <li class="sidebar-header">Compliance</li>
+      <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/compliance/"><i data-feather="shield"></i><span>SARS Hub</span></a></li>
+      <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/vat201/"><i data-feather="percent"></i><span>VAT201 Staging</span></a></li>
+      <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/emp201/"><i data-feather="layers"></i><span>EMP201 Payroll</span></a></li>
+      <li class="sidebar-header">HR</li>
+      <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/hr/"><i data-feather="user-check"></i><span>Employee Profiles</span></a></li>
+      <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/hr/#leave"><i data-feather="calendar"></i><span>Leave Management</span></a></li>
+      <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/playbook/"><i data-feather="check-square"></i><span>Operational Playbook</span></a></li>
+      <li class="sidebar-header">System</li>
+      <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/sla-monitor/"><i data-feather="alert-triangle"></i><span>SLA Monitor</span></a></li>
+      <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/notifications/"><i data-feather="bell"></i><span>Notifications</span></a></li>
+      <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/audit-log/"><i data-feather="clipboard"></i><span>Audit Log</span></a></li>
+      <li class="sidebar-item"><a class="sidebar-link" href="/portal/admin/" target="_blank"><i data-feather="settings"></i><span>Admin Panel</span></a></li>
+    </ul>
+  </nav>
+
+  <!-- ══════════ MAIN ══════════ -->
+  <div class="main">
+    <!-- Topbar -->
+    <nav class="navbar">
+      <div class="navbar-left">
+        <button onclick="document.getElementById('sidebar').classList.toggle('open')" style="background:none;border:none;cursor:pointer;padding:4px">
+          <svg width="20" height="20" fill="none" stroke="#374151" stroke-width="2" viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        </button>
+        <span style="font-size:.8125rem;color:#9ca3af">
+          <span class="live-dot"></span> Live
+        </span>
+      </div>
+      <div class="nav-user" id="navUser" onclick="document.getElementById('userDrop').classList.toggle('open')">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+        <span id="navUserName">…</span>
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
+        <div class="user-dropdown" id="userDrop">
+          <div class="user-dropdown-header">
+            <div class="user-dropdown-name" id="dropName">…</div>
+            <div class="user-dropdown-role" id="dropRole">…</div>
+          </div>
+          <a class="user-dropdown-item" href="#" id="logoutBtn">
+            <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+            Sign out
+          </a>
+        </div>
+      </div>
+    </nav>
+
+    <!-- Page content -->
+    <div class="content">
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">HQ Dashboard</h1>
+          <p class="page-subtitle" id="dateSubtitle">Loading…</p>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button onclick="loadAll()" style="background:#3b82f6;color:#fff;border:none;padding:8px 16px;border-radius:8px;font-size:.875rem;cursor:pointer;display:flex;align-items:center;gap:6px">
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.5 15A9 9 0 1112 3"/></svg>
+            Refresh
+          </button>
+        </div>
+      </div>
+
+      <!-- KPI cards -->
+      <div class="kpi-grid" id="kpiGrid">
+        <div class="kpi-card"><div class="kpi-icon blue"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div><div class="kpi-value" id="kpiTotalIncidents"><div class="skeleton" style="width:60px"></div></div><div class="kpi-label">Total Incidents</div></div>
+        <div class="kpi-card"><div class="kpi-icon red"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></div><div class="kpi-value" id="kpiOpenIncidents"><div class="skeleton" style="width:40px"></div></div><div class="kpi-label">Open / In Progress</div></div>
+        <div class="kpi-card"><div class="kpi-icon green"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg></div><div class="kpi-value" id="kpiRevenue"><div class="skeleton" style="width:80px"></div></div><div class="kpi-label">Revenue (This Month)</div></div>
+        <div class="kpi-card"><div class="kpi-icon amber"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg></div><div class="kpi-value" id="kpiJobCards"><div class="skeleton" style="width:40px"></div></div><div class="kpi-label">Active Job Cards</div></div>
+        <div class="kpi-card"><div class="kpi-icon teal"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div><div class="kpi-value" id="kpiSla"><div class="skeleton" style="width:50px"></div></div><div class="kpi-label">SLA Compliance</div></div>
+        <div class="kpi-card"><div class="kpi-icon purple"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg></div><div class="kpi-value" id="kpiClients"><div class="skeleton" style="width:40px"></div></div><div class="kpi-label">Active Companies</div></div>
+      </div>
+
+      <!-- Charts row 1 -->
+      <div class="charts-grid">
+        <div class="chart-card wide">
+          <div class="chart-header">
+            <div>
+              <div class="chart-title">Revenue Trend</div>
+              <div class="chart-subtitle">Monthly invoice revenue (last 6 months)</div>
+            </div>
+          </div>
+          <div class="chart-wrap"><canvas id="revenueChart"></canvas></div>
+        </div>
+
+        <div class="chart-card">
+          <div class="chart-header">
+            <div>
+              <div class="chart-title">Incidents by Priority</div>
+              <div class="chart-subtitle">Current open incidents</div>
+            </div>
+          </div>
+          <div class="chart-wrap" style="height:200px"><canvas id="priorityChart"></canvas></div>
+        </div>
+
+        <div class="chart-card">
+          <div class="chart-header">
+            <div>
+              <div class="chart-title">Job Card Pipeline</div>
+              <div class="chart-subtitle">Cards by current status</div>
+            </div>
+          </div>
+          <div class="chart-wrap" style="height:200px"><canvas id="jobCardChart"></canvas></div>
+        </div>
+      </div>
+
+      <!-- Bottom grid -->
+      <div class="bottom-grid">
+        <!-- Recent Incidents -->
+        <div class="table-card">
+          <div class="table-card-header">
+            <span class="table-card-title">Recent Incidents</span>
+            <a href="/portal/incidents/" style="font-size:.8125rem;color:#3b82f6;text-decoration:none">View all →</a>
+          </div>
+          <div id="incidentTableWrap">
+            <div class="empty-state">Loading…</div>
+          </div>
+        </div>
+
+        <!-- Right column -->
+        <div style="display:flex;flex-direction:column;gap:16px">
+          <!-- SLA Compliance gauge card -->
+          <div class="chart-card">
+            <div class="chart-header">
+              <div class="chart-title">SLA Overview</div>
+            </div>
+            <div class="chart-wrap" style="height:180px"><canvas id="slaChart"></canvas></div>
+          </div>
+
+          <!-- Job card status quick-view -->
+          <div class="table-card">
+            <div class="table-card-header">
+              <span class="table-card-title">Job Card Summary</span>
+              <a href="/portal/dashboard/job-cards/" style="font-size:.8125rem;color:#3b82f6;text-decoration:none">Open →</a>
+            </div>
+            <div id="jcSummary" style="padding:12px 16px"></div>
+          </div>
+        </div>
+      </div>
+    </div><!-- /content -->
+
+    <footer style="padding:12px 24px;border-top:1px solid #e5e7eb;font-size:.75rem;color:#9ca3af;background:#fff">
+      Rehumile TMW IMS &copy; 2025 &mdash; HQ Dashboard
+    </footer>
+  </div><!-- /main -->
+</div><!-- /wrapper -->
+
+<script>
+(function(){
+  /* ── Auth guard ─────────────────────────────── */
+  const token = localStorage.getItem('ims_access');
+  if(!token){ window.location.href='/portal/login/'; return; }
+  const u = JSON.parse(localStorage.getItem('ims_user')||'{}');
+  const fullName = ((u.first_name||'')+' '+(u.last_name||'')).trim() || u.email || 'Staff';
+  document.getElementById('navUserName').textContent = fullName;
+  document.getElementById('dropName').textContent = fullName;
+  document.getElementById('dropRole').textContent = (u.role||'staff').replace('_',' ');
+  document.getElementById('logoutBtn').addEventListener('click', e=>{
+    e.preventDefault(); localStorage.clear(); window.location.href='/portal/login/';
+  });
+  document.addEventListener('click', e=>{
+    if(!e.target.closest('#navUser')) document.getElementById('userDrop').classList.remove('open');
+  });
+
+  /* ── Date subtitle ──────────────────────────── */
+  const now = new Date();
+  document.getElementById('dateSubtitle').textContent =
+    now.toLocaleDateString('en-ZA',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+
+  /* ── API helper ─────────────────────────────── */
+  async function api(url){
+    const r = await fetch(url,{headers:{'Authorization':'Bearer '+token}});
+    if(r.status===401){ localStorage.clear(); window.location.href='/portal/login/'; throw new Error('401'); }
+    return r.json();
+  }
+
+  /* ── Chart defaults ─────────────────────────── */
+  Chart.defaults.font.family = "'Inter',system-ui,sans-serif";
+  Chart.defaults.font.size = 12;
+  Chart.defaults.color = '#6b7280';
+  const gridColor = '#f3f4f6';
+
+  /* ── Colour palettes ────────────────────────── */
+  const PALETTE = ['#3b82f6','#10b981','#f59e0b','#ef4444','#8b5cf6','#06b6d4'];
+  const PRIORITY_COLORS = {critical:'#ef4444',high:'#f97316',medium:'#3b82f6',low:'#6b7280'};
+  const JC_COLORS = {logged:'#6b7280',in_progress:'#3b82f6',awaiting_parts:'#f59e0b',ready:'#10b981',paid_released:'#8b5cf6',cancelled:'#ef4444'};
+
+  /* ── Build revenue line chart (placeholder data until API loads) ── */
+  const months = ['Jan','Feb','Mar','Apr','May','Jun'].map((_,i,a)=>{
+    const d=new Date(); d.setMonth(d.getMonth()-(a.length-1-i)); return d.toLocaleString('default',{month:'short'});
+  });
+  const revenueCtx = document.getElementById('revenueChart').getContext('2d');
+  const revenueChart = new Chart(revenueCtx,{
+    type:'line',
+    data:{
+      labels:months,
+      datasets:[
+        {label:'Invoiced',data:[0,0,0,0,0,0],borderColor:'#3b82f6',backgroundColor:'rgba(59,130,246,.08)',fill:true,tension:.4,pointBackgroundColor:'#3b82f6',pointRadius:4},
+        {label:'Paid',data:[0,0,0,0,0,0],borderColor:'#10b981',backgroundColor:'rgba(16,185,129,.06)',fill:true,tension:.4,pointBackgroundColor:'#10b981',pointRadius:4}
+      ]
+    },
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{usePointStyle:true,padding:16}}},scales:{x:{grid:{display:false}},y:{grid:{color:gridColor},ticks:{callback:v=>'R'+v.toLocaleString()}}}}
+  });
+
+  /* ── Incidents by priority doughnut ── */
+  const priorityCtx = document.getElementById('priorityChart').getContext('2d');
+  const priorityChart = new Chart(priorityCtx,{
+    type:'doughnut',
+    data:{labels:['Critical','High','Medium','Low'],datasets:[{data:[0,0,0,0],backgroundColor:Object.values(PRIORITY_COLORS),borderWidth:0,hoverOffset:4}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'70%',plugins:{legend:{position:'right',labels:{usePointStyle:true,padding:12}}}}
+  });
+
+  /* ── Job card pipeline bar ── */
+  const jcCtx = document.getElementById('jobCardChart').getContext('2d');
+  const jcChart = new Chart(jcCtx,{
+    type:'bar',
+    data:{labels:['Logged','In Progress','Awaiting','Ready','Released'],datasets:[{data:[0,0,0,0,0],backgroundColor:['#6b7280','#3b82f6','#f59e0b','#10b981','#8b5cf6'],borderRadius:6,borderSkipped:false}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false}},y:{grid:{color:gridColor},ticks:{stepSize:1}}}}
+  });
+
+  /* ── SLA half-doughnut ── */
+  const slaCtx = document.getElementById('slaChart').getContext('2d');
+  const slaChart = new Chart(slaCtx,{
+    type:'doughnut',
+    data:{labels:['Within SLA','Breached'],datasets:[{data:[100,0],backgroundColor:['#10b981','#ef4444'],borderWidth:0,circumference:180,rotation:-90}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'72%',plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.label}: ${c.raw}%`}}}}
+  });
+  // Centre text plugin
+  const slaPlugin = {id:'slaCenter',afterDraw(chart){
+    if(chart.canvas.id!=='slaChart')return;
+    const{width,height,ctx}=chart;
+    ctx.save();
+    const pct=chart.data.datasets[0].data[0];
+    ctx.font='bold 24px Inter,system-ui,sans-serif';
+    ctx.fillStyle='#111827';
+    ctx.textAlign='center';
+    ctx.textBaseline='middle';
+    ctx.fillText(pct+'%',width/2,height*.65);
+    ctx.font='12px Inter,system-ui,sans-serif';
+    ctx.fillStyle='#6b7280';
+    ctx.fillText('SLA Rate',width/2,height*.65+26);
+    ctx.restore();
+  }};
+  Chart.register(slaPlugin);
+
+  /* ── Helper formatters ─────────────────────── */
+  const fmtR = n => 'R '+parseFloat(n||0).toLocaleString('en-ZA',{minimumFractionDigits:2,maximumFractionDigits:2});
+  const fmtDate = d => d ? new Date(d).toLocaleDateString('en-ZA',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}) : '—';
+  const priorityBadge = p => {
+    const map={critical:'badge-red',high:'badge-amber',medium:'badge-blue',low:'badge-gray'};
+    return `<span class="badge ${map[p]||'badge-gray'}">${p||'—'}</span>`;
+  };
+  const statusBadge = s => {
+    const map={open:'badge-amber','in_progress':'badge-blue',resolved:'badge-green',closed:'badge-gray'};
+    return `<span class="badge ${map[s]||'badge-gray'}">${(s||'').replace('_',' ')}</span>`;
+  };
+
+  /* ── Load all data ─────────────────────────── */
+  async function loadAll(){
+    try{
+      /* Incidents */
+      const inc = await api('/portal/api/incidents/?page_size=100');
+      const incidents = inc.results || [];
+      const open = incidents.filter(i=>i.status==='open'||i.status==='in_progress').length;
+      document.getElementById('kpiTotalIncidents').textContent = incidents.length || inc.count || 0;
+      document.getElementById('kpiOpenIncidents').textContent = open;
+
+      /* SLA */
+      const resolved = incidents.filter(i=>i.status==='resolved'||i.status==='closed');
+      const slaPct = resolved.length ? Math.round(resolved.filter(i=>!i.sla_breached).length/resolved.length*100) : 100;
+      document.getElementById('kpiSla').textContent = slaPct+'%';
+      slaChart.data.datasets[0].data = [slaPct, 100-slaPct];
+      slaChart.update();
+
+      /* Priority chart */
+      const pMap={critical:0,high:0,medium:0,low:0};
+      incidents.filter(i=>i.status==='open'||i.status==='in_progress').forEach(i=>{ pMap[i.priority]=(pMap[i.priority]||0)+1; });
+      priorityChart.data.datasets[0].data=[pMap.critical,pMap.high,pMap.medium,pMap.low];
+      priorityChart.update();
+
+      /* Recent incidents table */
+      const recent = incidents.slice(0,8);
+      if(recent.length){
+        document.getElementById('incidentTableWrap').innerHTML=`
+          <table class="dash-table">
+            <thead><tr><th>ID</th><th>Title</th><th>Status</th><th>Priority</th><th>Reported</th></tr></thead>
+            <tbody>${recent.map(i=>`
+              <tr>
+                <td style="font-family:monospace;font-size:.75rem;color:#6b7280">#${(i.ticket_number||i.id+'').substring(0,8)}</td>
+                <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500">${i.title||'—'}</td>
+                <td>${statusBadge(i.status)}</td>
+                <td>${priorityBadge(i.priority)}</td>
+                <td style="color:#9ca3af">${fmtDate(i.created_at)}</td>
+              </tr>`).join('')}
+            </tbody>
+          </table>`;
+      } else {
+        document.getElementById('incidentTableWrap').innerHTML='<div class="empty-state">No incidents found.</div>';
+      }
+    }catch(e){ if(e.message!=='401') console.error('incidents',e); }
+
+    try{
+      /* Invoices / Revenue */
+      const inv = await api('/portal/api/invoices/?page_size=200');
+      const invoices = inv.results || [];
+      const thisMonth = new Date().getMonth();
+      const thisYear = new Date().getFullYear();
+      const monthRev = invoices.filter(i=>{ const d=new Date(i.created_at||i.issued_date||0); return d.getMonth()===thisMonth&&d.getFullYear()===thisYear&&i.status==='paid'; })
+        .reduce((s,i)=>s+parseFloat(i.total_amount||i.amount||0),0);
+      document.getElementById('kpiRevenue').textContent = fmtR(monthRev);
+
+      /* Revenue chart — last 6 months */
+      const revByMonth = {};
+      const paidByMonth = {};
+      for(let i=5;i>=0;i--){
+        const d=new Date(); d.setDate(1); d.setMonth(d.getMonth()-i);
+        const key=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+        revByMonth[key]=0; paidByMonth[key]=0;
+      }
+      invoices.forEach(inv=>{
+        const d=new Date(inv.created_at||inv.issued_date||0);
+        const key=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+        if(revByMonth[key]!==undefined){
+          revByMonth[key]+=(parseFloat(inv.total_amount||inv.amount||0));
+          if(inv.status==='paid') paidByMonth[key]+=(parseFloat(inv.total_amount||inv.amount||0));
+        }
+      });
+      revenueChart.data.datasets[0].data=Object.values(revByMonth);
+      revenueChart.data.datasets[1].data=Object.values(paidByMonth);
+      revenueChart.update();
+    }catch(e){ if(e.message!=='401') console.error('invoices',e); }
+
+    try{
+      /* Job cards */
+      const jc = await api('/portal/api/job-cards/?page_size=200');
+      const cards = jc.results || [];
+      const active = cards.filter(c=>c.status!=='paid_released'&&c.status!=='cancelled').length;
+      document.getElementById('kpiJobCards').textContent = active;
+
+      const statusMap={logged:0,in_progress:0,awaiting_parts:0,ready:0,paid_released:0,cancelled:0};
+      cards.forEach(c=>{ statusMap[c.status]=(statusMap[c.status]||0)+1; });
+      jcChart.data.datasets[0].data=[statusMap.logged,statusMap.in_progress,statusMap.awaiting_parts,statusMap.ready,statusMap.paid_released];
+      jcChart.update();
+
+      /* Job card summary side panel */
+      const statuses=[{key:'logged',label:'Logged',color:'#6b7280'},{key:'in_progress',label:'In Progress',color:'#3b82f6'},{key:'awaiting_parts',label:'Awaiting Parts',color:'#f59e0b'},{key:'ready',label:'Ready',color:'#10b981'},{key:'paid_released',label:'Released',color:'#8b5cf6'}];
+      const total=Math.max(cards.length,1);
+      document.getElementById('jcSummary').innerHTML = statuses.map(s=>`
+        <div style="margin-bottom:10px">
+          <div style="display:flex;justify-content:space-between;margin-bottom:3px">
+            <span style="font-size:.8125rem;color:#374151">${s.label}</span>
+            <span style="font-size:.8125rem;font-weight:600;color:#111827">${statusMap[s.key]||0}</span>
+          </div>
+          <div class="pipeline-bar"><div class="pipeline-fill" style="width:${Math.round((statusMap[s.key]||0)/total*100)}%;background:${s.color}"></div></div>
+        </div>`).join('');
+    }catch(e){ if(e.message!=='401') console.error('job-cards',e); }
+
+    try{
+      /* Companies */
+      const comp = await api('/portal/api/companies/?page_size=1');
+      document.getElementById('kpiClients').textContent = comp.count || 0;
+    }catch(e){ document.getElementById('kpiClients').textContent='—'; }
+  }
+
+  loadAll();
+
+  /* ── Feather icons ─────────────────────────── */
+  if(window.feather) feather.replace();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,290 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <link rel="shortcut icon" href="/portal/static/img/icons/icon-48x48.png"/>
+  <title>Vouchers | Rehumile IMS</title>
+  <link href="/portal/static/css/app.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+  <style>.voucher-code{font-family:'Courier New',monospace;font-size:1.1rem;letter-spacing:.1em;font-weight:700}</style>
+</head>
+<body>
+<div class="wrapper">
+  <nav id="sidebar" class="sidebar js-sidebar">
+    <div class="sidebar-content js-simplebar">
+      <a class="sidebar-brand d-flex align-items-center p-2" href="/portal/dashboard/">
+        <img src="/portal/static/img/rehumile-logo.jpeg" style="height:36px;object-fit:contain" alt="Rehumile TMW">
+      </a>
+      <ul class="sidebar-nav">
+        <li class="sidebar-header">Operations</li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/"><i class="align-middle" data-feather="sliders"></i> <span class="align-middle">HQ Dashboard</span></a></li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/incidents/"><i class="align-middle" data-feather="alert-circle"></i> <span class="align-middle">Incidents</span></a></li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/companies/"><i class="align-middle" data-feather="briefcase"></i> <span class="align-middle">Companies</span></a></li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/users/"><i class="align-middle" data-feather="users"></i> <span class="align-middle">Users</span></a></li>
+        <li class="sidebar-header">Workshop</li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/job-cards/"><i class="align-middle" data-feather="tool"></i> <span class="align-middle">Job Cards</span></a></li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/inventory/"><i class="align-middle" data-feather="package"></i> <span class="align-middle">Inventory</span></a></li>
+        <li class="sidebar-header">Finance</li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/invoices/"><i class="align-middle" data-feather="file-text"></i> <span class="align-middle">Invoices</span></a></li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/reports/"><i class="align-middle" data-feather="bar-chart-2"></i> <span class="align-middle">Reports</span></a></li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/pos/"><i class="align-middle" data-feather="shopping-cart"></i> <span class="align-middle">POS</span></a></li>
+        <li class="sidebar-item active"><a class="sidebar-link" href="/portal/dashboard/vouchers/"><i class="align-middle" data-feather="wifi"></i> <span class="align-middle">Vouchers</span></a></li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/cash-management/"><i class="align-middle" data-feather="dollar-sign"></i> <span class="align-middle">Cash Management</span></a></li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/financial-analytics/"><i class="align-middle" data-feather="trending-up"></i> <span class="align-middle">Financial Analytics</span></a></li>
+        <li class="sidebar-header">Compliance</li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/compliance/"><i class="align-middle" data-feather="shield"></i> <span class="align-middle">SARS Hub</span></a></li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/vat201/"><i class="align-middle" data-feather="percent"></i> <span class="align-middle">VAT201 Staging</span></a></li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/emp201/"><i class="align-middle" data-feather="layers"></i> <span class="align-middle">EMP201 Payroll</span></a></li>
+        <li class="sidebar-header">HR</li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/hr/"><i class="align-middle" data-feather="user-check"></i> <span class="align-middle">Employee Profiles</span></a></li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/hr/#leave"><i class="align-middle" data-feather="calendar"></i> <span class="align-middle">Leave Management</span></a></li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/playbook/"><i class="align-middle" data-feather="check-square"></i> <span class="align-middle">Operational Playbook</span></a></li>
+        <li class="sidebar-header">System</li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/sla-monitor/"><i class="align-middle" data-feather="alert-triangle"></i> <span class="align-middle">SLA Monitor</span></a></li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/notifications/"><i class="align-middle" data-feather="bell"></i> <span class="align-middle">Notifications</span></a></li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/audit-log/"><i class="align-middle" data-feather="clipboard"></i> <span class="align-middle">Audit Log</span></a></li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/admin/" target="_blank"><i class="align-middle" data-feather="settings"></i> <span class="align-middle">Admin Panel</span></a></li>
+      </ul>
+    </div>
+  </nav>
+  <div class="main">
+    <nav class="navbar navbar-expand navbar-light navbar-bg">
+      <a class="sidebar-toggle js-sidebar-toggle"><i class="hamburger align-self-center"></i></a>
+      <div class="navbar-collapse collapse">
+        <ul class="navbar-nav navbar-align">
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle d-none d-sm-inline-block" href="#" data-bs-toggle="dropdown">
+              <i class="align-middle me-1" data-feather="user"></i><span class="text-dark" id="navUserName">…</span>
+            </a>
+            <div class="dropdown-menu dropdown-menu-end">
+              <span class="dropdown-item-text small text-muted" id="navUserRole"></span>
+              <div class="dropdown-divider"></div>
+              <a class="dropdown-item" href="#" id="logoutBtn"><i class="align-middle me-1" data-feather="log-out"></i> Sign out</a>
+            </div>
+          </li>
+        </ul>
+      </div>
+    </nav>
+    <main class="content">
+      <div class="container-fluid p-0">
+        <div class="d-flex align-items-center justify-content-between mb-3">
+          <h1 class="h3 mb-0"><strong>Network Vouchers</strong></h1>
+          <button class="btn btn-primary btn-sm" id="createVoucherBtn">
+            <i class="align-middle me-1" data-feather="plus"></i> Generate Vouchers
+          </button>
+        </div>
+
+        <!-- KPI row -->
+        <div class="row mb-3">
+          <div class="col-sm-4"><div class="card"><div class="card-body text-center">
+            <h5 class="card-title">Available</h5><h2 id="kpiAvail" class="text-success">—</h2>
+          </div></div></div>
+          <div class="col-sm-4"><div class="card"><div class="card-body text-center">
+            <h5 class="card-title">Sold</h5><h2 id="kpiSold">—</h2>
+          </div></div></div>
+          <div class="col-sm-4"><div class="card"><div class="card-body text-center">
+            <h5 class="card-title">Total Value Sold</h5><h2 id="kpiValue">—</h2>
+          </div></div></div>
+        </div>
+
+        <!-- Status filter -->
+        <div class="mb-3">
+          <div class="btn-group btn-group-sm">
+            <button class="btn btn-outline-secondary active" data-vstatus="">All</button>
+            <button class="btn btn-outline-secondary" data-vstatus="available">Available</button>
+            <button class="btn btn-outline-secondary" data-vstatus="sold">Sold</button>
+            <button class="btn btn-outline-secondary" data-vstatus="expired">Expired</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-body p-0">
+            <div id="vLoading" class="text-center py-4 text-muted">Loading vouchers…</div>
+            <div class="table-responsive" id="vWrapper" style="display:none">
+              <table class="table table-hover my-0">
+                <thead><tr><th>Code</th><th>Duration</th><th>Price</th><th>Status</th><th>Sold By</th><th>Sold At</th><th>Action</th></tr></thead>
+                <tbody id="vTbody"></tbody>
+              </table>
+            </div>
+            <div id="vEmpty" class="text-center py-5 text-muted" style="display:none">
+              <i data-feather="wifi" style="width:48px;height:48px;opacity:.3"></i>
+              <p class="mt-2">No vouchers found.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+    <footer class="footer"><div class="container-fluid"><p class="mb-0 text-muted">Rehumile TMW IMS &copy; 2025</p></div></footer>
+  </div>
+</div>
+
+<!-- Generate Vouchers Modal (admin only) -->
+<div class="modal fade" id="generateModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header"><h5 class="modal-title">Generate Vouchers</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-body">
+        <div id="genAlert" class="alert d-none" role="alert"></div>
+        <div class="row g-2">
+          <div class="col-6"><label class="form-label">Quantity</label><input class="form-control" id="genQty" type="number" min="1" max="50" value="5"></div>
+          <div class="col-6"><label class="form-label">Duration (hours)</label>
+            <select class="form-select" id="genDuration">
+              <option value="1">1 hour</option><option value="2">2 hours</option><option value="6">6 hours</option>
+              <option value="12">12 hours</option><option value="24" selected>24 hours</option><option value="72">3 days</option><option value="168">7 days</option>
+            </select>
+          </div>
+          <div class="col-12"><label class="form-label">Selling Price (R)</label><input class="form-control" id="genPrice" type="number" step="0.50" min="0" value="20.00"></div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button class="btn btn-primary" id="genSubmit">
+          <span id="genSpinner" class="spinner-border spinner-border-sm me-1 d-none"></span>Generate
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Sell Voucher Modal -->
+<div class="modal fade" id="sellModal" tabindex="-1">
+  <div class="modal-dialog modal-sm">
+    <div class="modal-content">
+      <div class="modal-header"><h5 class="modal-title">Sell Voucher</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-body">
+        <div id="sellAlert" class="alert d-none" role="alert"></div>
+        <p>Code: <strong class="voucher-code" id="sellCode"></strong></p>
+        <input type="hidden" id="sellVoucherId">
+        <label class="form-label">Payment Method</label>
+        <select class="form-select" id="sellMethod">
+          <option value="cash">Cash</option><option value="card">Card</option><option value="eft">EFT</option>
+        </select>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button class="btn btn-success" id="sellSubmit">Confirm Sale</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="/portal/static/js/app.js"></script>
+<script>(function(){function _i(){var s=document.querySelector('.js-sidebar'),t=document.querySelector('.js-sidebar-toggle');if(!s||!t)return;t.addEventListener('click',function(){setTimeout(function(){localStorage.setItem('ims_sidebar',s.classList.contains('collapsed')?'open':'closed');},50);});}document.readyState==='loading'?document.addEventListener('DOMContentLoaded',_i):_i();})();</script>
+<script>
+(function(){
+  const token=localStorage.getItem('ims_access');
+  if(!token){window.location.href='/portal/login/';return;}
+  const u=JSON.parse(localStorage.getItem('ims_user')||'{}');
+  document.getElementById('navUserName').textContent=((u.first_name||'')+' '+(u.last_name||'')).trim()||u.email||'Staff';
+  document.getElementById('navUserRole').textContent=u.role||'';
+  document.getElementById('logoutBtn').onclick=e=>{e.preventDefault();localStorage.clear();window.location.href='/portal/login/';};
+  if(!['admin','cashier','finance'].includes(u.role)){window.location.href='/portal/dashboard/';return;}
+
+  const fmtR=n=>'R '+parseFloat(n||0).toFixed(2);
+  const fmtDT=d=>d?new Date(d).toLocaleString('en-ZA',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}):'—';
+  let currentStatus='';
+
+  async function api(url,opts={}){
+    const r=await fetch(url,{...opts,headers:{'Content-Type':'application/json','Authorization':'Bearer '+token,...(opts.headers||{})}});
+    if(r.status===401){localStorage.clear();window.location.href='/portal/login/';throw new Error('Unauth');}
+    return r;
+  }
+
+  async function load(){
+    document.getElementById('vLoading').style.display='block';
+    document.getElementById('vWrapper').style.display='none';
+    document.getElementById('vEmpty').style.display='none';
+    try{
+      const url='/portal/api/vouchers/'+(currentStatus?'?status='+currentStatus:'');
+      const r=await api(url);const data=await r.json();const vs=data.results||[];
+      const avail=vs.filter(v=>v.status==='available').length;
+      const sold=vs.filter(v=>v.status==='sold');
+      const soldVal=sold.reduce((s,v)=>s+parseFloat(v.selling_price||0),0);
+      document.getElementById('kpiAvail').textContent=avail;
+      document.getElementById('kpiSold').textContent=sold.length;
+      document.getElementById('kpiValue').textContent=fmtR(soldVal);
+      document.getElementById('vLoading').style.display='none';
+      if(!vs.length){document.getElementById('vEmpty').style.display='block';if(window.feather)feather.replace();return;}
+      document.getElementById('vWrapper').style.display='block';
+      document.getElementById('vTbody').innerHTML=vs.map(v=>`
+        <tr>
+          <td><span class="voucher-code">${v.voucher_code}</span></td>
+          <td>${v.duration_hours}h</td>
+          <td>${fmtR(v.selling_price)}</td>
+          <td>${v.status==='available'?'<span class="badge bg-success">Available</span>':v.status==='sold'?'<span class="badge bg-secondary">Sold</span>':'<span class="badge bg-danger">Expired</span>'}</td>
+          <td>${v.sold_by||'—'}</td>
+          <td>${fmtDT(v.sold_at)}</td>
+          <td>${v.status==='available'?`<button class="btn btn-sm btn-success sell-btn" data-id="${v.voucher_code_id||v.id}" data-vid="${v.id}" data-code="${v.voucher_code}">Sell</button>`:'—'}</td>
+        </tr>`).join('');
+      document.querySelectorAll('.sell-btn').forEach(btn=>{
+        btn.addEventListener('click',()=>{
+          document.getElementById('sellVoucherId').value=btn.dataset.vid;
+          document.getElementById('sellCode').textContent=btn.dataset.code;
+          document.getElementById('sellAlert').className='alert d-none';
+          new bootstrap.Modal(document.getElementById('sellModal')).show();
+        });
+      });
+      if(window.feather)feather.replace();
+    }catch(e){if(e.message!=='Unauth')document.getElementById('vLoading').textContent='Failed to load.';}
+  }
+
+  document.querySelectorAll('[data-vstatus]').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      document.querySelectorAll('[data-vstatus]').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');currentStatus=btn.dataset.vstatus;load();
+    });
+  });
+
+  // Only admins can generate
+  if(u.role!=='admin'){document.getElementById('createVoucherBtn').style.display='none';}
+  document.getElementById('createVoucherBtn').addEventListener('click',()=>{
+    document.getElementById('genAlert').className='alert d-none';
+    new bootstrap.Modal(document.getElementById('generateModal')).show();
+  });
+
+  document.getElementById('genSubmit').addEventListener('click',async()=>{
+    const btn=document.getElementById('genSubmit');
+    const spin=document.getElementById('genSpinner');
+    const alert=document.getElementById('genAlert');
+    btn.disabled=true;spin.classList.remove('d-none');alert.className='alert d-none';
+    const qty=parseInt(document.getElementById('genQty').value)||1;
+    let created=0;
+    try{
+      for(let i=0;i<qty;i++){
+        const r=await api('/portal/api/vouchers/',{method:'POST',body:JSON.stringify({
+          action:'create',
+          duration_hours:document.getElementById('genDuration').value,
+          selling_price:document.getElementById('genPrice').value,
+        })});
+        if(r.ok)created++;
+      }
+      alert.className='alert alert-success';alert.textContent=created+' voucher(s) generated.';load();
+    }catch(e){if(e.message!=='Unauth'){alert.className='alert alert-danger';alert.textContent='Error generating vouchers.';}}
+    finally{btn.disabled=false;spin.classList.add('d-none');}
+  });
+
+  document.getElementById('sellSubmit').addEventListener('click',async()=>{
+    const btn=document.getElementById('sellSubmit');
+    const alert=document.getElementById('sellAlert');
+    btn.disabled=true;alert.className='alert d-none';
+    try{
+      const r=await api('/portal/api/vouchers/',{method:'POST',body:JSON.stringify({
+        action:'sell',
+        voucher_id:document.getElementById('sellVoucherId').value,
+        payment_method:document.getElementById('sellMethod').value,
+      })});
+      const res=await r.json();
+      if(r.ok){
+        alert.className='alert alert-success';alert.textContent='Sold! Code: '+res.voucher_code;
+        load();
+      }else{alert.className='alert alert-danger';alert.textContent=res.detail||'Error.';}
+    }catch(e){if(e.message!=='Unauth'){alert.className='alert alert-danger';alert.textContent='Network error.';}}
+    finally{btn.disabled=false;}
+  });
+
+  load();
+})();
+</script>
+</body>
+</html>

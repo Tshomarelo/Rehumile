@@ -1,0 +1,287 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <link rel="shortcut icon" href="/portal/static/img/icons/icon-48x48.png"/>
+  <title>Operational Playbook | Rehumile IMS</title>
+  <link href="/portal/static/css/app.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+  <style>
+    .task-card{border:1px solid #e0e0e0;border-radius:8px;padding:14px 16px;margin-bottom:10px;transition:box-shadow .2s;position:relative}
+    .task-card:hover{box-shadow:0 3px 10px rgba(0,0,0,.09)}
+    .task-card.completed{background:#f0fff4;border-color:#28a745;opacity:.8}
+    .task-card.blocking{border-left:4px solid #dc3545}
+    .task-check{position:absolute;top:14px;right:14px}
+    .freq-badge{font-size:.68rem;padding:2px 7px;border-radius:3px;font-weight:600}
+    .freq-daily_morning{background:#cfe2ff;color:#084298}
+    .freq-daily_evening{background:#d1e7dd;color:#0a3622}
+    .freq-weekly{background:#fff3cd;color:#664d03}
+    .freq-monthly{background:#f8d7da;color:#58151c}
+    .role-section{margin-bottom:24px}
+    .role-title{font-size:.8rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#375a7f;padding:6px 0;border-bottom:2px solid #375a7f;margin-bottom:12px}
+    .blocking-warn{background:#fff3cd;border:1px solid #ffc107;border-radius:6px;padding:8px 12px;font-size:.83rem;margin-bottom:8px}
+    .progress-ring{width:60px;height:60px}
+    .kpi-wrap{display:flex;gap:16px;margin-bottom:20px;flex-wrap:wrap}
+    .kpi-box{background:#f8f9fa;border-radius:8px;padding:12px 18px;text-align:center;min-width:110px}
+    .kpi-num{font-size:1.5rem;font-weight:700;color:#375a7f}
+    .kpi-label{font-size:.73rem;color:#6c757d;font-weight:600}
+  </style>
+</head>
+<body>
+<div class="wrapper">
+  <nav id="sidebar" class="sidebar js-sidebar">
+    <div class="sidebar-content js-simplebar">
+      <a class="sidebar-brand d-flex align-items-center p-2" href="/portal/dashboard/">
+        <img src="/portal/static/img/rehumile-logo.jpeg" style="height:36px;object-fit:contain" alt="Rehumile TMW">
+      </a>
+      <ul class="sidebar-nav">
+        <li class="sidebar-header">Operations</li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/"><i class="align-middle" data-feather="sliders"></i> <span class="align-middle">HQ Dashboard</span></a></li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/incidents/"><i class="align-middle" data-feather="alert-circle"></i> <span class="align-middle">Incidents</span></a></li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/companies/"><i class="align-middle" data-feather="briefcase"></i> <span class="align-middle">Companies</span></a></li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/users/"><i class="align-middle" data-feather="users"></i> <span class="align-middle">Users</span></a></li>
+        <li class="sidebar-header">Workshop</li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/job-cards/"><i class="align-middle" data-feather="tool"></i> <span class="align-middle">Job Cards</span></a></li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/inventory/"><i class="align-middle" data-feather="package"></i> <span class="align-middle">Inventory</span></a></li>
+        <li class="sidebar-header">Finance</li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/invoices/"><i class="align-middle" data-feather="file-text"></i> <span class="align-middle">Invoices</span></a></li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/reports/"><i class="align-middle" data-feather="bar-chart-2"></i> <span class="align-middle">Reports</span></a></li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/pos/"><i class="align-middle" data-feather="shopping-cart"></i> <span class="align-middle">POS</span></a></li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/vouchers/"><i class="align-middle" data-feather="wifi"></i> <span class="align-middle">Vouchers</span></a></li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/cash-management/"><i class="align-middle" data-feather="dollar-sign"></i> <span class="align-middle">Cash Management</span></a></li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/financial-analytics/"><i class="align-middle" data-feather="trending-up"></i> <span class="align-middle">Financial Analytics</span></a></li>
+        <li class="sidebar-header">Compliance</li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/compliance/"><i class="align-middle" data-feather="shield"></i> <span class="align-middle">SARS Hub</span></a></li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/vat201/"><i class="align-middle" data-feather="percent"></i> <span class="align-middle">VAT201 Staging</span></a></li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/emp201/"><i class="align-middle" data-feather="layers"></i> <span class="align-middle">EMP201 Payroll</span></a></li>
+        <li class="sidebar-header">HR</li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/hr/"><i class="align-middle" data-feather="user-check"></i> <span class="align-middle">Employee Profiles</span></a></li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/hr/#leave"><i class="align-middle" data-feather="calendar"></i> <span class="align-middle">Leave Management</span></a></li>
+        <li class="sidebar-item active"><a class="sidebar-link" href="/portal/dashboard/playbook/"><i class="align-middle" data-feather="check-square"></i> <span class="align-middle">Operational Playbook</span></a></li>
+        <li class="sidebar-header">System</li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/sla-monitor/"><i class="align-middle" data-feather="alert-triangle"></i> <span class="align-middle">SLA Monitor</span></a></li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/notifications/"><i class="align-middle" data-feather="bell"></i> <span class="align-middle">Notifications</span></a></li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/audit-log/"><i class="align-middle" data-feather="clipboard"></i> <span class="align-middle">Audit Log</span></a></li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/admin/" target="_blank"><i class="align-middle" data-feather="settings"></i> <span class="align-middle">Admin Panel</span></a></li>
+      </ul>
+    </div>
+  </nav>
+  <div class="main">
+    <nav class="navbar navbar-expand navbar-light navbar-bg">
+      <a class="sidebar-toggle js-sidebar-toggle"><i class="hamburger align-self-center"></i></a>
+      <div class="navbar-collapse collapse">
+        <ul class="navbar-nav navbar-align">
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle d-none d-sm-inline-block" href="#" data-bs-toggle="dropdown">
+              <i class="align-middle me-1" data-feather="user"></i><span class="text-dark" id="navUserName">…</span>
+            </a>
+            <div class="dropdown-menu dropdown-menu-end">
+              <span class="dropdown-item-text small text-muted" id="navUserRole"></span>
+              <div class="dropdown-divider"></div>
+              <a class="dropdown-item" href="#" id="logoutBtn"><i class="align-middle me-1" data-feather="log-out"></i> Sign out</a>
+            </div>
+          </li>
+        </ul>
+      </div>
+    </nav>
+    <main class="content">
+      <div class="container-fluid p-0">
+        <div class="d-flex align-items-center justify-content-between mb-3">
+          <div>
+            <h1 class="h3 mb-0"><strong>Operational Playbook</strong></h1>
+            <p class="text-muted small mb-0">Role-based daily/weekly/monthly task checklists — every completion is audit-logged</p>
+          </div>
+          <div class="d-flex gap-2">
+            <select class="form-select form-select-sm" id="roleFilter">
+              <option value="">All Roles</option>
+              <option value="technician">Technician</option>
+              <option value="cashier">Cashier</option>
+              <option value="admin">Administrator</option>
+            </select>
+            <button class="btn btn-sm btn-outline-primary" id="btnSeedTasks">Seed Default Tasks</button>
+          </div>
+        </div>
+        <div id="pageAlert"></div>
+
+        <div class="kpi-wrap" id="kpiWrap">
+          <div class="kpi-box"><div class="kpi-num" id="kpiTotal">0</div><div class="kpi-label">Total Tasks</div></div>
+          <div class="kpi-box"><div class="kpi-num text-success" id="kpiDone">0</div><div class="kpi-label">Done Today</div></div>
+          <div class="kpi-box"><div class="kpi-num text-warning" id="kpiPending">0</div><div class="kpi-label">Pending</div></div>
+          <div class="kpi-box"><div class="kpi-num text-danger" id="kpiBlocking">0</div><div class="kpi-label">Blocking</div></div>
+        </div>
+
+        <div id="taskBoard"></div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<script src="/portal/static/js/app.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
+<script>
+const API = '/portal/api';
+const tok = () => localStorage.getItem('ims_access');
+const today = new Date().toISOString().split('T')[0];
+
+async function apiFetch(url, opts={}) {
+  opts.headers = {...(opts.headers||{}), 'Authorization':'Bearer '+tok(), 'Content-Type':'application/json'};
+  const r = await fetch(url, opts);
+  if (r.status === 401) { location.href='/portal/login/'; return null; }
+  return r;
+}
+
+async function loadUser() {
+  const r = await apiFetch(API+'/auth/me/');
+  if (!r) return;
+  const d = await r.json();
+  document.getElementById('navUserName').textContent = d.full_name||d.username||'User';
+  document.getElementById('navUserRole').textContent = d.role||'';
+}
+
+async function loadTasks() {
+  const role = document.getElementById('roleFilter').value;
+  let url = API+'/playbook/completions/?date='+today;
+  if (role) url += '&role='+role;
+  const r = await apiFetch(url);
+  if (!r) return;
+  const tasks = await r.json();
+
+  // Group by frequency + role
+  const groups = {};
+  tasks.forEach(t => {
+    const key = t.role+'|'+t.frequency;
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(t);
+  });
+
+  const freqLabel = {
+    daily_morning:'Morning Routine',daily_evening:'Evening Routine',
+    weekly:'Weekly Tasks',monthly:'Monthly Tasks'
+  };
+  const roleLabel = {technician:'Service Technician',cashier:'Cashier / Admin Desk',admin:'Administrator / Owner'};
+
+  let total=0, done=0, pending=0, blocking=0;
+  tasks.forEach(t => {
+    total++;
+    if (t.completed) done++;
+    else { pending++; if(t.is_blocking) blocking++; }
+  });
+  document.getElementById('kpiTotal').textContent = total;
+  document.getElementById('kpiDone').textContent = done;
+  document.getElementById('kpiPending').textContent = pending;
+  document.getElementById('kpiBlocking').textContent = blocking;
+
+  const board = document.getElementById('taskBoard');
+  if (!tasks.length) {
+    board.innerHTML = `<div class="text-center text-muted py-5">
+      <i data-feather="clipboard" style="width:48px;height:48px;color:#ccc"></i>
+      <p class="mt-2">No tasks defined. Click "Seed Default Tasks" to populate the playbook.</p>
+    </div>`;
+    feather.replace();
+    return;
+  }
+
+  // Render grouped
+  const roleOrder = ['technician','cashier','admin'];
+  const freqOrder = ['daily_morning','daily_evening','weekly','monthly'];
+  let html = '';
+  roleOrder.forEach(role => {
+    freqOrder.forEach(freq => {
+      const key = role+'|'+freq;
+      if (!groups[key]) return;
+      const items = groups[key];
+      html += `<div class="role-section">
+        <div class="role-title">${roleLabel[role]||role} — ${freqLabel[freq]||freq}</div>`;
+
+      const hasBlockingIncomplete = items.some(t => t.is_blocking && !t.completed);
+      if (hasBlockingIncomplete) {
+        html += `<div class="blocking-warn">⛔ Complete blocking tasks below before accessing linked screens.</div>`;
+      }
+
+      items.forEach(t => {
+        const freqClass = 'freq-'+t.frequency;
+        const blockClass = t.is_blocking ? 'blocking' : '';
+        const doneClass = t.completed ? 'completed' : '';
+        const link = t.link_url ? `<a href="${t.link_url}" class="btn btn-xs btn-sm btn-link p-0 ms-2" title="Open linked screen"><i data-feather="external-link" style="width:13px"></i></a>` : '';
+        html += `<div class="task-card ${blockClass} ${doneClass}">
+          <div style="padding-right:40px">
+            <div class="d-flex align-items-center gap-2 mb-1">
+              <span class="freq-badge ${freqClass}">${freqLabel[t.frequency]||t.frequency}</span>
+              ${t.is_blocking?'<span class="freq-badge" style="background:#f8d7da;color:#58151c">BLOCKING</span>':''}
+            </div>
+            <strong>${t.title}</strong>${link}
+            ${t.description?`<p class="text-muted small mb-0 mt-1">${t.description}</p>`:''}
+          </div>
+          <div class="task-check">
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" id="task_${t.id}"
+                ${t.completed?'checked disabled':''}
+                onchange="markComplete('${t.id}', this)">
+            </div>
+          </div>
+        </div>`;
+      });
+      html += '</div>';
+    });
+  });
+  board.innerHTML = html;
+  feather.replace();
+}
+
+async function markComplete(taskId, checkbox) {
+  checkbox.disabled = true;
+  const r = await apiFetch(API+'/playbook/completions/', {
+    method:'POST', body:JSON.stringify({task_id: taskId, date: today})
+  });
+  if (!r) { checkbox.disabled=false; return; }
+  // Reload to reflect updated kpis and completed state
+  loadTasks();
+}
+
+async function seedDefaultTasks() {
+  const defaults = [
+    // Technician morning
+    {role:'technician',frequency:'daily_morning',title:'Tool Registry Ingestion',description:'Inspect workshop tools (bench supplies, multimeters) for operational safety.',link_url:'/portal/dashboard/job-cards/',sort_order:1},
+    {role:'technician',frequency:'daily_morning',title:'Backlog Prioritization Check',description:'Query job queue for devices marked Awaiting Parts or In-Progress.',link_url:'/portal/dashboard/job-cards/',sort_order:2},
+    // Technician evening
+    {role:'technician',frequency:'daily_evening',title:'Active Status Update',description:'Ensure every device worked on has its job card updated to the correct status.',link_url:'/portal/dashboard/job-cards/',sort_order:1},
+    {role:'technician',frequency:'daily_evening',title:'Micro-Stock Isolation',description:'Secure high-value micro-components and log any consumables used today.',link_url:'/portal/dashboard/inventory/',sort_order:2},
+    // Cashier morning
+    {role:'cashier',frequency:'daily_morning',title:'Float Vault Count',description:'Count the cash float manually and enter the value to unlock the POS system.',link_url:'/portal/dashboard/cash-management/',sort_order:1,is_blocking:true},
+    {role:'cashier',frequency:'daily_morning',title:'Link Verification',description:'Confirm speed-point terminal and network connection are online.',link_url:'/portal/dashboard/pos/',sort_order:2},
+    // Cashier evening
+    {role:'cashier',frequency:'daily_evening',title:'Daily Invoicing Matching',description:'Count cash drawer and card receipts, submit against system-generated log.',link_url:'/portal/dashboard/cash-management/',sort_order:1},
+    {role:'cashier',frequency:'daily_evening',title:'Safe Deposit Log',description:'Move verified earnings to on-site safe and mark as Deposited.',link_url:'/portal/dashboard/cash-management/',sort_order:2},
+    // Cashier weekly
+    {role:'cashier',frequency:'weekly',title:'Procurement OCR Intake',description:'Scan and upload all supplier slips from Pinnacle, Mustek, Communica.',link_url:'/portal/dashboard/vat201/',sort_order:1},
+    {role:'cashier',frequency:'weekly',title:'Debtors Follow-Up Run',description:'Access outstanding invoices and trigger email reminders to overdue clients.',link_url:'/portal/invoices/',sort_order:2},
+    // Admin weekly
+    {role:'admin',frequency:'weekly',title:'Bank Statement Ledger Sync',description:'Import weekly banking statement and reconcile against cash flow streams.',link_url:'/portal/dashboard/financial-analytics/',sort_order:1},
+    // Joint monthly
+    {role:'technician',frequency:'monthly',title:'Physical Stocktake Cycle',description:'Count all physical inventory items and log figures into the stock audit portal.',link_url:'/portal/dashboard/inventory/',sort_order:1},
+    {role:'cashier',frequency:'monthly',title:'Physical Stocktake Cycle',description:'Count all physical inventory items and log figures into the stock audit portal.',link_url:'/portal/dashboard/inventory/',sort_order:1},
+    // Admin monthly
+    {role:'admin',frequency:'monthly',title:'UIF & PAYE Verification',description:'Review timesheets, verify leave, run payroll calculations, distribute payslips.',link_url:'/portal/dashboard/emp201/',sort_order:1},
+    {role:'admin',frequency:'monthly',title:'SARS Filing Review',description:'Verify OCR vendor receipts match input tax figures, lock period, copy to eFiling.',link_url:'/portal/dashboard/compliance/',sort_order:2},
+  ];
+  for (const task of defaults) {
+    await apiFetch(API+'/playbook/tasks/', {method:'POST', body:JSON.stringify(task)});
+  }
+  const el = document.getElementById('pageAlert');
+  el.innerHTML = '<div class="alert alert-success py-2">Default tasks seeded. <button class="btn-close float-end" onclick="this.closest(\'.alert\').remove()"></button></div>';
+  await loadTasks();
+}
+
+document.getElementById('roleFilter').addEventListener('change', loadTasks);
+document.getElementById('btnSeedTasks').addEventListener('click', seedDefaultTasks);
+document.getElementById('logoutBtn').addEventListener('click', e => {
+  e.preventDefault(); localStorage.removeItem('ims_access'); localStorage.removeItem('ims_refresh'); location.href='/portal/login/';
+});
+
+if (!tok()) location.href='/portal/login/';
+loadUser(); loadTasks();
+feather.replace();
+</script>
+</body>
+</html>
