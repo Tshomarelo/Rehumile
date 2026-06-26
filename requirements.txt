@@ -26,6 +26,9 @@ python-decouple==3.8
 # Production server
 gunicorn==21.2.0
 
+# HTTP client (PayFast ITN validation)
+requests==2.31.0
+
 # Utilities
 python-decouple==3.8
 django-phonenumber-field==7.2.0
