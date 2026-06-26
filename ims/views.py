@@ -3,7 +3,7 @@ from django.utils import timezone
 from django.contrib.auth import get_user_model
 from django.core.mail import EmailMultiAlternatives
 from django.conf import settings as django_settings
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 from rest_framework import viewsets, status, generics
@@ -306,6 +306,62 @@ class LoginView(APIView):
                 'company_name': user.company.name if user.company else None,
             }
         })
+
+
+class RegisterView(APIView):
+    """Public self-registration — creates a client account and returns JWT tokens."""
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        first_name = request.data.get('first_name', '').strip()
+        last_name = request.data.get('last_name', '').strip()
+        email = request.data.get('email', '').strip().lower()
+        password = request.data.get('password', '')
+        company_name = request.data.get('company_name', '').strip()
+
+        if not first_name or not email or not password:
+            return Response({'detail': 'First name, email and password are required.'}, status=400)
+        if len(password) < 8:
+            return Response({'detail': 'Password must be at least 8 characters.'}, status=400)
+        if User.objects.filter(email=email).exists():
+            return Response({'detail': 'An account with this email already exists.'}, status=400)
+
+        username = email.split('@')[0]
+        base = username
+        count = 1
+        while User.objects.filter(username=username).exists():
+            username = f"{base}{count}"
+            count += 1
+
+        user = User.objects.create_user(
+            username=username,
+            email=email,
+            password=password,
+            first_name=first_name,
+            last_name=last_name,
+            role='client',
+        )
+
+        if company_name:
+            from .models import Company
+            company, _ = Company.objects.get_or_create(name=company_name)
+            user.company = company
+            user.save()
+
+        refresh = RefreshToken.for_user(user)
+        return Response({
+            'access': str(refresh.access_token),
+            'refresh': str(refresh),
+            'user': {
+                'id': str(user.id),
+                'email': user.email,
+                'first_name': user.first_name,
+                'last_name': user.last_name,
+                'role': user.role,
+                'company_id': str(user.company.id) if user.company else None,
+                'company_name': user.company.name if user.company else None,
+            }
+        }, status=201)
 
 
 class LogoutView(APIView):
@@ -2009,3 +2065,432 @@ class TaskCompletionView(APIView):
             defaults={'note': request.data.get('note', '')},
         )
         return Response({'created': created, 'task': template.title}, status=201)
+
+
+# ============================================================================
+# WEBSITE CONTENT MANAGEMENT VIEWS
+# ============================================================================
+
+from .models import ServicePrice, WebsiteContent
+
+
+class ServicePriceView(APIView):
+    """CRUD for service prices displayed on the public website."""
+
+    def get_permissions(self):
+        if self.request.method == 'GET':
+            return [AllowAny()]
+        return [IsAuthenticated()]
+
+    def get(self, request):
+        qs = ServicePrice.objects.filter(is_active=True)
+        featured_only = request.query_params.get('featured')
+        if featured_only:
+            qs = qs.filter(is_featured=True)
+        data = list(qs.values(
+            'id', 'name', 'category', 'description', 'price', 'unit',
+            'is_featured', 'is_active', 'display_order',
+        ))
+        return Response(data)
+
+    def post(self, request):
+        d = request.data
+        sp = ServicePrice.objects.create(
+            name=d.get('name', ''),
+            category=d.get('category', 'it_support'),
+            description=d.get('description', ''),
+            price=d.get('price', 0),
+            unit=d.get('unit', 'per visit'),
+            is_featured=d.get('is_featured', False),
+            is_active=d.get('is_active', True),
+            display_order=d.get('display_order', 0),
+        )
+        return Response({'id': str(sp.id), 'name': sp.name}, status=201)
+
+    def patch(self, request, pk=None):
+        try:
+            sp = ServicePrice.objects.get(pk=pk)
+        except ServicePrice.DoesNotExist:
+            return Response({'error': 'Not found.'}, status=404)
+        allowed = ['name', 'category', 'description', 'price', 'unit',
+                   'is_featured', 'is_active', 'display_order']
+        for field in allowed:
+            if field in request.data:
+                setattr(sp, field, request.data[field])
+        sp.save()
+        return Response({'id': str(sp.id)})
+
+    def delete(self, request, pk=None):
+        try:
+            sp = ServicePrice.objects.get(pk=pk)
+        except ServicePrice.DoesNotExist:
+            return Response({'error': 'Not found.'}, status=404)
+        sp.delete()
+        return Response(status=204)
+
+
+class WebsiteContentView(APIView):
+    """Manage editable text blocks for public website pages."""
+
+    def get_permissions(self):
+        if self.request.method == 'GET':
+            return [AllowAny()]
+        return [IsAuthenticated()]
+
+    def get(self, request):
+        section = request.query_params.get('section')
+        qs = WebsiteContent.objects.all()
+        if section:
+            qs = qs.filter(section=section)
+        data = list(qs.values('id', 'section', 'key', 'label', 'value', 'updated_at'))
+        return Response(data)
+
+    def post(self, request):
+        """Upsert a content block by key."""
+        key = request.data.get('key', '')
+        obj, created = WebsiteContent.objects.update_or_create(
+            key=key,
+            defaults={
+                'section': request.data.get('section', 'hero'),
+                'label': request.data.get('label', key),
+                'value': request.data.get('value', ''),
+                'updated_by': request.user,
+            },
+        )
+        return Response({'id': str(obj.id), 'key': obj.key, 'created': created}, status=201 if created else 200)
+
+    def patch(self, request, pk=None):
+        try:
+            obj = WebsiteContent.objects.get(pk=pk)
+        except WebsiteContent.DoesNotExist:
+            return Response({'error': 'Not found.'}, status=404)
+        obj.value = request.data.get('value', obj.value)
+        obj.label = request.data.get('label', obj.label)
+        obj.updated_by = request.user
+        obj.save()
+        return Response({'id': str(obj.id)})
+
+
+
+# ============================================================================
+# PAYFAST PAYMENT INTEGRATION
+# ============================================================================
+
+import uuid as uuid_lib
+import logging
+from .models import Payment, Invoice
+from .payfast import (
+    build_payment_data, validate_itn,
+    PAYFAST_PROCESS_URL, PAYFAST_SANDBOX,
+)
+
+pf_logger = logging.getLogger("ims.payfast")
+
+
+def _base_url(request):
+    scheme = request.scheme
+    return f"{scheme}://{request.get_host()}"
+
+
+class PayFastInitiateView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        invoice_id = request.data.get("invoice_id")
+        if not invoice_id:
+            return Response({"detail": "invoice_id required."}, status=400)
+        try:
+            invoice = Invoice.objects.get(pk=invoice_id)
+        except Invoice.DoesNotExist:
+            return Response({"detail": "Invoice not found."}, status=404)
+
+        user = request.user
+        if user.role == "client" and user.company != invoice.company:
+            return Response({"detail": "Access denied."}, status=403)
+
+        amount = float(invoice.amount)
+        inv_ref = getattr(invoice, "invoice_number", None) or str(invoice.id)[:8]
+        reference = f"INV-{inv_ref[:8].upper()}-{uuid_lib.uuid4().hex[:6].upper()}"
+        item_name = f"Invoice {inv_ref}"
+
+        Payment.objects.create(
+            reference=reference, invoice=invoice, user=user,
+            amount=amount, item_name=item_name,
+            first_name=user.first_name, last_name=user.last_name,
+            email_address=user.email, service_type="invoice", status="pending",
+        )
+
+        base = _base_url(request)
+        pf_data = build_payment_data(
+            reference=reference, amount=amount, item_name=item_name,
+            first_name=user.first_name, last_name=user.last_name, email=user.email,
+            return_url=f"{base}/portal/client/billing/?payment=success&ref={reference}",
+            cancel_url=f"{base}/portal/client/billing/?payment=cancelled&ref={reference}",
+            notify_url=f"{base}/portal/api/payments/payfast-notify/",
+        )
+        return Response({"reference": reference, "payfast_url": PAYFAST_PROCESS_URL, "fields": pf_data})
+
+
+class PayFastPublicInitiateView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        first_name = request.data.get("first_name", "").strip()
+        last_name = request.data.get("last_name", "").strip()
+        email = request.data.get("email", "").strip()
+        service_name = request.data.get("service_name", "").strip()
+        amount = request.data.get("amount")
+
+        if not first_name or not email or not service_name or not amount:
+            return Response({"detail": "first_name, email, service_name and amount required."}, status=400)
+        try:
+            amount = float(amount)
+            if amount <= 0:
+                raise ValueError
+        except (ValueError, TypeError):
+            return Response({"detail": "Invalid amount."}, status=400)
+
+        reference = f"WEB-{uuid_lib.uuid4().hex[:10].upper()}"
+        Payment.objects.create(
+            reference=reference, amount=amount, item_name=service_name[:100],
+            first_name=first_name, last_name=last_name, email_address=email,
+            service_type=service_name, status="pending",
+        )
+
+        base = _base_url(request)
+        pf_data = build_payment_data(
+            reference=reference, amount=amount, item_name=service_name[:100],
+            first_name=first_name, last_name=last_name, email=email,
+            return_url=f"{base}/payment/success/?ref={reference}",
+            cancel_url=f"{base}/payment/cancel/?ref={reference}",
+            notify_url=f"{base}/portal/api/payments/payfast-notify/",
+        )
+        return Response({"reference": reference, "payfast_url": PAYFAST_PROCESS_URL, "fields": pf_data})
+
+
+class PayFastITNView(APIView):
+    permission_classes = [AllowAny]
+    authentication_classes = []
+
+    def post(self, request):
+        post_data = request.POST.dict()
+        pf_logger.info("PayFast ITN received: %s", post_data)
+        is_valid, reason = validate_itn(post_data)
+        if not is_valid:
+            pf_logger.warning("PayFast ITN rejected: %s", reason)
+            return HttpResponse(status=400)
+
+        reference = post_data.get("m_payment_id", "")
+        pf_payment_id = post_data.get("pf_payment_id", "")
+        payment_status_str = post_data.get("payment_status", "").upper()
+
+        try:
+            payment = Payment.objects.get(reference=reference)
+        except Payment.DoesNotExist:
+            return HttpResponse(status=200)
+
+        payment.pf_payment_id = pf_payment_id
+        payment.raw_itn = str(post_data)
+
+        if payment_status_str == "COMPLETE":
+            payment.status = "complete"
+            if payment.invoice:
+                invoice = payment.invoice
+                invoice.status = "paid"
+                invoice.save(update_fields=["status"])
+        elif payment_status_str in ("FAILED", "CANCELLED"):
+            payment.status = payment_status_str.lower()
+
+        payment.save()
+        return HttpResponse(status=200)
+
+
+class PaymentListView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        if user.role in ("admin", "hq", "technician"):
+            qs = Payment.objects.select_related("user", "invoice").all()
+        else:
+            qs = Payment.objects.filter(user=user)
+        status_filter = request.query_params.get("status")
+        if status_filter:
+            qs = qs.filter(status=status_filter)
+        data = [
+            {
+                "id": str(p.id),
+                "reference": p.reference,
+                "pf_payment_id": p.pf_payment_id,
+                "invoice_id": str(p.invoice.id) if p.invoice else None,
+                "invoice_number": getattr(p.invoice, "invoice_number", None) if p.invoice else None,
+                "user_name": f"{p.first_name} {p.last_name}".strip(),
+                "email": p.email_address,
+                "amount": float(p.amount),
+                "item_name": p.item_name,
+                "service_type": p.service_type,
+                "status": p.status,
+                "created_at": p.created_at.isoformat(),
+            }
+            for p in qs[:200]
+        ]
+        return Response(data)
+
+
+# ============================================================================
+# INVOICE EMAIL REMINDER
+# ============================================================================
+
+class InvoiceReminderView(APIView):
+    """HQ: send a payment reminder email to the client contact for an invoice."""
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, invoice_id):
+        if request.user.role not in ("admin", "hq", "technician"):
+            return Response({"detail": "HQ access required."}, status=403)
+
+        try:
+            invoice = Invoice.objects.select_related("company", "incident").get(pk=invoice_id)
+        except Invoice.DoesNotExist:
+            return Response({"detail": "Invoice not found."}, status=404)
+
+        # Resolve recipient email — prefer custom override, then company email, then incident requester
+        to_email = request.data.get("email", "").strip()
+        if not to_email and invoice.company:
+            to_email = getattr(invoice.company, "email", "") or ""
+        if not to_email and invoice.incident:
+            to_email = getattr(invoice.incident.requester, "email", "") if invoice.incident.requester else ""
+        if not to_email:
+            return Response({"detail": "No email address found for this invoice. Provide one in the request body."}, status=400)
+
+        invoice_number = invoice.invoice_number or str(invoice.id)[:8].upper()
+        amount = float(invoice.total_amount or 0)
+        due_date = invoice.due_date.strftime("%d %B %Y") if invoice.due_date else "As soon as possible"
+        description = invoice.description or invoice.notes or "IT Support Services"
+
+        # Build a payment initiation link (auto-creates payment record)
+        base = request.scheme + "://" + request.get_host()
+        pay_link = f"{base}/portal/client/billing/"
+
+        # HTML email body
+        html_body = f"""
+<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"></head>
+<body style="margin:0;padding:0;font-family:'Segoe UI',Arial,sans-serif;background:#f4f4f7">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f7;padding:32px 0">
+    <tr><td align="center">
+      <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08)">
+
+        <!-- Header -->
+        <tr><td style="background:#50181E;padding:28px 40px">
+          <table width="100%" cellpadding="0" cellspacing="0">
+            <tr>
+              <td>
+                <p style="margin:0;color:#B38F43;font-size:22px;font-weight:900;letter-spacing:-0.5px">REHUMILE TMW</p>
+                <p style="margin:4px 0 0;color:rgba(255,255,255,0.7);font-size:12px">IT Services &amp; Solutions</p>
+              </td>
+              <td align="right">
+                <p style="margin:0;color:rgba(255,255,255,0.5);font-size:11px;text-transform:uppercase;letter-spacing:1px">Invoice Reminder</p>
+              </td>
+            </tr>
+          </table>
+        </td></tr>
+
+        <!-- Body -->
+        <tr><td style="padding:36px 40px">
+          <h2 style="margin:0 0 8px;color:#1a1a1a;font-size:24px">Payment Reminder</h2>
+          <p style="margin:0 0 24px;color:#666;font-size:15px">You have an outstanding invoice with Rehumile TMW. Please review the details below and complete your payment at your earliest convenience.</p>
+
+          <!-- Invoice card -->
+          <table width="100%" cellpadding="0" cellspacing="0" style="background:#fafafa;border:1.5px solid #e8e8e8;border-radius:10px;margin-bottom:28px">
+            <tr><td style="padding:20px 24px;border-bottom:1px solid #e8e8e8">
+              <p style="margin:0;font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#999;font-weight:700">Invoice Details</p>
+            </td></tr>
+            <tr><td style="padding:20px 24px">
+              <table width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td style="padding-bottom:12px">
+                    <p style="margin:0;font-size:12px;color:#999">Invoice Number</p>
+                    <p style="margin:4px 0 0;font-size:16px;font-weight:700;color:#1a1a1a">{invoice_number}</p>
+                  </td>
+                  <td style="padding-bottom:12px" align="right">
+                    <p style="margin:0;font-size:12px;color:#999">Amount Due</p>
+                    <p style="margin:4px 0 0;font-size:24px;font-weight:900;color:#50181E">R {amount:,.2f}</p>
+                  </td>
+                </tr>
+                <tr>
+                  <td>
+                    <p style="margin:0;font-size:12px;color:#999">Description</p>
+                    <p style="margin:4px 0 0;font-size:14px;color:#444">{description}</p>
+                  </td>
+                  <td align="right">
+                    <p style="margin:0;font-size:12px;color:#999">Due Date</p>
+                    <p style="margin:4px 0 0;font-size:14px;font-weight:600;color:#c0392b">{due_date}</p>
+                  </td>
+                </tr>
+              </table>
+            </td></tr>
+          </table>
+
+          <!-- CTA Button -->
+          <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:24px">
+            <tr><td align="center">
+              <a href="{pay_link}" style="display:inline-block;background:linear-gradient(135deg,#B38F43,#d4ac58);color:#ffffff;font-size:16px;font-weight:700;text-decoration:none;padding:16px 40px;border-radius:10px;box-shadow:0 6px 20px rgba(179,143,67,0.35)">
+                Pay Invoice Now &rarr;
+              </a>
+            </td></tr>
+          </table>
+
+          <p style="margin:0;color:#888;font-size:13px;text-align:center">If you have already made payment, please disregard this notice.</p>
+        </td></tr>
+
+        <!-- Footer -->
+        <tr><td style="background:#f8f8f8;padding:20px 40px;border-top:1px solid #ececec">
+          <table width="100%" cellpadding="0" cellspacing="0">
+            <tr>
+              <td style="color:#aaa;font-size:12px">
+                <p style="margin:0">Rehumile TMW &bull; Jozini, KwaZulu-Natal</p>
+                <p style="margin:4px 0 0">📞 068 397 3484 &bull; ✉️ infor@rehumile.co.za</p>
+              </td>
+              <td align="right">
+                <a href="{base}/" style="color:#50181E;font-size:12px;text-decoration:none;font-weight:600">www.rehumile.co.za</a>
+              </td>
+            </tr>
+          </table>
+        </td></tr>
+
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>
+"""
+
+        plain_body = f"""Invoice Reminder — Rehumile TMW
+
+Invoice Number: {invoice_number}
+Amount Due: R {amount:,.2f}
+Due Date: {due_date}
+Description: {description}
+
+Pay via your client portal: {pay_link}
+
+Questions? Call 068 397 3484 or email infor@rehumile.co.za
+"""
+
+        try:
+            from django.core.mail import EmailMultiAlternatives
+            msg = EmailMultiAlternatives(
+                subject=f"Payment Reminder — Invoice {invoice_number} | Rehumile TMW",
+                body=plain_body,
+                from_email=django_settings.DEFAULT_FROM_EMAIL,
+                to=[to_email],
+            )
+            msg.attach_alternative(html_body, "text/html")
+            msg.send()
+        except Exception as exc:
+            pf_logger.error("Invoice reminder email failed: %s", exc)
+            return Response({"detail": f"Email failed: {exc}"}, status=500)
+
+        return Response({"detail": f"Reminder sent to {to_email}", "email": to_email})

@@ -1,0 +1,57 @@
+To transform this Strategic Finance & Internal Controls Operational Plan into a digital system portal (e.g., a custom business management and POS platform), you need to translate the administrative SOPs, financial metrics, and manual workflows into software requirements.
+Here is the comprehensive **System Portal Requirements Specification** broken down into functional modules, non-functional requirements, and database/architectural rules.
+## 1. Functional Requirements by Module
+### 1.1 User Authentication & Role-Based Access Control (RBAC)
+To enforce the required separation of duties, the system must support strict user permissions:
+ * **Administrator / Owner Role:** Full access to financial metrics, banking logs, inventory controls, and system configurations.
+ * **Administrative Desk / Cashier Role:** Permission to create invoices, accept payments, issue receipts, and run daily shift reconciliations. Restricted from altering job cards or accessing backend financial formulas.
+ * **Service Technician Role:** Permission to create job cards, log hardware serial numbers, record diagnoses, and request parts from inventory. Restricted from accepting payments or issuing financial receipts.
+### 1.2 Job Card & Workshop Management Module
+To automate the hardware repair loop and enforce dual-custody rules:
+ * **Job Card Creation:** A digital multi-part job card system requiring input of:
+   * Customer details
+   * Device serial number (compulsory field)
+   * External physical condition (checklist/text)
+   * Initial diagnostic notes
+ * **Status Tracking:** Real-time state machine for job cards: Logged \rightarrow In-Progress \rightarrow Awaiting Parts \rightarrow Ready for Collection \rightarrow Paid & Released.
+ * **Hardware Release Guard:** The system must programmatically block a technician or administrator from changing a job card status to Released unless a matching, fully paid invoice is linked to it.
+### 1.3 Point of Sale (POS) & Invoicing Module
+ * **Invoice Generation:** Ability to generate sequential, system-generated tax invoices combining service labor (e.g., laptop micro-soldering) and physical inventory parts.
+ * **Payment Gateway Integration:** Interface to log card speed-point payments, cash payments, or EFT/bank transfers.
+ * **Digital Voucher Sales:** A sub-module to generate, track, and log the sale of Omada network access vouchers.
+### 1.4 Inventory & Tool Registry Module
+ * **Asset Management:** A digital registry for specialized lab assets (e.g., multimeters, soldering stations) tracking serial numbers, deployment status, and depreciation.
+ * **Stock Control (Ring-Fencing):** Inventory tracking for high-turnover micro-stock (e.g., thermal paste units, NVMe SSDs, RAM).
+ * **Parts Authorization Workflow:** A system rule requiring technicians to input an active, verified Job Card or Invoice number to deduct stock from the digital ledger.
+ * **Stock Auditing:** A "Physical Cycle Count" interface for monthly stocktakes that flags discrepancies between physical counts and the digital ledger.
+### 1.5 Cash Management & Banking Reconciliation Module
+ * **Shift Logs (Daily Protocol):**
+   * *Morning Shift Open:* Forced input field to verify the opening cash float.
+   * *Evening Shift Close:* A reconciliation interface prompting the user to input physical cash totals and card slips, automatically matching them against the day's system-generated invoice log.
+ * **Multi-Stream Cash Flow Ledger:** Automated categorization of every transaction into three distinct macro-streams:
+   1. *Operating Cash Flow (OCF):* Retail, labor, repairs, and recurring consulting retainers.
+   2. *Investing Cash Flow (ICF):* Capital equipment purchases (lab tools, network masts).
+   3. *Financing Cash Flow (FCF):* Owner capital injections, drawings, or debt.
+ * **Digital Slip Upload:** A mobile-friendly interface or web portal feature to upload scans/photos of supplier purchase slips (e.g., from Pinnacle, Mustek, Communica) and link them to expenses.
+### 1.6 Financial Analytics & Compliance Dashboard
+A dashboard that automatically calculates and displays the following business health metrics at the end of each operating month:
+ * **Gross Profit Margin (GPM) Engine:** Automatically calculates margins per product/service and globally using:
+   
+ * **Net Profit Margin (NPM) Engine:** Incorporates general operating expenses (internet, bank fees, utilities) to compute overall health:
+   
+ * **Break-Even Analytics:** A calculator utilizing historical fixed and variable costs to output the operational baseline:
+   
+ * **SARS Compliance Reporting:** A reporting module to extract gross revenue logs for VAT positioning and generate employee hours/logs required for monthly UIF filings.
+## 2. Non-Functional & System Architecture Requirements
+### 2.1 Offline Capability / Local Cache First
+> **Context Note:** Designed for networks operating within logistically isolated regional hubs or rural nodes where internet connectivity can experience periodic downtime.
+> 
+ * The POS and Job Card modules must remain operational offline.
+ * The system must use a local database cache to store transactions, syncing seamlessly with the primary cloud database once active internet uplink connectivity is restored or verified during the morning shift.
+### 2.2 Security & Audit Trail
+ * **Immutable Logs:** System logs for cash adjustments, invoice modifications, and inventory reductions must be completely immutable (delete/edit privileges blocked for non-admin roles).
+ * **Data Encryption:** Sensitive financial records, client business data, and user passwords must be encrypted at rest and in transit.
+### 2.3 Interface & Usability
+ * **Clean Hierarchy:** A responsive web or desktop interface with clear scannability to minimize dense text overhead for administrative staff.
+ * **Alert System:** High-visibility automated notifications for outstanding debtor invoices nearing payment terms and low-stock thresholds on core items (like thermal paste or storage components).
+Would you like to drill down into the database schema design for the **Three-Tier Cash Flow Architecture**, or should we look at the specific API endpoints needed to enforce the **Dual-Custody Storefront** workflow?

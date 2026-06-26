@@ -59,6 +59,20 @@
     .service-card h3{font-size:1.05rem;font-weight:600;color:var(--primary);margin-bottom:8px}
     .service-card p{font-size:.88rem;color:var(--muted);line-height:1.6}
 
+    /* PRICING */
+    .pricing-bg{background:var(--bg)}
+    .pricing-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:20px}
+    .price-card{background:var(--white);border:1px solid #e2e8f0;border-radius:12px;padding:24px;transition:all .25s;position:relative}
+    .price-card:hover{border-color:var(--primary);box-shadow:var(--card-shadow);transform:translateY(-3px)}
+    .price-card.featured{border-color:var(--accent);box-shadow:0 4px 20px rgba(232,160,32,.15)}
+    .price-badge{position:absolute;top:12px;right:12px;background:var(--accent);color:#fff;font-size:.7rem;font-weight:700;padding:3px 8px;border-radius:20px;text-transform:uppercase;letter-spacing:.5px}
+    .price-cat{font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--accent);margin-bottom:8px}
+    .price-name{font-size:1rem;font-weight:600;color:var(--primary);margin-bottom:8px}
+    .price-desc{font-size:.82rem;color:var(--muted);margin-bottom:16px;line-height:1.5}
+    .price-amount{font-size:1.6rem;font-weight:700;color:var(--primary)}
+    .price-unit{font-size:.8rem;color:var(--muted);font-weight:400}
+    .pricing-note{font-size:.82rem;color:var(--muted);margin-top:24px;text-align:center}
+
     /* HOW IT WORKS */
     .how-bg{background:var(--bg)}
     .steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:32px;counter-reset:step}
@@ -128,6 +142,7 @@
     </div>
     <ul class="nav-links">
       <li><a href="#services">Services</a></li>
+      <li><a href="#pricing">Pricing</a></li>
       <li><a href="#how-it-works">How It Works</a></li>
       <li><a href="#portal">Client Portal</a></li>
       <li><a href="#contact">Contact</a></li>
@@ -210,6 +225,19 @@
         <p>In-store stock of RAM, SSDs, screens, thermal paste, cables, and other IT consumables at competitive prices.</p>
       </div>
     </div>
+  </div>
+</section>
+
+<!-- Pricing -->
+<section id="pricing" class="pricing-bg">
+  <div class="section-inner">
+    <div class="section-label">Transparent Pricing</div>
+    <h2 class="section-title">Service Rates</h2>
+    <p class="section-sub" id="pricingSubheading">Clear, upfront pricing with no hidden fees. Contact us for a custom quote on larger projects.</p>
+    <div class="pricing-grid" id="pricingGrid">
+      <div class="price-card" style="grid-column:1/-1;text-align:center;padding:48px;color:var(--muted)">Loading pricing…</div>
+    </div>
+    <p class="pricing-note">All prices exclude VAT where applicable. Final quotes are provided before any work begins.</p>
   </div>
 </section>
 
@@ -377,6 +405,59 @@
 </footer>
 
 <script>
+// Dynamic pricing from API
+const CAT_ICONS = {
+  it_support:'🖥️', networking:'🌐', cctv:'📷', software:'☁️',
+  hardware:'🔧', cloud:'☁️', other:'📦',
+};
+const CAT_LABELS = {
+  it_support:'IT Support', networking:'Networking', cctv:'CCTV & Security',
+  software:'Software', hardware:'Hardware', cloud:'Cloud Services', other:'Other',
+};
+
+async function loadPricingSection() {
+  try {
+    const res = await fetch('/portal/api/website/prices/');
+    if (!res.ok) throw new Error();
+    const prices = await res.json();
+    const active = prices.filter(p => p.is_active);
+    const grid = document.getElementById('pricingGrid');
+    if (!active.length) {
+      grid.innerHTML = '<div class="price-card" style="grid-column:1/-1;text-align:center;padding:48px;color:#718096">Pricing coming soon — <a href="#contact" style="color:#1a3c5e">contact us for a quote</a>.</div>';
+      return;
+    }
+    grid.innerHTML = active.map(p => `
+      <div class="price-card${p.is_featured ? ' featured' : ''}">
+        ${p.is_featured ? '<div class="price-badge">Popular</div>' : ''}
+        <div class="price-cat">${CAT_ICONS[p.category] || '📦'} ${CAT_LABELS[p.category] || p.category}</div>
+        <div class="price-name">${p.name}</div>
+        ${p.description ? `<div class="price-desc">${p.description}</div>` : ''}
+        <div><span class="price-amount">R ${parseFloat(p.price).toLocaleString('en-ZA',{minimumFractionDigits:2,maximumFractionDigits:2})}</span> <span class="price-unit">${p.unit}</span></div>
+      </div>
+    `).join('');
+  } catch {
+    // API unreachable — hide section gracefully
+    const section = document.getElementById('pricing');
+    if (section) section.style.display = 'none';
+  }
+}
+
+async function loadWebsiteContent() {
+  try {
+    const res = await fetch('/portal/api/website/content/');
+    if (!res.ok) return;
+    const blocks = await res.json();
+    const map = {};
+    blocks.forEach(b => { map[b.key] = b.value; });
+    // Apply content if keys exist
+    const apply = (id, key) => { const el = document.getElementById(id); if (el && map[key]) el.textContent = map[key]; };
+    apply('pricingSubheading', 'services_subheading');
+  } catch {}
+}
+
+loadPricingSection();
+loadWebsiteContent();
+
 // Smooth scrolling
 document.querySelectorAll('a[href^="#"]').forEach(a => {
   a.addEventListener('click', e => {

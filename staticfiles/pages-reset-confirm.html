@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <title>Reset Password | Rehumile IMS</title>
+  <link href="/portal/static/css/app.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+  <style>
+    :root { --rtmw-primary: #1a3c5e; }
+    body { background: linear-gradient(135deg, #f0f4f8 0%, #e8edf2 100%); }
+    .brand-header { background-color: #50181E; padding: 12px 0; text-align: center; }
+    .brand-header img { height: 48px; object-fit: contain; }
+    .brand-accent { display:inline-block;width:48px;height:4px;background:#B38F43;border-radius:2px;margin:10px auto 0; }
+    .btn-primary, .btn-primary:hover { background-color: var(--rtmw-primary) !important; border-color: var(--rtmw-primary) !important; }
+    .card { border-top: 4px solid #B38F43; box-shadow: 0 4px 24px rgba(26,60,94,0.12); }
+    #msg { display: none; }
+  </style>
+</head>
+<body>
+  <div class="brand-header">
+    <img src="/portal/static/img/rehumile-logo.jpeg" alt="Rehumile TMW Logo" />
+  </div>
+  <main class="d-flex w-100">
+    <div class="container d-flex flex-column">
+      <div class="row vh-100">
+        <div class="col-sm-10 col-md-8 col-lg-6 col-xl-5 mx-auto d-table h-100">
+          <div class="d-table-cell align-middle">
+            <div class="text-center mt-4">
+              <h1 class="h2" style="color:#50181E;">Set New Password</h1>
+              <p class="lead text-muted">Choose a strong password for your account.</p>
+              <div class="brand-accent"></div>
+            </div>
+            <div class="card mt-4">
+              <div class="card-body">
+                <div class="m-sm-3">
+                  <div id="msg" class="alert" role="alert"></div>
+                  <form id="confirm-form">
+                    <div class="mb-3">
+                      <label class="form-label">New Password</label>
+                      <input class="form-control form-control-lg" type="password" id="new_password" placeholder="At least 8 characters" required minlength="8" />
+                    </div>
+                    <div class="mb-3">
+                      <label class="form-label">Confirm Password</label>
+                      <input class="form-control form-control-lg" type="password" id="confirm_password" placeholder="Repeat password" required minlength="8" />
+                    </div>
+                    <div class="d-grid gap-2 mt-3">
+                      <button type="submit" id="submit-btn" class="btn btn-lg btn-primary">Reset Password</button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            </div>
+            <div class="text-center mb-3 mt-3">
+              <small class="text-muted">Rehumile TMW Incident Management System &copy; 2025</small>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+  <script src="/portal/static/js/app.js"></script>
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    const uid = params.get('uid');
+    const token = params.get('token');
+    const msg = document.getElementById('msg');
+
+    if (!uid || !token) {
+      msg.className = 'alert alert-danger';
+      msg.textContent = 'Invalid reset link. Please request a new one.';
+      msg.style.display = 'block';
+      document.getElementById('confirm-form').style.display = 'none';
+    }
+
+    document.getElementById('confirm-form').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const btn = document.getElementById('submit-btn');
+      const np = document.getElementById('new_password').value;
+      const cp = document.getElementById('confirm_password').value;
+      msg.style.display = 'none';
+
+      if (np !== cp) {
+        msg.className = 'alert alert-danger';
+        msg.textContent = 'Passwords do not match.';
+        msg.style.display = 'block';
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = 'Resetting…';
+
+      try {
+        const resp = await fetch('/portal/api/auth/password-reset/confirm/', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ uid, token, new_password: np }),
+        });
+        const data = await resp.json();
+        if (resp.ok) {
+          msg.className = 'alert alert-success';
+          msg.textContent = data.detail + ' Redirecting to sign in…';
+          msg.style.display = 'block';
+          setTimeout(() => { window.location.href = '/portal/login/'; }, 2500);
+        } else {
+          msg.className = 'alert alert-danger';
+          msg.textContent = data.detail || 'Reset failed. Please request a new link.';
+          msg.style.display = 'block';
+          btn.disabled = false;
+          btn.textContent = 'Reset Password';
+        }
+      } catch (err) {
+        msg.className = 'alert alert-danger';
+        msg.textContent = 'Network error. Please try again.';
+        msg.style.display = 'block';
+        btn.disabled = false;
+        btn.textContent = 'Reset Password';
+      }
+    });
+  </script>
+</body>
+</html>

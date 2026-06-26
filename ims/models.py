@@ -1654,3 +1654,118 @@ class TaskCompletion(models.Model):
         db_table = 'task_completions'
         unique_together = ['task_template', 'completed_by', 'date_ref']
         ordering = ['-completed_at']
+
+
+# ============================================================================
+# WEBSITE CONTENT MANAGEMENT
+# ============================================================================
+
+class ServiceCategory(models.TextChoices):
+    IT_SUPPORT = 'it_support', _('IT Support')
+    NETWORKING = 'networking', _('Networking')
+    CCTV = 'cctv', _('CCTV & Security')
+    SOFTWARE = 'software', _('Software')
+    HARDWARE = 'hardware', _('Hardware')
+    CLOUD = 'cloud', _('Cloud Services')
+    OTHER = 'other', _('Other')
+
+
+class ServicePrice(models.Model):
+    """Publicly visible service offering — price editable from HQ Website module."""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    name = models.CharField(max_length=120)
+    category = models.CharField(max_length=30, choices=ServiceCategory.choices, default='it_support')
+    description = models.TextField(blank=True)
+    price = models.DecimalField(max_digits=10, decimal_places=2)
+    unit = models.CharField(max_length=60, default='per visit', help_text='e.g. per device, per month, per hour')
+    is_featured = models.BooleanField(default=False, help_text='Show on website hero/pricing section')
+    is_active = models.BooleanField(default=True)
+    display_order = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'service_prices'
+        ordering = ['display_order', 'name']
+
+    def __str__(self):
+        return f"{self.name} — R{self.price}/{self.unit}"
+
+
+class WebsiteSection(models.TextChoices):
+    HERO = 'hero', _('Hero Banner')
+    ABOUT = 'about', _('About Us')
+    SERVICES = 'services', _('Services Section')
+    PROCESS = 'process', _('How It Works')
+    CTA = 'cta', _('Call To Action')
+    CONTACT = 'contact', _('Contact Info')
+    FOOTER = 'footer', _('Footer')
+
+
+class WebsiteContent(models.Model):
+    """Key-value store for editable website text/content blocks."""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    section = models.CharField(max_length=30, choices=WebsiteSection.choices)
+    key = models.CharField(max_length=80, unique=True)
+    label = models.CharField(max_length=120, help_text='Human-readable label shown in HQ editor')
+    value = models.TextField()
+    updated_by = models.ForeignKey(
+        User, null=True, blank=True, on_delete=models.SET_NULL,
+        related_name='website_edits',
+    )
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'website_content'
+        ordering = ['section', 'key']
+
+    def __str__(self):
+        return f"{self.section}::{self.key}"
+
+
+# ============================================================================
+# PAYMENTS
+# ============================================================================
+
+class PaymentStatus(models.TextChoices):
+    PENDING = 'pending', _('Pending')
+    COMPLETE = 'complete', _('Complete')
+    FAILED = 'failed', _('Failed')
+    CANCELLED = 'cancelled', _('Cancelled')
+
+
+class Payment(models.Model):
+    """Tracks every PayFast payment attempt tied to an invoice or a website order."""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    # Our reference sent to PayFast as m_payment_id
+    reference = models.CharField(max_length=60, unique=True, db_index=True)
+    # PayFast's own transaction ID returned in ITN
+    pf_payment_id = models.CharField(max_length=60, blank=True)
+    # Optional link to an invoice
+    invoice = models.ForeignKey(
+        Invoice, null=True, blank=True, on_delete=models.SET_NULL, related_name='payments',
+    )
+    # Optional link to authenticated user
+    user = models.ForeignKey(
+        User, null=True, blank=True, on_delete=models.SET_NULL, related_name='payments',
+    )
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    item_name = models.CharField(max_length=200)
+    status = models.CharField(max_length=20, choices=PaymentStatus.choices, default='pending')
+    # Payer details (populated from form or user profile)
+    first_name = models.CharField(max_length=100, blank=True)
+    last_name = models.CharField(max_length=100, blank=True)
+    email_address = models.EmailField(blank=True)
+    # Website-initiated payments carry the chosen service
+    service_type = models.CharField(max_length=120, blank=True)
+    # Raw ITN payload stored for audit trail
+    raw_itn = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'payments'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"Payment {self.reference} — R{self.amount} [{self.status}]"

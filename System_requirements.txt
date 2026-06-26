@@ -1,0 +1,271 @@
+Great — you’re designing a structured ITIL Incident Management portal, so I’ll give you **clear, production-ready prompts** you can feed into an AI code generator (like Copilot, ChatGPT, or a low-code builder).
+
+I’ll structure them as **detailed system prompts** specifying UI, roles, logic, and constraints.
+
+***
+
+# ✅ 1. HEADQUARTERS (ADMIN) DASHBOARD PROMPT
+
+```
+Create a modern web-based Headquarters Dashboard for an ITIL Incident Management System (IMS).
+
+This dashboard is for internal company staff (Headquarters/Admin team) to manage all companies, users, and incidents centrally.
+
+CORE REQUIREMENTS:
+
+1. USER ROLES
+- Headquarters Admin (full control)
+- Support Agent (works on incidents)
+- Finance/Billing role (handles invoicing)
+
+2. COMPANY MANAGEMENT
+- Add new companies manually (NOT self-registration)
+- Each company has:
+  - Company Name
+  - Contact Person
+  - Contact Email
+  - SLA type (e.g., Bronze, Silver, Gold)
+  - Billing settings
+  - Active/Inactive status
+- Ability to:
+  - Edit company details
+  - Activate/Deactivate companies
+  - View all users linked to a company
+
+3. USER MANAGEMENT
+- Add users under a company
+- Assign roles (User/Admin/Viewer)
+- Reset passwords
+- Assign permissions
+- Users are NOT registered through public website
+
+4. INCIDENT MANAGEMENT (CENTRAL VIEW)
+- View ALL incidents across ALL companies
+- Filter by:
+  - Company
+  - Status (Open, In Progress, Resolved, Closed)
+  - Priority (Low, Medium, High, Critical)
+  - SLA breach status
+- View incident details:
+  - Ticket ID
+  - Description
+  - Company
+  - Submitted user
+  - Assigned agent
+  - Timeline/logs
+- Actions:
+  - Assign/reassign incidents
+  - Update status
+  - Add comments (internal & client-visible)
+  - Attach files
+  - Escalate incidents
+
+5. SLA TRACKING
+- Automatically track SLA deadlines
+- Highlight breached tickets
+- Show timers/countdowns
+
+6. BILLING & INVOICING
+- Mark incidents as billable/non-billable
+- Generate invoices per company:
+  - Based on hours worked or ticket count
+- Export invoices (PDF)
+- Track invoice status:
+  - Draft
+  - Sent
+  - Paid
+
+7. DASHBOARD ANALYTICS
+- KPIs:
+  - Total incidents per company
+  - Open vs Resolved tickets
+  - SLA compliance rate
+  - Revenue from billing
+- Graphs:
+  - Incidents over time
+  - Top companies by volume
+
+8. NOTIFICATIONS
+- Alert HQ when:
+  - SLA breach is near
+  - New high-priority ticket is created
+- Internal notifications panel
+
+9. SECURITY & ACCESS
+- Role-based authentication
+- Only HQ users can access this dashboard
+- Login redirection rule:
+  - If user role = HQ → redirect here
+
+10. UI/UX DESIGN
+- Clean enterprise UI
+- Sidebar navigation:
+  - Dashboard
+  - Companies
+  - Users
+  - Incidents
+  - Billing
+  - Reports
+- Responsive design (desktop focus)
+
+TECH STACK (suggested):
+- Frontend: React or Next.js
+- Backend: Node.js / .NET / Django
+- Database: PostgreSQL
+- Authentication: JWT / Azure AD integration
+
+IMPORTANT CONSTRAINTS:
+- No public company/user registration
+- HQ controls ALL data
+- Multi-tenant architecture (each company’s data isolated)
+
+OUTPUT:
+- Full UI layout
+- Component structure
+- Database schema
+- API endpoints for all modules
+```
+
+***
+
+# ✅ 2. CLIENT (USER) DASHBOARD PROMPT
+
+```
+Create a Client Dashboard for an ITIL Incident Management System (IMS) used by external company users.
+
+هدف النظام:
+This dashboard allows company users to log incidents, track progress, and view billing related to their company only.
+
+ACCESS RULE:
+- Users log in via public website login button
+- After login:
+  - If user role = Client → redirect to this dashboard
+  - If HQ → redirect to HQ dashboard
+- Users can ONLY see their company data
+
+CORE REQUIREMENTS:
+
+1. INCIDENT SUBMISSION
+- Create new ticket with:
+  - Title
+  - Description
+  - Category (Hardware, Software, Network, Other)
+  - Priority level
+  - Attach screenshots/files
+- Auto-generate Ticket ID
+
+2. INCIDENT TRACKING
+- View all tickets submitted under their company
+- Filter by:
+  - Status
+  - Priority
+  - Date
+- Status stages:
+  - Open
+  - In Progress
+  - Resolved
+  - Closed
+
+3. INCIDENT DETAILS PAGE
+- Full ticket details:
+  - Timeline of updates
+  - Comments from support
+  - Add replies/comments
+- Visibility:
+  - Only client-visible notes shown (internal notes hidden)
+
+4. DASHBOARD OVERVIEW
+- Summary cards:
+  - Total tickets
+  - Open tickets
+  - Resolved tickets
+- Charts:
+  - Tickets over time
+  - Tickets by category
+
+5. NOTIFICATIONS
+- Notify user when:
+  - Ticket status changes
+  - New comment added
+  - Ticket resolved
+
+6. BILLING / INVOICES
+- View invoices linked to their company
+- Each invoice shows:
+  - Related tickets
+  - Hours or charges
+  - Status (Paid/Unpaid)
+- Download invoices (PDF)
+
+7. PROFILE SETTINGS
+- View user info
+- Change password (if allowed)
+- Contact support info
+
+8. PERMISSIONS
+- Users can ONLY:
+  - View their company’s tickets
+  - Create and comment on tickets
+- No access to:
+  - Other companies
+  - Internal HQ data
+
+9. UI/UX DESIGN
+- Simple and clean interface
+- Sidebar:
+  - Dashboard
+  - My Tickets
+  - Create Ticket
+  - Billing
+  - Profile
+- Mobile-friendly
+
+10. SECURITY
+- Multi-tenant isolation
+- Each user linked to a company_id
+- Strict backend filtering:
+  WHERE company_id = logged-in-user.company_id
+
+IMPORTANT CONSTRAINTS:
+- No public self-registration
+- Users are pre-created by HQ
+- No cross-company visibility
+
+OUTPUT:
+- UI wireframe + components
+- API endpoints
+- Database model (Ticket, Company, User, Invoice)
+```
+
+***
+
+# 🧠 Bonus: Login Flow (Important for your system)
+
+You described this well — here’s the logic you should enforce:
+
+```
+IF user.role == "HQ"
+    redirect → /hq-dashboard
+ELSE IF user.role == "CLIENT"
+    redirect → /client-dashboard
+```
+
+Public website:
+
+* Only contains:
+  * Info pages
+  * Login button
+* No registration
+
+***
+
+# ✅ If you want next
+
+I can help you with:
+
+* ✅ Full database schema (tables & relationships)
+* ✅ API structure (REST endpoints)
+* ✅ UI wireframes/screens
+* ✅ Role-based authentication flow (JWT / Azure AD)
+
+Just tell me 👍

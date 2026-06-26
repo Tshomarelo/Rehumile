@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <link rel="shortcut icon" href="/portal/static/img/icons/icon-48x48.png" />
+  <title>Website Manager | Rehumile IMS</title>
+  <link href="/portal/static/css/app.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
+  <style>
+    *{box-sizing:border-box}
+    body{font-family:'Inter',system-ui,sans-serif;background:#f5f7fb;margin:0}
+    .wrapper{display:flex;min-height:100vh}
+    .sidebar{width:260px;min-width:260px;background:#222e3c;display:flex;flex-direction:column;position:fixed;top:0;bottom:0;left:0;z-index:100;overflow-y:auto;transition:width .2s}
+    .sidebar-brand{display:flex;align-items:center;padding:16px 20px;border-bottom:1px solid rgba(255,255,255,.07);text-decoration:none}
+    .sidebar-brand img{height:36px;object-fit:contain}
+    .sidebar-nav{list-style:none;padding:8px 0;margin:0;flex:1}
+    .sidebar-header{padding:10px 20px 4px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:rgba(255,255,255,.35)}
+    .sidebar-item{margin:1px 0}
+    .sidebar-link{display:flex;align-items:center;gap:10px;padding:9px 20px;color:rgba(255,255,255,.75);text-decoration:none;font-size:.875rem;border-left:3px solid transparent;transition:all .15s}
+    .sidebar-link:hover,.sidebar-item.active .sidebar-link{color:#fff;background:rgba(255,255,255,.06);border-left-color:#3b82f6}
+    .sidebar-link svg{width:18px;height:18px;flex-shrink:0}
+    .main{flex:1;margin-left:260px;display:flex;flex-direction:column;min-width:0}
+    .navbar{background:#fff;border-bottom:1px solid #e5e7eb;padding:0 24px;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50}
+    .navbar-left{display:flex;align-items:center;gap:12px}
+    .nav-user{display:flex;align-items:center;gap:8px;cursor:pointer;padding:6px 10px;border-radius:6px;border:1px solid #e5e7eb;font-size:.875rem;color:#374151;background:#fff;position:relative}
+    .nav-user:hover{background:#f9fafb}
+    .user-dropdown{display:none;position:absolute;right:0;top:calc(100% + 6px);background:#fff;border:1px solid #e5e7eb;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.12);min-width:200px;z-index:200;overflow:hidden}
+    .user-dropdown.open{display:block}
+    .user-dropdown-header{padding:12px 16px;border-bottom:1px solid #f3f4f6}
+    .user-dropdown-name{font-weight:600;font-size:.875rem;color:#111827}
+    .user-dropdown-role{font-size:.75rem;color:#6b7280;text-transform:capitalize}
+    .user-dropdown-item{display:flex;align-items:center;gap:8px;padding:10px 16px;font-size:.875rem;color:#374151;cursor:pointer;text-decoration:none}
+    .user-dropdown-item:hover{background:#f9fafb}
+    .content{padding:24px;flex:1}
+    .page-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px}
+    .page-title{font-size:1.5rem;font-weight:700;color:#111827;margin:0}
+    .page-subtitle{font-size:.875rem;color:#6b7280;margin:4px 0 0}
+    .btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:8px;font-size:.875rem;font-weight:500;cursor:pointer;border:none;transition:all .15s}
+    .btn-primary{background:#3b82f6;color:#fff}.btn-primary:hover{background:#2563eb}
+    .btn-success{background:#16a34a;color:#fff}.btn-success:hover{background:#15803d}
+    .btn-danger{background:#dc2626;color:#fff}.btn-danger:hover{background:#b91c1c}
+    .btn-outline{background:#fff;color:#374151;border:1px solid #d1d5db}.btn-outline:hover{background:#f9fafb}
+    .btn-sm{padding:5px 10px;font-size:.8125rem}
+    /* Tabs */
+    .tab-bar{display:flex;gap:4px;border-bottom:2px solid #e5e7eb;margin-bottom:24px}
+    .tab-btn{padding:10px 18px;font-size:.875rem;font-weight:500;color:#6b7280;background:none;border:none;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;transition:all .15s}
+    .tab-btn.active{color:#3b82f6;border-bottom-color:#3b82f6}
+    .tab-panel{display:none}.tab-panel.active{display:block}
+    /* KPI strip */
+    .kpi-strip{display:flex;gap:16px;margin-bottom:24px;flex-wrap:wrap}
+    .kpi-card{background:#fff;border-radius:12px;padding:16px 20px;border:1px solid #e5e7eb;flex:1;min-width:140px}
+    .kpi-value{font-size:1.75rem;font-weight:700;color:#111827}
+    .kpi-label{font-size:.8125rem;color:#6b7280;margin-top:2px}
+    /* Table */
+    .table-card{background:#fff;border-radius:12px;border:1px solid #e5e7eb;overflow:hidden;margin-bottom:24px}
+    .table-card-header{padding:16px 20px;border-bottom:1px solid #f3f4f6;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px}
+    .table-card-title{font-size:.9375rem;font-weight:600;color:#111827}
+    table.dash-table{width:100%;border-collapse:collapse}
+    table.dash-table th{padding:10px 16px;text-align:left;font-size:.75rem;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:.04em;background:#f9fafb;border-bottom:1px solid #f3f4f6}
+    table.dash-table td{padding:12px 16px;font-size:.875rem;color:#374151;border-bottom:1px solid #f9fafb;vertical-align:middle}
+    table.dash-table tr:last-child td{border-bottom:none}
+    table.dash-table tr:hover td{background:#fafafa}
+    .badge{display:inline-flex;align-items:center;padding:3px 8px;border-radius:999px;font-size:.6875rem;font-weight:600}
+    .badge-green{background:#dcfce7;color:#15803d}
+    .badge-gray{background:#f3f4f6;color:#4b5563}
+    .badge-blue{background:#dbeafe;color:#1d4ed8}
+    .badge-amber{background:#fef3c7;color:#b45309}
+    /* Modal */
+    .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:500;align-items:center;justify-content:center}
+    .modal-overlay.open{display:flex}
+    .modal{background:#fff;border-radius:16px;padding:28px;width:100%;max-width:540px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.2)}
+    .modal-title{font-size:1.125rem;font-weight:700;color:#111827;margin:0 0 20px}
+    .form-group{margin-bottom:16px}
+    .form-label{display:block;font-size:.8125rem;font-weight:600;color:#374151;margin-bottom:6px}
+    .form-control{width:100%;padding:9px 12px;border:1px solid #d1d5db;border-radius:8px;font-size:.875rem;color:#111827;outline:none;transition:border .15s}
+    .form-control:focus{border-color:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,.1)}
+    textarea.form-control{resize:vertical;min-height:80px}
+    select.form-control{background:#fff}
+    .form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .modal-footer{display:flex;justify-content:flex-end;gap:8px;margin-top:20px;padding-top:16px;border-top:1px solid #f3f4f6}
+    /* Content editor */
+    .content-row{display:flex;align-items:flex-start;gap:12px;padding:14px 0;border-bottom:1px solid #f3f4f6}
+    .content-row:last-child{border-bottom:none}
+    .content-label{font-size:.8125rem;font-weight:600;color:#374151;width:200px;flex-shrink:0;padding-top:8px}
+    .content-section-badge{font-size:.7rem;color:#9ca3af;display:block;font-weight:400}
+    .content-value-wrap{flex:1}
+    .inline-input{width:100%;padding:8px 10px;border:1px solid #e5e7eb;border-radius:6px;font-size:.875rem;color:#111827;outline:none}
+    .inline-input:focus{border-color:#3b82f6}
+    .save-indicator{font-size:.75rem;color:#16a34a;margin-left:6px;opacity:0;transition:opacity .3s}
+    .save-indicator.show{opacity:1}
+    /* Preview chip */
+    .preview-link{display:inline-flex;align-items:center;gap:4px;font-size:.75rem;color:#3b82f6;text-decoration:none;padding:4px 8px;border:1px solid #dbeafe;border-radius:6px;background:#f0f9ff}
+    .preview-link:hover{background:#dbeafe}
+    @media(max-width:768px){.sidebar{width:0;min-width:0;overflow:hidden}.main{margin-left:0}.sidebar.open{width:260px;min-width:260px}.form-row{grid-template-columns:1fr}}
+    .empty-state{text-align:center;padding:48px;color:#9ca3af}
+    .toast{position:fixed;bottom:24px;right:24px;background:#111827;color:#fff;padding:12px 20px;border-radius:10px;font-size:.875rem;z-index:999;opacity:0;transform:translateY(8px);transition:all .25s;pointer-events:none}
+    .toast.show{opacity:1;transform:translateY(0)}
+  </style>
+</head>
+<body>
+<div class="wrapper">
+  <!-- SIDEBAR -->
+  <nav class="sidebar" id="sidebar">
+    <a class="sidebar-brand" href="/portal/dashboard/">
+      <img src="/portal/static/img/rehumile-logo.jpeg" alt="Rehumile TMW">
+    </a>
+    <ul class="sidebar-nav">
+      <li class="sidebar-header">Operations</li>
+      <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/"><i data-feather="sliders"></i><span>HQ Dashboard</span></a></li>
+      <li class="sidebar-item"><a class="sidebar-link" href="/portal/incidents/"><i data-feather="alert-circle"></i><span>Incidents</span></a></li>
+      <li class="sidebar-item"><a class="sidebar-link" href="/portal/companies/"><i data-feather="briefcase"></i><span>Companies</span></a></li>
+      <li class="sidebar-item"><a class="sidebar-link" href="/portal/users/"><i data-feather="users"></i><span>Users</span></a></li>
+      <li class="sidebar-header">Workshop</li>
+      <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/job-cards/"><i data-feather="tool"></i><span>Job Cards</span></a></li>
+      <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/inventory/"><i data-feather="package"></i><span>Inventory</span></a></li>
+      <li class="sidebar-header">Finance</li>
+      <li class="sidebar-item"><a class="sidebar-link" href="/portal/invoices/"><i data-feather="file-text"></i><span>Invoices</span></a></li>
+      <li class="sidebar-item"><a class="sidebar-link" href="/portal/reports/"><i data-feather="bar-chart-2"></i><span>Reports</span></a></li>
+      <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/pos/"><i data-feather="shopping-cart"></i><span>POS</span></a></li>
+      <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/vouchers/"><i data-feather="wifi"></i><span>Vouchers</span></a></li>
+      <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/cash-management/"><i data-feather="dollar-sign"></i><span>Cash Management</span></a></li>
+      <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/financial-analytics/"><i data-feather="trending-up"></i><span>Financial Analytics</span></a></li>
+      <li class="sidebar-header">Compliance</li>
+      <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/compliance/"><i data-feather="shield"></i><span>SARS Hub</span></a></li>
+      <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/vat201/"><i data-feather="percent"></i><span>VAT201 Staging</span></a></li>
+      <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/emp201/"><i data-feather="layers"></i><span>EMP201 Payroll</span></a></li>
+      <li class="sidebar-header">HR</li>
+      <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/hr/"><i data-feather="user-check"></i><span>Employee Profiles</span></a></li>
+      <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/hr/#leave"><i data-feather="calendar"></i><span>Leave Management</span></a></li>
+      <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/playbook/"><i data-feather="check-square"></i><span>Operational Playbook</span></a></li>
+      <li class="sidebar-header">Website</li>
+      <li class="sidebar-item active"><a class="sidebar-link" href="/portal/dashboard/website/"><i data-feather="globe"></i><span>Website Manager</span></a></li>
+      <li class="sidebar-header">System</li>
+      <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/sla-monitor/"><i data-feather="alert-triangle"></i><span>SLA Monitor</span></a></li>
+      <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/notifications/"><i data-feather="bell"></i><span>Notifications</span></a></li>
+      <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/audit-log/"><i data-feather="clipboard"></i><span>Audit Log</span></a></li>
+      <li class="sidebar-item"><a class="sidebar-link" href="/portal/admin/" target="_blank"><i data-feather="settings"></i><span>Admin Panel</span></a></li>
+    </ul>
+  </nav>
+
+  <!-- MAIN -->
+  <div class="main">
+    <nav class="navbar">
+      <div class="navbar-left">
+        <button onclick="document.getElementById('sidebar').classList.toggle('open')" style="background:none;border:none;cursor:pointer;padding:4px">
+          <svg width="20" height="20" fill="none" stroke="#374151" stroke-width="2" viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        </button>
+        <a href="/" target="_blank" class="preview-link">
+          <i data-feather="external-link" style="width:13px;height:13px"></i> View Website
+        </a>
+      </div>
+      <div class="nav-user" id="navUser" onclick="document.getElementById('userDrop').classList.toggle('open')">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+        <span id="navUserName">…</span>
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
+        <div class="user-dropdown" id="userDrop">
+          <div class="user-dropdown-header">
+            <div class="user-dropdown-name" id="dropName">…</div>
+            <div class="user-dropdown-role" id="dropRole">…</div>
+          </div>
+          <a class="user-dropdown-item" href="#" id="logoutBtn">
+            <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+            Sign out
+          </a>
+        </div>
+      </div>
+    </nav>
+
+    <div class="content">
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">Website Manager</h1>
+          <p class="page-subtitle">Control all public-facing website content, prices, and text from one place.</p>
+        </div>
+        <div style="display:flex;gap:8px">
+          <a href="/" target="_blank" class="btn btn-outline"><i data-feather="eye" style="width:15px;height:15px"></i> Preview Site</a>
+          <button class="btn btn-primary" onclick="openPriceModal()"><i data-feather="plus" style="width:15px;height:15px"></i> Add Service Price</button>
+        </div>
+      </div>
+
+      <!-- KPI strip -->
+      <div class="kpi-strip">
+        <div class="kpi-card">
+          <div class="kpi-value" id="kpiTotal">—</div>
+          <div class="kpi-label">Total Services</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-value" id="kpiFeatured">—</div>
+          <div class="kpi-label">Featured on Homepage</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-value" id="kpiAvgPrice">—</div>
+          <div class="kpi-label">Avg. Listed Price</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-value" id="kpiContentBlocks">—</div>
+          <div class="kpi-label">Content Blocks</div>
+        </div>
+      </div>
+
+      <!-- Tab bar -->
+      <div class="tab-bar">
+        <button class="tab-btn active" onclick="switchTab('prices', this)">Service Prices</button>
+        <button class="tab-btn" onclick="switchTab('content', this)">Page Content</button>
+      </div>
+
+      <!-- ── Tab: Prices ── -->
+      <div class="tab-panel active" id="tab-prices">
+        <div class="table-card">
+          <div class="table-card-header">
+            <span class="table-card-title">All Service Prices</span>
+            <div style="display:flex;gap:8px;align-items:center">
+              <select id="filterCategory" class="form-control" style="width:auto;padding:6px 10px" onchange="loadPrices()">
+                <option value="">All Categories</option>
+                <option value="it_support">IT Support</option>
+                <option value="networking">Networking</option>
+                <option value="cctv">CCTV & Security</option>
+                <option value="software">Software</option>
+                <option value="hardware">Hardware</option>
+                <option value="cloud">Cloud Services</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+          </div>
+          <table class="dash-table">
+            <thead>
+              <tr>
+                <th>Service Name</th>
+                <th>Category</th>
+                <th>Price</th>
+                <th>Unit</th>
+                <th>Featured</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="pricesBody">
+              <tr><td colspan="7"><div class="empty-state">Loading…</div></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ── Tab: Content ── -->
+      <div class="tab-panel" id="tab-content">
+        <div class="table-card">
+          <div class="table-card-header">
+            <span class="table-card-title">Website Text & Content Blocks</span>
+            <select id="filterSection" class="form-control" style="width:auto;padding:6px 10px" onchange="loadContent()">
+              <option value="">All Sections</option>
+              <option value="hero">Hero Banner</option>
+              <option value="about">About Us</option>
+              <option value="services">Services Section</option>
+              <option value="process">How It Works</option>
+              <option value="cta">Call To Action</option>
+              <option value="contact">Contact Info</option>
+              <option value="footer">Footer</option>
+            </select>
+          </div>
+          <div id="contentEditor" style="padding:8px 20px 16px">
+            <div class="empty-state">Loading content blocks…</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:4px">
+          <button class="btn btn-primary" onclick="seedDefaultContent()">
+            <i data-feather="database" style="width:15px;height:15px"></i> Seed Default Content
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<!-- Add/Edit Price Modal -->
+<div class="modal-overlay" id="priceModal">
+  <div class="modal">
+    <h2 class="modal-title" id="priceModalTitle">Add Service Price</h2>
+    <input type="hidden" id="editPriceId">
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Service Name *</label>
+        <input type="text" class="form-control" id="pName" placeholder="e.g. PC Repair — Full Service">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Category *</label>
+        <select class="form-control" id="pCategory">
+          <option value="it_support">IT Support</option>
+          <option value="networking">Networking</option>
+          <option value="cctv">CCTV & Security</option>
+          <option value="software">Software</option>
+          <option value="hardware">Hardware</option>
+          <option value="cloud">Cloud Services</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Description</label>
+      <textarea class="form-control" id="pDescription" placeholder="Brief description visible to customers…"></textarea>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Price (ZAR) *</label>
+        <input type="number" class="form-control" id="pPrice" placeholder="0.00" step="0.01" min="0">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Unit</label>
+        <input type="text" class="form-control" id="pUnit" placeholder="per visit / per device / per month">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Display Order</label>
+        <input type="number" class="form-control" id="pOrder" value="0" min="0">
+      </div>
+      <div class="form-group" style="display:flex;flex-direction:column;gap:8px;padding-top:24px">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:.875rem">
+          <input type="checkbox" id="pFeatured"> Featured on Homepage
+        </label>
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:.875rem">
+          <input type="checkbox" id="pActive" checked> Active (visible on site)
+        </label>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closePriceModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="savePrice()">Save Service</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const API = '/portal/api';
+const token = () => localStorage.getItem('ims_access');
+
+function authHeaders() {
+  return { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token() };
+}
+
+// ── Auth ─────────────────────────────────────────────────────────────────────
+function checkAuth() {
+  const t = token();
+  if (!t) { window.location.href = '/portal/login/'; return; }
+  try {
+    const payload = JSON.parse(atob(t.split('.')[1]));
+    if (payload.exp < Date.now() / 1000) { window.location.href = '/portal/login/'; return; }
+  } catch(e) { window.location.href = '/portal/login/'; return; }
+  const u = JSON.parse(localStorage.getItem('ims_user') || '{}');
+  document.getElementById('navUserName').textContent = u.username || 'HQ';
+  document.getElementById('dropName').textContent = (u.first_name || '') + ' ' + (u.last_name || '');
+  document.getElementById('dropRole').textContent = u.role || '';
+}
+
+document.getElementById('logoutBtn').addEventListener('click', e => {
+  e.preventDefault();
+  localStorage.removeItem('ims_access'); localStorage.removeItem('ims_refresh'); localStorage.removeItem('ims_user');
+  window.location.href = '/portal/login/';
+});
+
+// ── Toast ─────────────────────────────────────────────────────────────────────
+function toast(msg, color = '#111827') {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.style.background = color;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 3000);
+}
+
+// ── Tabs ─────────────────────────────────────────────────────────────────────
+function switchTab(name, btn) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  btn.classList.add('active');
+}
+
+// ── KPIs ─────────────────────────────────────────────────────────────────────
+async function loadKPIs() {
+  const [pr, ct] = await Promise.all([
+    fetch(API + '/website/prices/', { headers: authHeaders() }).then(r => r.json()).catch(() => []),
+    fetch(API + '/website/content/', { headers: authHeaders() }).then(r => r.json()).catch(() => []),
+  ]);
+  const active = pr.filter(p => p.is_active);
+  document.getElementById('kpiTotal').textContent = active.length;
+  document.getElementById('kpiFeatured').textContent = active.filter(p => p.is_featured).length;
+  const avg = active.length ? active.reduce((s, p) => s + parseFloat(p.price), 0) / active.length : 0;
+  document.getElementById('kpiAvgPrice').textContent = 'R' + avg.toFixed(0);
+  document.getElementById('kpiContentBlocks').textContent = ct.length || 0;
+}
+
+// ── Prices ────────────────────────────────────────────────────────────────────
+const CAT_LABELS = {
+  it_support: 'IT Support', networking: 'Networking', cctv: 'CCTV & Security',
+  software: 'Software', hardware: 'Hardware', cloud: 'Cloud Services', other: 'Other',
+};
+const CAT_COLORS = {
+  it_support: 'badge-blue', networking: 'badge-blue', cctv: 'badge-amber',
+  software: 'badge-blue', hardware: 'badge-gray', cloud: 'badge-blue', other: 'badge-gray',
+};
+
+async function loadPrices() {
+  const cat = document.getElementById('filterCategory').value;
+  let url = API + '/website/prices/';
+  const res = await fetch(url, { headers: authHeaders() });
+  const data = await res.json();
+  const filtered = cat ? data.filter(p => p.category === cat) : data;
+  const tbody = document.getElementById('pricesBody');
+  if (!filtered.length) {
+    tbody.innerHTML = '<tr><td colspan="7"><div class="empty-state">No services found. Click "Add Service Price" to get started.</div></td></tr>';
+    return;
+  }
+  tbody.innerHTML = filtered.map(p => `
+    <tr>
+      <td><strong>${p.name}</strong>${p.description ? '<br><span style="font-size:.75rem;color:#9ca3af">' + p.description.substring(0,80) + '</span>' : ''}</td>
+      <td><span class="badge ${CAT_COLORS[p.category] || 'badge-gray'}">${CAT_LABELS[p.category] || p.category}</span></td>
+      <td style="font-weight:600;color:#111827">R ${parseFloat(p.price).toFixed(2)}</td>
+      <td style="color:#6b7280">${p.unit}</td>
+      <td>${p.is_featured ? '<span class="badge badge-green">★ Featured</span>' : '<span style="color:#d1d5db">—</span>'}</td>
+      <td>${p.is_active ? '<span class="badge badge-green">Active</span>' : '<span class="badge badge-gray">Hidden</span>'}</td>
+      <td>
+        <button class="btn btn-outline btn-sm" onclick="editPrice(${JSON.stringify(p).replace(/"/g,'&quot;')})">Edit</button>
+        <button class="btn btn-danger btn-sm" style="margin-left:4px" onclick="deletePrice('${p.id}')">Delete</button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+function openPriceModal(data = null) {
+  document.getElementById('priceModalTitle').textContent = data ? 'Edit Service Price' : 'Add Service Price';
+  document.getElementById('editPriceId').value = data ? data.id : '';
+  document.getElementById('pName').value = data ? data.name : '';
+  document.getElementById('pCategory').value = data ? data.category : 'it_support';
+  document.getElementById('pDescription').value = data ? data.description : '';
+  document.getElementById('pPrice').value = data ? data.price : '';
+  document.getElementById('pUnit').value = data ? data.unit : 'per visit';
+  document.getElementById('pOrder').value = data ? data.display_order : 0;
+  document.getElementById('pFeatured').checked = data ? data.is_featured : false;
+  document.getElementById('pActive').checked = data ? data.is_active : true;
+  document.getElementById('priceModal').classList.add('open');
+}
+function editPrice(p) { openPriceModal(p); }
+function closePriceModal() { document.getElementById('priceModal').classList.remove('open'); }
+
+async function savePrice() {
+  const id = document.getElementById('editPriceId').value;
+  const payload = {
+    name: document.getElementById('pName').value,
+    category: document.getElementById('pCategory').value,
+    description: document.getElementById('pDescription').value,
+    price: parseFloat(document.getElementById('pPrice').value) || 0,
+    unit: document.getElementById('pUnit').value || 'per visit',
+    display_order: parseInt(document.getElementById('pOrder').value) || 0,
+    is_featured: document.getElementById('pFeatured').checked,
+    is_active: document.getElementById('pActive').checked,
+  };
+  if (!payload.name || !payload.price) { toast('Service name and price are required.', '#dc2626'); return; }
+  const url = id ? `${API}/website/prices/${id}/` : `${API}/website/prices/`;
+  const method = id ? 'PATCH' : 'POST';
+  const res = await fetch(url, { method, headers: authHeaders(), body: JSON.stringify(payload) });
+  if (res.ok) {
+    toast(id ? 'Price updated.' : 'Service added.', '#16a34a');
+    closePriceModal(); loadPrices(); loadKPIs();
+  } else {
+    toast('Save failed — check all fields.', '#dc2626');
+  }
+}
+
+async function deletePrice(id) {
+  if (!confirm('Delete this service price? This will remove it from the website.')) return;
+  const res = await fetch(`${API}/website/prices/${id}/`, { method: 'DELETE', headers: authHeaders() });
+  if (res.ok) { toast('Deleted.', '#16a34a'); loadPrices(); loadKPIs(); }
+  else { toast('Delete failed.', '#dc2626'); }
+}
+
+// ── Content Blocks ────────────────────────────────────────────────────────────
+let contentDebounceTimers = {};
+
+async function loadContent() {
+  const sec = document.getElementById('filterSection').value;
+  let url = API + '/website/content/';
+  if (sec) url += '?section=' + sec;
+  const res = await fetch(url, { headers: authHeaders() });
+  const data = await res.json();
+  const editor = document.getElementById('contentEditor');
+  if (!data.length) {
+    editor.innerHTML = '<div class="empty-state">No content blocks found. Click "Seed Default Content" to create defaults.</div>';
+    return;
+  }
+  const SECTION_LABELS = {
+    hero:'Hero Banner',about:'About Us',services:'Services Section',
+    process:'How It Works',cta:'Call To Action',contact:'Contact Info',footer:'Footer',
+  };
+  editor.innerHTML = data.map(c => `
+    <div class="content-row">
+      <div class="content-label">
+        ${c.label}
+        <span class="content-section-badge">${SECTION_LABELS[c.section] || c.section}</span>
+      </div>
+      <div class="content-value-wrap">
+        ${c.value.length > 120 || c.value.includes('\n')
+          ? `<textarea class="inline-input" rows="3" data-id="${c.id}" data-key="${c.key}" onInput="scheduleContentSave(this)">${c.value}</textarea>`
+          : `<input type="text" class="inline-input" value="${c.value.replace(/"/g,'&quot;')}" data-id="${c.id}" data-key="${c.key}" onInput="scheduleContentSave(this)">`
+        }
+        <span class="save-indicator" id="si-${c.id}">✓ Saved</span>
+      </div>
+    </div>
+  `).join('');
+}
+
+function scheduleContentSave(el) {
+  const id = el.dataset.id;
+  clearTimeout(contentDebounceTimers[id]);
+  contentDebounceTimers[id] = setTimeout(() => saveContentBlock(id, el.value), 800);
+}
+
+async function saveContentBlock(id, value) {
+  const res = await fetch(`${API}/website/content/${id}/`, {
+    method: 'PATCH', headers: authHeaders(), body: JSON.stringify({ value }),
+  });
+  if (res.ok) {
+    const ind = document.getElementById('si-' + id);
+    if (ind) { ind.classList.add('show'); setTimeout(() => ind.classList.remove('show'), 2000); }
+  }
+}
+
+// ── Seed Default Content ──────────────────────────────────────────────────────
+const DEFAULT_CONTENT = [
+  { section:'hero', key:'hero_title', label:'Hero Title', value:'Expert IT Solutions for Your Business' },
+  { section:'hero', key:'hero_subtitle', label:'Hero Subtitle', value:'Rehumile TMW delivers fast, reliable IT support, networking, and CCTV solutions across South Africa.' },
+  { section:'hero', key:'hero_cta_primary', label:'Primary CTA Button Text', value:'Get a Free Quote' },
+  { section:'hero', key:'hero_cta_secondary', label:'Secondary CTA Button Text', value:'Sign In to Portal' },
+  { section:'hero', key:'hero_stat_devices', label:'Stat: Devices Managed', value:'500+' },
+  { section:'hero', key:'hero_stat_satisfaction', label:'Stat: Satisfaction Rate', value:'98%' },
+  { section:'hero', key:'hero_stat_turnaround', label:'Stat: Turnaround Time', value:'24h' },
+  { section:'hero', key:'hero_stat_years', label:'Stat: Years Experience', value:'5+' },
+  { section:'about', key:'about_headline', label:'About Headline', value:'Why Choose Rehumile TMW?' },
+  { section:'about', key:'about_body', label:'About Body Text', value:'We are a specialist IT services company committed to keeping your business running smoothly. From hardware repairs to full network setups, our certified technicians respond fast.' },
+  { section:'services', key:'services_headline', label:'Services Section Headline', value:'Our Services' },
+  { section:'services', key:'services_subheading', label:'Services Subheading', value:'Comprehensive IT support tailored to your business needs' },
+  { section:'process', key:'process_headline', label:'How It Works Headline', value:'How It Works' },
+  { section:'process', key:'process_step1', label:'Step 1', value:'Submit a Quote Request' },
+  { section:'process', key:'process_step2', label:'Step 2', value:'We Assess & Quote' },
+  { section:'process', key:'process_step3', label:'Step 3', value:'Technician On-Site or Remote' },
+  { section:'process', key:'process_step4', label:'Step 4', value:'Invoice & Follow-Up' },
+  { section:'cta', key:'cta_headline', label:'CTA Headline', value:'Ready to Get Started?' },
+  { section:'cta', key:'cta_body', label:'CTA Body', value:'Join 200+ businesses already using Rehumile TMW for their IT needs.' },
+  { section:'contact', key:'contact_email', label:'Contact Email', value:'info@rehumile.co.za' },
+  { section:'contact', key:'contact_phone', label:'Contact Phone', value:'+27 (0) 11 000 0000' },
+  { section:'contact', key:'contact_address', label:'Contact Address', value:'Johannesburg, Gauteng, South Africa' },
+  { section:'footer', key:'footer_tagline', label:'Footer Tagline', value:'Expert IT solutions for growing businesses.' },
+  { section:'footer', key:'footer_copyright', label:'Footer Copyright', value:'© 2026 Rehumile TMW. All rights reserved.' },
+];
+
+async function seedDefaultContent() {
+  if (!confirm('This will create missing default content blocks (existing blocks are not overwritten). Continue?')) return;
+  let created = 0;
+  for (const item of DEFAULT_CONTENT) {
+    const res = await fetch(`${API}/website/content/`, {
+      method: 'POST', headers: authHeaders(), body: JSON.stringify(item),
+    });
+    if (res.ok) { const d = await res.json(); if (d.created) created++; }
+  }
+  toast(`Seeded ${created} new content blocks.`, '#16a34a');
+  loadContent(); loadKPIs();
+}
+
+// ── Close modal on overlay click ──────────────────────────────────────────────
+document.getElementById('priceModal').addEventListener('click', function(e) {
+  if (e.target === this) closePriceModal();
+});
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+checkAuth();
+feather.replace();
+loadPrices();
+loadContent();
+loadKPIs();
+</script>
+</body>
+</html>

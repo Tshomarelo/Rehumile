@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Choose a Service | Rehumile TMW</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Inter', sans-serif; }
+    @keyframes fadeUp { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:none} }
+    .fade-up { animation: fadeUp 0.4s ease forwards; }
+    .service-card { transition: border-color .2s, box-shadow .2s, transform .2s; cursor: pointer; }
+    .service-card:hover { border-color: #50181E; box-shadow: 0 8px 24px rgba(80,24,30,0.12); transform: translateY(-3px); }
+    .service-card.selected { border-color: #50181E; background: rgba(80,24,30,0.04); box-shadow: 0 0 0 3px rgba(80,24,30,0.15); }
+    .step { display: none; }
+    .step.active { display: block; }
+    .step-indicator { display: flex; align-items: center; gap: 8px; margin-bottom: 28px; }
+    .step-dot { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; transition: all .3s; flex-shrink: 0; }
+    .step-dot.done { background: #16a34a; color: white; }
+    .step-dot.active { background: #50181E; color: white; }
+    .step-dot.todo { background: #e5e7eb; color: #9ca3af; }
+    .step-line { flex: 1; height: 2px; background: #e5e7eb; transition: background .3s; }
+    .step-line.done { background: #16a34a; }
+    .form-input { width:100%;border:1.5px solid #d1d5db;border-radius:9px;padding:11px 14px;font-size:14px;outline:none;transition:border-color .2s,box-shadow .2s; }
+    .form-input:focus { border-color:#50181E;box-shadow:0 0 0 3px rgba(80,24,30,0.1); }
+    .btn-primary { background:#50181E;color:white;border:none;border-radius:10px;padding:13px 28px;font-weight:700;font-size:15px;cursor:pointer;width:100%;transition:opacity .2s,transform .15s; }
+    .btn-primary:hover { opacity:.9;transform:translateY(-1px); }
+    .btn-secondary { background:white;color:#50181E;border:1.5px solid #50181E;border-radius:10px;padding:12px 28px;font-weight:600;font-size:14px;cursor:pointer;width:100%;transition:background .2s; }
+    .btn-secondary:hover { background:rgba(80,24,30,0.04); }
+    @keyframes spin { to{transform:rotate(360deg)} }
+    .spinner { display:inline-block;width:18px;height:18px;border:2px solid rgba(255,255,255,0.4);border-top-color:white;border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:6px; }
+    .price-badge { display:inline-block;background:rgba(179,143,67,0.1);border:1px solid rgba(179,143,67,0.3);color:#92741e;border-radius:6px;padding:2px 8px;font-size:12px;font-weight:700; }
+  </style>
+</head>
+<body class="min-h-screen" style="background:linear-gradient(160deg,#fafafa 0%,#f3f4f6 100%)">
+
+  <!-- Top nav strip -->
+  <header class="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between shadow-sm">
+    <a href="/" class="flex items-center gap-2">
+      <img src="/portal/static/img/rehumile-logo-brand.jpeg" alt="Rehumile TMW" style="height:38px;object-fit:contain;border-radius:6px">
+    </a>
+    <div class="flex items-center gap-2 text-sm text-gray-500">
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+      Secured by PayFast
+      <img src="https://www.payfast.co.za/assets/images/logo.svg" alt="PayFast" style="height:18px;opacity:.7" onerror="this.style.display='none'">
+    </div>
+  </header>
+
+  <div class="max-w-2xl mx-auto px-4 py-10">
+    <div class="text-center mb-8 fade-up">
+      <h1 class="text-3xl font-black" style="color:#50181E">Choose Your Service</h1>
+      <p class="text-gray-500 mt-2">Select what you need, fill in your details, and pay securely via PayFast.</p>
+    </div>
+
+    <!-- Step indicators -->
+    <div class="step-indicator fade-up">
+      <div class="step-dot active" id="dot-1">1</div>
+      <div class="step-line" id="line-1"></div>
+      <div class="step-dot todo" id="dot-2">2</div>
+      <div class="step-line" id="line-2"></div>
+      <div class="step-dot todo" id="dot-3">3</div>
+    </div>
+    <div class="flex text-xs font-semibold text-gray-400 mb-8 fade-up" style="margin-top:-20px">
+      <span style="width:32px;text-align:center">Service</span>
+      <span style="flex:1"></span>
+      <span style="width:32px;text-align:center">Details</span>
+      <span style="flex:1"></span>
+      <span style="width:32px;text-align:center">Pay</span>
+    </div>
+
+    <div class="bg-white rounded-2xl shadow-lg overflow-hidden fade-up">
+
+      <!-- ─── Step 1: Choose service ─────────────────────────── -->
+      <div class="step active p-6" id="step-1">
+        <h2 class="font-bold text-lg mb-4" style="color:#50181E">What do you need help with?</h2>
+
+        <!-- Category tabs -->
+        <div class="flex flex-wrap gap-2 mb-5" id="cat-tabs">
+          <button onclick="filterCat('all')" class="cat-btn px-3 py-1.5 rounded-lg text-sm font-semibold border transition-all active-cat" data-cat="all">All</button>
+          <button onclick="filterCat('hardware')" class="cat-btn px-3 py-1.5 rounded-lg text-sm font-semibold border transition-all" data-cat="hardware">🖥️ Hardware</button>
+          <button onclick="filterCat('software')" class="cat-btn px-3 py-1.5 rounded-lg text-sm font-semibold border transition-all" data-cat="software">💾 Software</button>
+          <button onclick="filterCat('pos')" class="cat-btn px-3 py-1.5 rounded-lg text-sm font-semibold border transition-all" data-cat="pos">🛒 POS</button>
+          <button onclick="filterCat('security')" class="cat-btn px-3 py-1.5 rounded-lg text-sm font-semibold border transition-all" data-cat="security">🔒 Security</button>
+          <button onclick="filterCat('combo')" class="cat-btn px-3 py-1.5 rounded-lg text-sm font-semibold border transition-all" data-cat="combo">⭐ Combos</button>
+        </div>
+
+        <div class="grid grid-cols-1 gap-3 max-h-96 overflow-y-auto pr-1" id="service-grid">
+          <!-- Populated by JS -->
+        </div>
+
+        <div class="mt-5 pt-4 border-t border-gray-100 flex justify-between items-center">
+          <div id="selected-preview" class="text-sm text-gray-400 italic">No service selected yet</div>
+          <button onclick="goStep2()" id="next-1" class="btn-primary" style="width:auto;padding:10px 24px" disabled>
+            Next: My Details →
+          </button>
+        </div>
+      </div>
+
+      <!-- ─── Step 2: Personal details ─────────────────────── -->
+      <div class="step p-6" id="step-2">
+        <h2 class="font-bold text-lg mb-1" style="color:#50181E">Your Details</h2>
+        <p class="text-sm text-gray-500 mb-5">We'll use these to confirm your booking and send a receipt.</p>
+
+        <div class="grid grid-cols-2 gap-3 mb-3">
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-1.5">First Name *</label>
+            <input type="text" id="det-fname" class="form-input" placeholder="Your first name">
+          </div>
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-1.5">Last Name</label>
+            <input type="text" id="det-lname" class="form-input" placeholder="Last name">
+          </div>
+        </div>
+        <div class="mb-3">
+          <label class="block text-sm font-semibold text-gray-700 mb-1.5">Email Address *</label>
+          <input type="email" id="det-email" class="form-input" placeholder="you@example.com">
+        </div>
+        <div class="mb-3">
+          <label class="block text-sm font-semibold text-gray-700 mb-1.5">Phone / WhatsApp</label>
+          <input type="tel" id="det-phone" class="form-input" placeholder="e.g. 068 397 3484">
+        </div>
+        <div class="mb-5">
+          <label class="block text-sm font-semibold text-gray-700 mb-1.5">Special Notes <span class="text-gray-400 font-normal">(optional)</span></label>
+          <textarea id="det-notes" class="form-input" rows="2" placeholder="E.g. 'Laptop won't start — Windows 11 error' or 'Need POS for a new spaza shop'"></textarea>
+        </div>
+
+        <div id="step2-error" class="mb-3 hidden rounded-lg p-3 text-sm" style="background:#fef2f2;border:1px solid #fecaca;color:#b91c1c"></div>
+
+        <div class="flex gap-3">
+          <button onclick="goStep(1)" class="btn-secondary" style="width:auto;padding:10px 20px">← Back</button>
+          <button onclick="goStep3()" class="btn-primary">Continue to Payment →</button>
+        </div>
+      </div>
+
+      <!-- ─── Step 3: Review & Pay ───────────────────────────── -->
+      <div class="step p-6" id="step-3">
+        <h2 class="font-bold text-lg mb-1" style="color:#50181E">Review & Pay</h2>
+        <p class="text-sm text-gray-500 mb-5">Confirm your order then proceed to secure payment.</p>
+
+        <!-- Order summary -->
+        <div class="rounded-xl border border-gray-200 overflow-hidden mb-5">
+          <div class="px-5 py-3 flex items-center justify-between" style="background:rgba(80,24,30,0.05)">
+            <span class="text-xs font-bold uppercase tracking-widest" style="color:#50181E">Order Summary</span>
+            <button onclick="goStep(1)" class="text-xs font-semibold" style="color:#50181E">Change</button>
+          </div>
+          <div class="px-5 py-4 space-y-3">
+            <div class="flex justify-between text-sm">
+              <span class="text-gray-500">Service</span>
+              <span class="font-semibold text-gray-900" id="rev-service">—</span>
+            </div>
+            <div class="flex justify-between text-sm">
+              <span class="text-gray-500">Name</span>
+              <span class="font-semibold text-gray-900" id="rev-name">—</span>
+            </div>
+            <div class="flex justify-between text-sm">
+              <span class="text-gray-500">Email</span>
+              <span class="font-semibold text-gray-900" id="rev-email">—</span>
+            </div>
+            <div class="border-t border-gray-100 pt-3 flex justify-between">
+              <span class="font-bold text-gray-900">Total</span>
+              <span class="font-black text-xl" style="color:#50181E" id="rev-amount">R —</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Security note -->
+        <div class="flex items-start gap-3 p-4 rounded-xl mb-5" style="background:#f0fdf4;border:1px solid #bbf7d0">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 shrink-0 mt-0.5" style="color:#16a34a" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+          <div>
+            <p class="text-sm font-semibold text-green-800">Secure Payment via PayFast</p>
+            <p class="text-xs text-green-700 mt-0.5">Your payment is processed directly by PayFast — a PCI DSS Level 1 certified South African payment gateway. Rehumile TMW never stores your card details.</p>
+          </div>
+        </div>
+
+        <div id="step3-error" class="mb-3 hidden rounded-lg p-3 text-sm" style="background:#fef2f2;border:1px solid #fecaca;color:#b91c1c"></div>
+
+        <div class="flex gap-3">
+          <button onclick="goStep(2)" class="btn-secondary" style="width:auto;padding:10px 20px">← Back</button>
+          <button onclick="doPayment()" id="pay-btn" class="btn-primary flex items-center justify-center gap-2" style="background:linear-gradient(135deg,#B38F43,#d4ac58);box-shadow:0 6px 20px rgba(179,143,67,0.4)">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
+            Pay Securely with PayFast
+          </button>
+        </div>
+        <p class="text-xs text-center text-gray-400 mt-3">By paying you agree to our service terms. Refunds are subject to our refund policy.</p>
+      </div>
+
+    </div><!-- /card -->
+
+    <!-- Accepted payments -->
+    <div class="mt-6 text-center fade-up">
+      <p class="text-xs text-gray-400 mb-3">Accepted payment methods via PayFast</p>
+      <div class="flex items-center justify-center gap-4 flex-wrap">
+        <span class="px-3 py-1.5 bg-white border rounded-lg text-xs font-bold text-gray-600 shadow-sm">💳 Visa</span>
+        <span class="px-3 py-1.5 bg-white border rounded-lg text-xs font-bold text-gray-600 shadow-sm">💳 Mastercard</span>
+        <span class="px-3 py-1.5 bg-white border rounded-lg text-xs font-bold text-gray-600 shadow-sm">🏦 EFT</span>
+        <span class="px-3 py-1.5 bg-white border rounded-lg text-xs font-bold text-gray-600 shadow-sm">📱 Instant EFT</span>
+        <span class="px-3 py-1.5 bg-white border rounded-lg text-xs font-bold text-gray-600 shadow-sm">🪙 Mobicred</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Hidden PayFast auto-submit form -->
+  <form id="pf-form" method="POST" style="display:none"></form>
+
+  <script>
+    // ── Service catalogue ─────────────────────────────────────────
+    const SERVICES = [
+      { id:'hw1', cat:'hardware', icon:'🖥️', name:'PC/Laptop Diagnostic Report', desc:'Full hardware & software diagnosis with written report', price:249.99 },
+      { id:'hw2', cat:'hardware', icon:'🦠', name:'Virus Removal + Security Hardening', desc:'Virus/malware removal, firmware updates, Support Assist', price:379.99 },
+      { id:'hw3', cat:'hardware', icon:'📡', name:'Remote Assistance (30 min)', desc:'Remote desktop support & health check session', price:119.99 },
+      { id:'hw4', cat:'hardware', icon:'🏠', name:'House Call / On-Site Visit', desc:'Technician comes to you — excludes service cost', price:249.99 },
+      { id:'hw5', cat:'hardware', icon:'🖨️', name:'Printer Setup & Maintenance', desc:'Installation, driver config, network printing', price:299.99 },
+      { id:'sw1', cat:'software', icon:'🪟', name:'Windows 11 Upgrade', desc:'Latest Windows 11 — permanent license + installation', price:599.99 },
+      { id:'sw2', cat:'software', icon:'🪟', name:'Windows 10 Upgrade', desc:'Windows 10 permanent license + clean install', price:479.00 },
+      { id:'sw3', cat:'software', icon:'📊', name:'Microsoft Office 365 (Permanent)', desc:'Latest Office 365 permanent subscription + activation', price:349.99 },
+      { id:'sw4', cat:'software', icon:'📊', name:'Microsoft Office 2019 (Permanent)', desc:'Office 2019 permanent license + installation', price:299.99 },
+      { id:'pos1', cat:'pos', icon:'🛒', name:'POS Software Provisioning', desc:'Single-terminal offline standalone inventory setup', price:1499.00 },
+      { id:'pos2', cat:'pos', icon:'⌨️', name:'Hardware Peripherals Config', desc:'Cash drawer, barcode scanner, receipt printer setup', price:699.99 },
+      { id:'pos3', cat:'pos', icon:'💳', name:'Card Machine Integration', desc:'Link Yoco/iKhokha to your POS system', price:349.99 },
+      { id:'pos4', cat:'pos', icon:'📚', name:'Staff POS Training', desc:'On-site operations & reporting training', price:450.00 },
+      { id:'sec1', cat:'security', icon:'🔒', name:'Security Audit & Risk Assessment', desc:'Full IT security audit with written recommendations', price:799.99 },
+      { id:'sec2', cat:'security', icon:'🛡️', name:'Endpoint Protection Setup', desc:'Antivirus deployment & firewall configuration', price:499.99 },
+      { id:'c1', cat:'combo', icon:'⭐', name:'Rehumile Combo 01', desc:'Office 365 + Desired Apps + Support Assist + Updates', price:1299.99, featured:true },
+      { id:'c2', cat:'combo', icon:'⭐', name:'Rehumile Combo 02', desc:'Windows 10/11 Upgrade + Office 365 + Basic Support', price:999.99 },
+      { id:'c3', cat:'combo', icon:'⭐', name:'Rehumile POS Combo 03', desc:'POS Setup + Peripherals + Staff Training + Stock Import', price:2249.99 },
+      { id:'c4', cat:'combo', icon:'⏱️', name:'5-Hour Consultation Block', desc:'Dedicated support time — use across multiple sessions', price:349.99, featured:true },
+    ];
+
+    let activeCat = 'all';
+    let selectedService = null;
+
+    function filterCat(cat) {
+      activeCat = cat;
+      document.querySelectorAll('.cat-btn').forEach(b => {
+        const isActive = b.dataset.cat === cat;
+        b.style.background = isActive ? '#50181E' : '';
+        b.style.color = isActive ? 'white' : '';
+        b.style.borderColor = isActive ? '#50181E' : '#d1d5db';
+      });
+      renderGrid();
+    }
+
+    function renderGrid() {
+      const grid = document.getElementById('service-grid');
+      const filtered = activeCat === 'all' ? SERVICES : SERVICES.filter(s => s.cat === activeCat);
+      grid.innerHTML = filtered.map(s => `
+        <div class="service-card border-2 border-gray-200 rounded-xl p-4 flex gap-3 items-start ${selectedService?.id === s.id ? 'selected' : ''}" onclick="selectService('${s.id}')">
+          <span style="font-size:24px;flex-shrink:0;line-height:1">${s.icon}</span>
+          <div class="flex-1 min-w-0">
+            <div class="flex items-start justify-between gap-2">
+              <p class="font-semibold text-sm text-gray-900">${s.name} ${s.featured ? '<span class="price-badge ml-1">POPULAR</span>' : ''}</p>
+              <span class="font-black text-sm shrink-0" style="color:#50181E">R ${s.price.toLocaleString('en-ZA', {minimumFractionDigits:2})}</span>
+            </div>
+            <p class="text-xs text-gray-400 mt-0.5">${s.desc}</p>
+          </div>
+          <div class="shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center mt-0.5 transition-all" style="border-color:${selectedService?.id===s.id?'#50181E':'#d1d5db'};background:${selectedService?.id===s.id?'#50181E':'white'}">
+            ${selectedService?.id===s.id ? '<svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>' : ''}
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function selectService(id) {
+      selectedService = SERVICES.find(s => s.id === id);
+      renderGrid();
+      const btn = document.getElementById('next-1');
+      btn.disabled = false;
+      btn.style.opacity = '1';
+      const preview = document.getElementById('selected-preview');
+      preview.innerHTML = `<span class="font-semibold text-gray-700">${selectedService.icon} ${selectedService.name}</span> — <span style="color:#50181E;font-weight:700">R ${selectedService.price.toLocaleString('en-ZA', {minimumFractionDigits:2})}</span>`;
+    }
+
+    function goStep(n) {
+      document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
+      document.getElementById(`step-${n}`).classList.add('active');
+      [1,2,3].forEach(i => {
+        const dot = document.getElementById(`dot-${i}`);
+        dot.className = 'step-dot ' + (i < n ? 'done' : i === n ? 'active' : 'todo');
+        if (i < 3) document.getElementById(`line-${i}`).className = 'step-line ' + (i < n ? 'done' : '');
+      });
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function goStep2() {
+      if (!selectedService) return;
+      // Pre-fill from logged-in user
+      const user = JSON.parse(localStorage.getItem('ims_user') || 'null');
+      if (user) {
+        document.getElementById('det-fname').value = user.first_name || '';
+        document.getElementById('det-lname').value = user.last_name || '';
+        document.getElementById('det-email').value = user.email || '';
+      }
+      goStep(2);
+    }
+
+    function goStep3() {
+      const fname = document.getElementById('det-fname').value.trim();
+      const email = document.getElementById('det-email').value.trim();
+      const errEl = document.getElementById('step2-error');
+      if (!fname || !email) {
+        errEl.textContent = 'First name and email address are required.';
+        errEl.classList.remove('hidden');
+        return;
+      }
+      errEl.classList.add('hidden');
+      // Populate review
+      document.getElementById('rev-service').textContent = `${selectedService.icon} ${selectedService.name}`;
+      document.getElementById('rev-name').textContent = `${fname} ${document.getElementById('det-lname').value.trim()}`.trim();
+      document.getElementById('rev-email').textContent = email;
+      document.getElementById('rev-amount').textContent = `R ${selectedService.price.toLocaleString('en-ZA', {minimumFractionDigits:2})}`;
+      goStep(3);
+    }
+
+    async function doPayment() {
+      const btn = document.getElementById('pay-btn');
+      const errEl = document.getElementById('step3-error');
+      errEl.classList.add('hidden');
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner"></span> Connecting to PayFast…';
+
+      try {
+        const res = await fetch('/portal/api/payments/initiate-public/', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            first_name: document.getElementById('det-fname').value.trim(),
+            last_name: document.getElementById('det-lname').value.trim(),
+            email: document.getElementById('det-email').value.trim(),
+            service_name: selectedService.name,
+            amount: selectedService.price,
+          })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || 'Failed to initiate payment');
+
+        // Auto-submit to PayFast
+        const form = document.getElementById('pf-form');
+        form.action = data.payfast_url;
+        form.innerHTML = '';
+        Object.entries(data.fields).forEach(([k, v]) => {
+          const inp = document.createElement('input');
+          inp.type = 'hidden'; inp.name = k; inp.value = v;
+          form.appendChild(inp);
+        });
+        form.submit();
+      } catch (err) {
+        errEl.textContent = err.message || 'Something went wrong. Please try again.';
+        errEl.classList.remove('hidden');
+        btn.disabled = false;
+        btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg> Pay Securely with PayFast';
+      }
+    }
+
+    // Init
+    filterCat('all');
+    document.getElementById('next-1').style.opacity = '0.4';
+
+    // Load dynamic prices from HQ if available, merge with static
+    (async () => {
+      try {
+        const res = await fetch('/portal/api/website/prices/');
+        if (!res.ok) return;
+        const prices = await res.json();
+        prices.filter(p => p.is_active).forEach(p => {
+          if (!SERVICES.find(s => s.name === p.name)) {
+            SERVICES.push({
+              id: p.id, cat: p.category, icon: '💼',
+              name: p.name, desc: p.description || p.unit, price: parseFloat(p.price),
+              featured: p.is_featured,
+            });
+          }
+        });
+        renderGrid();
+      } catch {}
+    })();
+  </script>
+</body>
+</html>

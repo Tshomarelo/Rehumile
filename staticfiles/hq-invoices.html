@@ -39,7 +39,9 @@
         <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/hr/"><i class="align-middle" data-feather="user-check"></i> <span class="align-middle">Employee Profiles</span></a></li>
         <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/hr/#leave"><i class="align-middle" data-feather="calendar"></i> <span class="align-middle">Leave Management</span></a></li>
         <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/playbook/"><i class="align-middle" data-feather="check-square"></i> <span class="align-middle">Operational Playbook</span></a></li>
-        <li class="sidebar-header">System</li>
+              <li class="sidebar-header">Website</li>
+      <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/website/"><i data-feather="globe"></i><span>Website Manager</span></a></li>
+      <li class="sidebar-header">System</li>
         <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/sla-monitor/"><i class="align-middle" data-feather="alert-triangle"></i> <span class="align-middle">SLA Monitor</span></a></li>
         <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/notifications/"><i class="align-middle" data-feather="bell"></i> <span class="align-middle">Notifications</span></a></li>
         <li class="sidebar-item"><a class="sidebar-link" href="/portal/dashboard/audit-log/"><i class="align-middle" data-feather="clipboard"></i> <span class="align-middle">Audit Log</span></a></li>
@@ -74,6 +76,17 @@
           </button>
         </div>
         <div id="pageAlert"></div>
+
+        <!-- Tabs: Invoices | Payments -->
+        <ul class="nav nav-tabs mb-3" id="mainTabs">
+          <li class="nav-item"><button class="nav-link active" id="tab-invoices" onclick="showTab('invoices')">Invoices</button></li>
+          <li class="nav-item"><button class="nav-link" id="tab-payments" onclick="showTab('payments')">
+            💳 PayFast Payments <span class="badge bg-success ms-1" id="payment-count-badge" style="display:none"></span>
+          </button></li>
+        </ul>
+
+        <!-- Invoices panel -->
+        <div id="panel-invoices">
         <div class="card">
           <div class="card-header d-flex align-items-center justify-content-between">
             <h5 class="card-title mb-0">All Invoices</h5>
@@ -97,9 +110,82 @@
             <div id="tableEmpty" class="text-center py-4 text-muted" style="display:none">No invoices found.</div>
           </div>
         </div>
+        </div>
+
+        <!-- Payments panel -->
+        <div id="panel-payments" style="display:none">
+        <div class="row mb-3">
+          <div class="col-sm-3"><div class="card text-center py-3"><h6 class="text-muted small mb-1">Total Received</h6><h4 class="mb-0 text-success" id="pmt-total">R —</h4></div></div>
+          <div class="col-sm-3"><div class="card text-center py-3"><h6 class="text-muted small mb-1">Completed</h6><h4 class="mb-0 text-success" id="pmt-complete">0</h4></div></div>
+          <div class="col-sm-3"><div class="card text-center py-3"><h6 class="text-muted small mb-1">Pending</h6><h4 class="mb-0 text-warning" id="pmt-pending">0</h4></div></div>
+          <div class="col-sm-3"><div class="card text-center py-3"><h6 class="text-muted small mb-1">Failed/Cancelled</h6><h4 class="mb-0 text-danger" id="pmt-failed">0</h4></div></div>
+        </div>
+        <div class="card">
+          <div class="card-header d-flex align-items-center justify-content-between">
+            <h5 class="card-title mb-0">PayFast Transaction Log</h5>
+            <button class="btn btn-sm btn-outline-secondary" onclick="loadPayments()"><i data-feather="refresh-cw" style="width:14px;height:14px"></i> Refresh</button>
+          </div>
+          <div class="card-body p-0">
+            <div id="pmtLoading" class="text-center py-4 text-muted">Loading payments…</div>
+            <div class="table-responsive" id="pmtWrapper" style="display:none">
+              <table class="table table-hover my-0 small">
+                <thead><tr>
+                  <th>Reference</th>
+                  <th>Payer</th>
+                  <th>Service / Item</th>
+                  <th>Amount</th>
+                  <th>PayFast ID</th>
+                  <th>Status</th>
+                  <th>Date</th>
+                </tr></thead>
+                <tbody id="pmtTbody"></tbody>
+              </table>
+            </div>
+            <div id="pmtEmpty" class="text-center py-5 text-muted" style="display:none">
+              <i data-feather="credit-card" style="width:48px;height:48px;opacity:.25"></i>
+              <p class="mt-2">No PayFast transactions yet.</p>
+            </div>
+          </div>
+        </div>
+        </div>
       </div>
     </main>
     <footer class="footer"><div class="container-fluid"><p class="mb-0 text-muted">Rehumile TMW IMS &copy; 2025</p></div></footer>
+  </div>
+</div>
+
+<!-- Invoice Reminder Modal -->
+<div class="modal fade" id="remindModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header" style="background:#50181E;color:white">
+        <h5 class="modal-title">
+          <i data-feather="mail" style="width:18px;height:18px;margin-right:8px;vertical-align:middle"></i>
+          Send Payment Reminder
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="remindInvId">
+        <div class="alert alert-info py-2 small mb-3">
+          Sending reminder for invoice <strong id="remindInvNum"></strong>
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-semibold">Client Email Address <span class="text-muted fw-normal">(leave blank to use company email on file)</span></label>
+          <input type="email" class="form-control" id="remindEmailInput" placeholder="client@example.com">
+        </div>
+        <div class="bg-light rounded p-3 small text-muted">
+          <strong>What happens:</strong> A professional HTML email is sent to the client with the invoice amount, due date, and a link to pay via their client portal.
+        </div>
+        <div id="remindResult" class="mt-2 small"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        <button class="btn btn-warning text-dark fw-bold" id="sendReminderBtn">
+          <i data-feather="send" style="width:14px;height:14px"></i> Send Reminder
+        </button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -266,8 +352,9 @@ window.calcTotal = function(){
           <td><strong>R ${parseFloat(inv.total_amount||0).toFixed(2)}</strong></td>
           <td>${statusBadge(inv.status)}</td>
           <td class="d-none d-lg-table-cell">${fmtDate(inv.due_date)}</td>
-          <td>
-            <button class="btn btn-sm btn-outline-primary me-1" onclick='openEdit(${JSON.stringify(inv)})'>Edit</button>
+          <td class="d-flex gap-1 flex-wrap">
+            <button class="btn btn-sm btn-outline-primary" onclick='openEdit(${JSON.stringify(inv)})'>Edit</button>
+            ${['sent','overdue','draft'].includes(inv.status) ? `<button class="btn btn-sm btn-outline-warning remind-btn" data-id="${inv.id}" data-num="${inv.invoice_number||'INV-'+inv.id.slice(0,8)}" title="Send email reminder"><i data-feather="mail" style="width:13px;height:13px"></i> Remind</button>` : ''}
           </td>
         </tr>`).join('');
     }catch(e){ if(e.message!=='Unauth') showAlert('pageAlert','Failed to load invoices.'); }
@@ -348,6 +435,86 @@ window.calcTotal = function(){
   };
 
   loadInvoices();
+
+  // ── Invoice Reminder ─────────────────────────────────────────
+  document.getElementById('sendReminderBtn').onclick = async () => {
+    const btn = document.getElementById('sendReminderBtn');
+    const invId = document.getElementById('remindInvId').value;
+    const email = document.getElementById('remindEmailInput').value.trim();
+    const resultEl = document.getElementById('remindResult');
+    btn.disabled = true; btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Sending…';
+    try {
+      const r = await api(`/portal/api/invoices/${invId}/remind/`, {
+        method: 'POST',
+        body: JSON.stringify({ email }),
+      });
+      const d = await r.json();
+      resultEl.textContent = r.ok ? ('✅ ' + d.detail) : ('❌ ' + (d.detail || 'Failed'));
+      resultEl.className = r.ok ? 'text-success mt-2 small' : 'text-danger mt-2 small';
+    } catch(e) {
+      resultEl.textContent = '❌ ' + (e.message || 'Network error');
+      resultEl.className = 'text-danger mt-2 small';
+    }
+    btn.disabled = false; btn.innerHTML = '<i data-feather="send" style="width:14px;height:14px"></i> Send Reminder';
+    if(window.feather) feather.replace();
+  };
+
+  // ── Tab switching ─────────────────────────────────────────────
+  window.showTab = function(tab) {
+    ['invoices','payments'].forEach(t => {
+      document.getElementById('panel-'+t).style.display = t===tab ? 'block' : 'none';
+      document.getElementById('tab-'+t).classList.toggle('active', t===tab);
+    });
+    if (tab === 'payments') loadPayments();
+  };
+
+  // ── Payment list ──────────────────────────────────────────────
+  window.loadPayments = async function() {
+    document.getElementById('pmtLoading').style.display = 'block';
+    document.getElementById('pmtWrapper').style.display = 'none';
+    document.getElementById('pmtEmpty').style.display = 'none';
+    try {
+      const r = await api('/portal/api/payments/');
+      const payments = await r.json();
+
+      const badge = document.getElementById('payment-count-badge');
+      const complete = payments.filter(p => p.status === 'complete');
+      const pending = payments.filter(p => p.status === 'pending');
+      const failed = payments.filter(p => ['failed','cancelled'].includes(p.status));
+      badge.textContent = complete.length;
+      badge.style.display = complete.length ? 'inline-block' : 'none';
+      document.getElementById('pmt-total').textContent = 'R ' + complete.reduce((s,p)=>s+p.amount,0).toFixed(2);
+      document.getElementById('pmt-complete').textContent = complete.length;
+      document.getElementById('pmt-pending').textContent = pending.length;
+      document.getElementById('pmt-failed').textContent = failed.length;
+
+      document.getElementById('pmtLoading').style.display = 'none';
+      if (!payments.length) { document.getElementById('pmtEmpty').style.display = 'block'; if(window.feather)feather.replace(); return; }
+      document.getElementById('pmtWrapper').style.display = 'block';
+
+      const statusBadge = s => ({
+        complete: '<span class="badge bg-success">Complete</span>',
+        pending: '<span class="badge bg-warning text-dark">Pending</span>',
+        failed: '<span class="badge bg-danger">Failed</span>',
+        cancelled: '<span class="badge bg-secondary">Cancelled</span>',
+      }[s] || `<span class="badge bg-secondary">${s}</span>`);
+
+      document.getElementById('pmtTbody').innerHTML = payments.map(p => `
+        <tr>
+          <td><code class="small">${p.reference}</code></td>
+          <td>${p.user_name||'—'}<br><small class="text-muted">${p.email||''}</small></td>
+          <td>${p.item_name}<br><small class="text-muted">${p.service_type||''}</small></td>
+          <td><strong>R ${p.amount.toFixed(2)}</strong></td>
+          <td><small class="text-muted">${p.pf_payment_id||'—'}</small></td>
+          <td>${statusBadge(p.status)}</td>
+          <td><small>${new Date(p.created_at).toLocaleDateString('en-ZA',{day:'2-digit',month:'short',year:'numeric'})}</small></td>
+        </tr>`).join('');
+      if(window.feather)feather.replace();
+    } catch(e) {
+      if(e.message!=='Unauth') document.getElementById('pmtLoading').textContent = 'Failed to load payments.';
+    }
+  };
+
 })();
 </script>
 </body>

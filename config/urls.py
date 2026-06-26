@@ -15,11 +15,12 @@ from ims.portal_views import (
     portal_cash_management_view, portal_financial_analytics_view,
     portal_pos_view, portal_vouchers_view,
     portal_compliance_view, portal_vat201_view, portal_emp201_view,
-    portal_hr_view, portal_playbook_view,
+    portal_hr_view, portal_playbook_view, portal_website_view,
     client_dashboard_view, client_tickets_view, client_create_ticket_view,
     client_ticket_detail_view, client_billing_view, client_profile_view,
     client_contact_view, client_notifications_view,
     website_home_view,
+    payment_success_view, payment_cancel_view, website_checkout_view,
 )
 from ims.views import ChangePasswordView, quote_request_view
 
@@ -64,11 +65,18 @@ _portal_patterns = [
     path('dashboard/emp201/', portal_emp201_view, name='portal-emp201'),
     path('dashboard/hr/', portal_hr_view, name='portal-hr'),
     path('dashboard/playbook/', portal_playbook_view, name='portal-playbook'),
+    path('dashboard/website/', portal_website_view, name='portal-website'),
 ]
 
 urlpatterns = _portal_patterns + [
     path('portal/', include(_portal_patterns)),
     path('portal/static/<path:path>', static_serve, {'document_root': settings.STATIC_ROOT}),
     path('portal/media/<path:path>', static_serve, {'document_root': settings.MEDIA_ROOT}),
+    # Alias /static/ → same staticfiles root so website-home.html image paths work
+    path('static/<path:path>', static_serve, {'document_root': settings.STATIC_ROOT}),
+    # PayFast ITN webhook (also reachable at /portal/api/payments/payfast-notify/)
+    path('payment/success/', payment_success_view, name='payment-success'),
+    path('payment/cancel/', payment_cancel_view, name='payment-cancel'),
+    path('services/checkout/', website_checkout_view, name='website-checkout'),
     path('', website_home_view, name='website-home'),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

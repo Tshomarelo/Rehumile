@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <link rel="shortcut icon" href="/portal/static/img/icons/icon-48x48.png"/>
+  <title>Billing | Rehumile IMS</title>
+  <link href="/portal/static/css/app.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+</head>
+<body>
+<div class="wrapper">
+  <nav id="sidebar" class="sidebar js-sidebar">
+    <div class="sidebar-content js-simplebar">
+      <a class="sidebar-brand d-flex align-items-center p-2" href="/portal/client/">
+        <img src="/portal/static/img/rehumile-logo.jpeg" style="height:36px;object-fit:contain" alt="Rehumile TMW">
+      </a>
+      <ul class="sidebar-nav">
+        <li class="sidebar-header">Main</li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/client/"><i class="align-middle" data-feather="sliders"></i> <span class="align-middle">Dashboard</span></a></li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/client/tickets/"><i class="align-middle" data-feather="list"></i> <span class="align-middle">My Tickets</span></a></li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/client/tickets/create/"><i class="align-middle" data-feather="plus-circle"></i> <span class="align-middle">Create Ticket</span></a></li>
+        <li class="sidebar-item active"><a class="sidebar-link" href="/portal/client/billing/"><i class="align-middle" data-feather="file-text"></i> <span class="align-middle">Billing</span></a></li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/client/profile/"><i class="align-middle" data-feather="user"></i> <span class="align-middle">Profile</span></a></li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/client/notifications/"><i class="align-middle" data-feather="bell"></i> <span class="align-middle">Notifications</span></a></li>
+        <li class="sidebar-header">Support</li>
+        <li class="sidebar-item"><a class="sidebar-link" href="/portal/client/contact/"><i class="align-middle" data-feather="help-circle"></i> <span class="align-middle">Contact Support</span></a></li>
+      </ul>
+    </div>
+  </nav>
+  <div class="main">
+    <nav class="navbar navbar-expand navbar-light navbar-bg">
+      <a class="sidebar-toggle js-sidebar-toggle"><i class="hamburger align-self-center"></i></a>
+      <div class="navbar-collapse collapse">
+        <ul class="navbar-nav navbar-align">
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle d-none d-sm-inline-block" href="#" data-bs-toggle="dropdown">
+              <i class="align-middle me-1" data-feather="user"></i><span class="text-dark" id="navUserName">…</span>
+            </a>
+            <div class="dropdown-menu dropdown-menu-end">
+              <span class="dropdown-item-text small text-muted" id="navCompanyName"></span>
+              <div class="dropdown-divider"></div>
+              <a class="dropdown-item" href="/portal/client/profile/"><i class="align-middle me-1" data-feather="user"></i> Profile</a>
+              <div class="dropdown-divider"></div>
+              <a class="dropdown-item" href="#" id="logoutBtn"><i class="align-middle me-1" data-feather="log-out"></i> Sign out</a>
+            </div>
+          </li>
+        </ul>
+      </div>
+    </nav>
+    <main class="content">
+      <div class="container-fluid p-0">
+        <h1 class="h3 mb-3"><strong>Billing &amp; Invoices</strong></h1>
+
+        <!-- Summary Cards -->
+        <div class="row" id="billingCards">
+          <div class="col-sm-6 col-lg-3">
+            <div class="card"><div class="card-body">
+              <div class="row"><div class="col mt-0"><h5 class="card-title">Total Invoiced</h5></div>
+              <div class="col-auto"><div class="stat text-primary"><i class="align-middle" data-feather="file-text"></i></div></div></div>
+              <h1 class="mt-1 mb-3" id="kpiTotal">R —</h1>
+              <div class="mb-0"><span class="text-muted" id="kpiTotalLabel">All invoices</span></div>
+            </div></div>
+          </div>
+          <div class="col-sm-6 col-lg-3">
+            <div class="card"><div class="card-body">
+              <div class="row"><div class="col mt-0"><h5 class="card-title">Unpaid</h5></div>
+              <div class="col-auto"><div class="stat text-warning"><i class="align-middle" data-feather="clock"></i></div></div></div>
+              <h1 class="mt-1 mb-3" id="kpiUnpaid">R —</h1>
+              <div class="mb-0"><span class="text-muted" id="kpiUnpaidLabel">Outstanding</span></div>
+            </div></div>
+          </div>
+          <div class="col-sm-6 col-lg-3">
+            <div class="card"><div class="card-body">
+              <div class="row"><div class="col mt-0"><h5 class="card-title">Overdue</h5></div>
+              <div class="col-auto"><div class="stat text-danger"><i class="align-middle" data-feather="alert-circle"></i></div></div></div>
+              <h1 class="mt-1 mb-3" id="kpiOverdue">R —</h1>
+              <div class="mb-0"><span id="kpiOverdueLabel" class="text-muted">Requires attention</span></div>
+            </div></div>
+          </div>
+          <div class="col-sm-6 col-lg-3">
+            <div class="card"><div class="card-body">
+              <div class="row"><div class="col mt-0"><h5 class="card-title">Total Paid</h5></div>
+              <div class="col-auto"><div class="stat text-success"><i class="align-middle" data-feather="check-circle"></i></div></div></div>
+              <h1 class="mt-1 mb-3" id="kpiPaid">R —</h1>
+              <div class="mb-0"><span class="text-muted" id="kpiPaidLabel">Settled</span></div>
+            </div></div>
+          </div>
+        </div>
+
+        <!-- Invoice Table -->
+        <div class="card">
+          <div class="card-header d-flex align-items-center justify-content-between">
+            <h5 class="card-title mb-0">Invoices</h5>
+            <span class="badge bg-secondary" id="invoiceCount"></span>
+          </div>
+          <div class="card-body p-0">
+            <div id="tableLoading" class="text-center py-4 text-muted">Loading invoices…</div>
+            <div class="table-responsive" id="tableWrapper" style="display:none">
+              <table class="table table-hover my-0">
+                <thead><tr>
+                  <th>Invoice #</th>
+                  <th>Description</th>
+                  <th class="d-none d-lg-table-cell">Due Date</th>
+                  <th>Amount</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr></thead>
+                <tbody id="invoiceTbody"></tbody>
+              </table>
+            </div>
+            <div id="tableEmpty" class="text-center py-5 text-muted" style="display:none">
+              <i data-feather="inbox" style="width:48px;height:48px;opacity:.3"></i>
+              <p class="mt-2">No invoices yet. Contact <a href="/portal/client/contact/">support</a> for billing queries.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+    <footer class="footer"><div class="container-fluid"><p class="mb-0 text-muted">Rehumile TMW IMS &copy; 2025</p></div></footer>
+  </div>
+</div>
+<script src="/portal/static/js/app.js"></script>
+<script>(function(){function _i(){var s=document.querySelector('.js-sidebar'),t=document.querySelector('.js-sidebar-toggle');if(!s||!t)return;if(window.innerWidth<992&&localStorage.getItem('ims_sidebar')==='open')s.classList.add('collapsed');t.addEventListener('click',function(){setTimeout(function(){localStorage.setItem('ims_sidebar',s.classList.contains('collapsed')?'open':'closed');},50);});}document.readyState==='loading'?document.addEventListener('DOMContentLoaded',_i):_i();})();</script>
+<script>
+(function(){
+  const token=localStorage.getItem('ims_access');
+  if(!token){ window.location.href='/portal/login/'; return; }
+  const userData=JSON.parse(localStorage.getItem('ims_user')||'{}');
+  document.getElementById('navUserName').textContent=((userData.first_name||'')+' '+(userData.last_name||'')).trim()||userData.email||'Client';
+  document.getElementById('navCompanyName').textContent=userData.company_name||'';
+  document.getElementById('logoutBtn').onclick=e=>{ e.preventDefault(); localStorage.clear(); window.location.href='/portal/login/'; };
+
+  async function api(url,opts={}){
+    const r=await fetch(url,{...opts,headers:{'Content-Type':'application/json','Authorization':'Bearer '+token,...(opts.headers||{})}});
+    if(r.status===401){ localStorage.clear(); window.location.href='/portal/login/'; throw new Error('Unauth'); }
+    return r;
+  }
+
+  const isBadge=s=>({'draft':'<span class="badge bg-secondary">Draft</span>','sent':'<span class="badge bg-warning text-dark">Sent</span>','paid':'<span class="badge bg-success">Paid</span>','overdue':'<span class="badge bg-danger">Overdue</span>','cancelled':'<span class="badge bg-secondary">Cancelled</span>'}[s]||`<span class="badge bg-secondary">${s}</span>`);
+  const fmtDate=d=>d?new Date(d).toLocaleDateString('en-ZA',{year:'numeric',month:'short',day:'numeric'}):'—';
+  const fmtZAR=n=>'R '+parseFloat(n||0).toFixed(2);
+
+  async function load(){
+    try{
+      const r=await api('/portal/api/invoices/');
+      const _j=await r.json(); const invoices=_j.results!==undefined?_j.results:_j;
+
+      const total=invoices.reduce((s,i)=>s+parseFloat(i.total_amount||0),0);
+      const unpaid=invoices.filter(i=>i.status==='sent').reduce((s,i)=>s+parseFloat(i.total_amount||0),0);
+      const overdue=invoices.filter(i=>i.status==='overdue').reduce((s,i)=>s+parseFloat(i.total_amount||0),0);
+      const paid=invoices.filter(i=>i.status==='paid').reduce((s,i)=>s+parseFloat(i.total_amount||0),0);
+
+      document.getElementById('kpiTotal').textContent=fmtZAR(total);
+      document.getElementById('kpiTotalLabel').textContent=invoices.length+' invoice'+(invoices.length!==1?'s':'');
+      document.getElementById('kpiUnpaid').textContent=fmtZAR(unpaid);
+      document.getElementById('kpiUnpaidLabel').textContent=invoices.filter(i=>i.status==='sent').length+' invoice(s) due';
+      document.getElementById('kpiOverdue').textContent=fmtZAR(overdue);
+      document.getElementById('kpiOverdueLabel').textContent=overdue>0?'Requires immediate attention':'All up to date';
+      document.getElementById('kpiOverdueLabel').className=overdue>0?'text-danger':'text-success';
+      document.getElementById('kpiPaid').textContent=fmtZAR(paid);
+      document.getElementById('kpiPaidLabel').textContent=invoices.filter(i=>i.status==='paid').length+' invoice(s) settled';
+
+      document.getElementById('tableLoading').style.display='none';
+      document.getElementById('invoiceCount').textContent=invoices.length+' invoice'+(invoices.length!==1?'s':'');
+
+      if(!invoices.length){ document.getElementById('tableEmpty').style.display='block'; if(window.feather)feather.replace(); return; }
+      document.getElementById('tableWrapper').style.display='block';
+      document.getElementById('invoiceTbody').innerHTML=invoices.map(inv=>`
+        <tr>
+          <td><strong>${inv.invoice_number||'INV-'+inv.id.slice(0,8)}</strong></td>
+          <td>${inv.description||inv.notes||'IT Support Services'}</td>
+          <td class="d-none d-lg-table-cell">${fmtDate(inv.due_date)}</td>
+          <td><strong>${fmtZAR(inv.total_amount)}</strong></td>
+          <td>${isBadge(inv.status)}</td>
+          <td class="d-flex gap-1 align-items-center">
+            <button class="btn btn-sm btn-outline-secondary print-inv-btn" data-inv='${JSON.stringify(inv).replace(/'/g,"&#39;")}' title="Print invoice"><i data-feather="printer" style="width:14px;height:14px"></i></button>
+            ${['sent','overdue'].includes(inv.status)?`<button class="btn btn-sm pay-now-btn" data-id="${inv.id}" style="background:#B38F43;color:white;font-weight:600;white-space:nowrap"><i data-feather="credit-card" style="width:13px;height:13px"></i> Pay Now</button>`:''}
+          </td>
+        </tr>`).join('');
+      document.querySelectorAll('.print-inv-btn').forEach(btn=>{
+        btn.onclick=()=>{
+          const inv=JSON.parse(btn.dataset.inv);
+          const w=window.open('','_blank');
+          w.document.write(`<!DOCTYPE html><html><head><title>Invoice ${inv.invoice_number||inv.id}</title>
+          <style>body{font-family:Arial,sans-serif;padding:40px;color:#333}h1{color:#50181E}table{width:100%;border-collapse:collapse}th,td{padding:8px 12px;border:1px solid #ddd;text-align:left}th{background:#f5f5f5}tfoot td{font-weight:bold}.logo{font-size:22px;font-weight:700;color:#B38F43;background:#50181E;padding:12px 20px;border-radius:4px;display:inline-block;margin-bottom:20px}</style>
+          </head><body>
+          <div class="logo">REHUMILE TMW</div>
+          <h1>Invoice</h1>
+          <table style="margin-bottom:20px;border:none"><tr><td style="border:none"><strong>Invoice #:</strong> ${inv.invoice_number||'INV-'+inv.id.slice(0,8)}</td><td style="border:none"><strong>Status:</strong> ${inv.status?.toUpperCase()}</td></tr>
+          <tr><td style="border:none"><strong>Due Date:</strong> ${fmtDate(inv.due_date)}</td><td style="border:none"><strong>Period:</strong> ${fmtDate(inv.billing_period_start)} – ${fmtDate(inv.billing_period_end)}</td></tr></table>
+          <table><thead><tr><th>Description</th><th>Amount</th></tr></thead>
+          <tbody><tr><td>${inv.description||'IT Support Services'}</td><td>${fmtZAR(inv.total_amount)}</td></tr></tbody>
+          <tfoot><tr><td>Total</td><td>${fmtZAR(inv.total_amount)}</td></tr></tfoot></table>
+          <p style="margin-top:30px;color:#888;font-size:12px">Rehumile TMW &bull; infor@rehumile.co.za &bull; 068 397 3484</p>
+          <script>window.onload=()=>window.print();<\/script></body></html>`);
+          w.document.close();
+        };
+      });
+      // Pay Now buttons
+      document.querySelectorAll('.pay-now-btn').forEach(btn => {
+        btn.onclick = async () => {
+          const invoiceId = btn.dataset.id;
+          btn.disabled = true; btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Loading…';
+          try {
+            const res = await api('/portal/api/payments/initiate/', {
+              method: 'POST',
+              body: JSON.stringify({ invoice_id: invoiceId }),
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.detail || 'Payment initiation failed');
+            // Auto-submit to PayFast
+            const form = document.getElementById('pf-form');
+            form.action = data.payfast_url;
+            form.innerHTML = '';
+            Object.entries(data.fields).forEach(([k, v]) => {
+              const inp = document.createElement('input');
+              inp.type = 'hidden'; inp.name = k; inp.value = v;
+              form.appendChild(inp);
+            });
+            form.submit();
+          } catch (err) {
+            alert('Payment error: ' + (err.message || 'Please try again.'));
+            btn.disabled = false; btn.innerHTML = '<i data-feather="credit-card" style="width:13px;height:13px"></i> Pay Now';
+            if (window.feather) feather.replace();
+          }
+        };
+      });
+
+      if(window.feather)feather.replace();
+    }catch(e){ if(e.message!=='Unauth') document.getElementById('tableLoading').textContent='Failed to load invoices.'; }
+  }
+  load();
+
+  // Show payment status banner if returning from PayFast
+  const urlParams = new URLSearchParams(location.search);
+  const pymtStatus = urlParams.get('payment');
+  if (pymtStatus) {
+    const ref = urlParams.get('ref') || '';
+    const banner = document.createElement('div');
+    banner.style.cssText = 'position:fixed;top:70px;right:20px;z-index:9999;max-width:380px;border-radius:12px;padding:14px 18px;font-size:14px;box-shadow:0 8px 32px rgba(0,0,0,0.18);animation:slideIn .4s ease';
+    if (pymtStatus === 'success') {
+      banner.style.background = '#f0fdf4'; banner.style.border = '1px solid #bbf7d0'; banner.style.color = '#15803d';
+      banner.innerHTML = `<strong>✅ Payment Received!</strong><br><small>Reference: ${ref}</small><br><small>Your invoice will be updated shortly.</small>`;
+    } else {
+      banner.style.background = '#fff7ed'; banner.style.border = '1px solid #fed7aa'; banner.style.color = '#c2410c';
+      banner.innerHTML = '<strong>⚠️ Payment Cancelled</strong><br><small>No charge was made. You can try again anytime.</small>';
+    }
+    document.body.appendChild(banner);
+    setTimeout(() => banner.remove(), 8000);
+    history.replaceState({}, '', '/portal/client/billing/');
+  }
+})();
+</script>
+<!-- Hidden PayFast auto-submit form -->
+<form id="pf-form" method="POST" style="display:none"></form>
+<style>
+@keyframes slideIn { from{opacity:0;transform:translateX(30px)} to{opacity:1;transform:none} }
+</style>
+</body>
+</html>

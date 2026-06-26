@@ -11,7 +11,7 @@ def _serve(filename):
 
 
 def website_home_view(request):
-    return _serve('index.html')
+    return _serve('website-home.html')
 
 
 def portal_login_view(request):
@@ -140,3 +140,19 @@ def portal_hr_view(request):
 
 def portal_playbook_view(request):
     return _serve('hq-playbook.html')
+
+
+def portal_website_view(request):
+    return _serve('hq-website.html')
+
+
+def payment_success_view(request):
+    return _serve('payment-success.html')
+
+
+def payment_cancel_view(request):
+    return _serve('payment-cancel.html')
+
+
+def website_checkout_view(request):
+    return _serve('website-checkout.html')

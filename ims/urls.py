@@ -10,6 +10,7 @@ router.register(r'invoices', views.InvoiceViewSet, basename='invoice')
 
 urlpatterns = [
     path('auth/login/', views.LoginView.as_view(), name='login'),
+    path('auth/register/', views.RegisterView.as_view(), name='register'),
     path('auth/logout/', views.LogoutView.as_view(), name='logout'),
     path('auth/me/', views.MeView.as_view(), name='me'),
     path('auth/password-reset/', views.PasswordResetRequestView.as_view(), name='password-reset-request'),
@@ -50,5 +51,16 @@ urlpatterns = [
     # Operational Playbook
     path('playbook/tasks/', views.TaskTemplateView.as_view(), name='task-template-list'),
     path('playbook/completions/', views.TaskCompletionView.as_view(), name='task-completion'),
+    # Website Content Management
+    path('website/prices/', views.ServicePriceView.as_view(), name='service-price-list'),
+    path('website/prices/<uuid:pk>/', views.ServicePriceView.as_view(), name='service-price-detail'),
+    path('website/content/', views.WebsiteContentView.as_view(), name='website-content-list'),
+    path('website/content/<uuid:pk>/', views.WebsiteContentView.as_view(), name='website-content-detail'),
+    # PayFast Payments
+    path('payments/initiate/', views.PayFastInitiateView.as_view(), name='payfast-initiate'),
+    path('payments/initiate-public/', views.PayFastPublicInitiateView.as_view(), name='payfast-initiate-public'),
+    path('payments/payfast-notify/', views.PayFastITNView.as_view(), name='payfast-itn'),
+    path('payments/', views.PaymentListView.as_view(), name='payment-list'),
+    path('invoices/<uuid:invoice_id>/remind/', views.InvoiceReminderView.as_view(), name='invoice-remind'),
     path('', include(router.urls)),
 ]

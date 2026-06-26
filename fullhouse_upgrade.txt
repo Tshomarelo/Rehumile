@@ -1,0 +1,154 @@
+Here is the isolated **System Requirements Specification (SRS)** specifically for the **SARS Compliance Staging & Automated Document Compilation Engine**.
+There is a file you can reference named "IT_Enterprise_Financial_Blueprint.docx". Refer to this file by its name verbatim.
+## 1. Module Overview: SARS Compliance Staging Engine
+Because direct third-party API integration for automated data submission is highly restricted by the South African Revenue Service (SARS), the portal will instead function as a localized compliance staging area. The module dynamically collects data from sales, procurement, asset logs, and payroll to automatically generate audit-ready aggregates and structured documentation.
+## 2. Functional Requirements
+### 2.1 Real-Time Document & Field Mapping Matrix
+The system must automatically parse daily data entries and map them to localized variables corresponding exactly with the field labels found on official SARS documents.
+| Module Source Data | Tracked Properties | Target SARS Target Mapping |
+|---|---|---|
+| **Sales Invoices & Cash Receipts** | Gross revenue, standard-rated sales, exempt transactions. | **VAT201 Layout:** Auto-calculates Field 1 (Standard Rated Sales) and Field 4 (Output Tax). |
+| **Supplier Purchase Slips** | Scanned invoices from distributors (e.g., Pinnacle, Mustek, Communica), local fuel slips. | **VAT201 Layout:** Auto-calculates Field 14 (Standard Rated Capital Goods) or Field 15 (Standard Rated Non-Capital Goods) to establish Input Tax claims. |
+| **Employee Logs & Payroll Engine** | Regular hours, overtime hours, active tax bands. | **EMP201 Layout:** Auto-populates PAYE liability fields and standard UIF contribution metrics. |
+| **Asset Registry & Ledgers** | Asset purchase costs, write-off dates, depreciation rates. | **IRP6 & ITR14 Blocks:** Exports net profit aggregates and capital allowance reductions. |
+### 2.2 The Dynamic VAT201 Staging Ledger
+ * **Automatic Tax Stripping:** The system must programmatically extract the standard 15% VAT component from every system-generated invoice or network voucher sale at the point of transaction validation, assigning the value to an internal Output_Tax_Staging database array.
+ * **Optical Character Recognition (OCR) Intake Framework:**
+   * The portal must provide an upload interface accepting image files (PNG, JPEG) and PDF documents for supplier slips.
+   * The OCR engine must extract four mandatory data keys: *Supplier VAT Number*, *Invoice Date*, *Total Gross Amount*, and *Stated VAT Paid Amount*.
+   * **Validation Rule:** If the system cannot detect a valid 10-digit South African VAT registration number or if the calculated tax does not equal the stated tax, it must flag the record status as Incomplete / Audit Risk and notify the administrator.
+ * **The Replication Interface:** The portal must provide a mock "Reconciliation View" that visually mirrors the actual SARS eFiling VAT201 digital layout, displaying identical block indicators and fields (e.g., Fields 1, 4, 14, 15) to allow flawless manual copying.
+### 2.3 EMP201 Payroll Integration (UIF & PAYE)
+ * **Timesheet Processing:** On a fixed monthly schedule, the system must freeze active employee timesheets and query their linked structural salary bands.
+ * **Tax Formula Engine:** The system must evaluate gross monthly earnings against current SARS progressive tax tables to determine Pay-As-You-Earn (PAYE) allocations.
+ * **UIF Splitting Rule:** The payroll processor must automatically compute the statutory 1% employee contribution deduction and the matching 1% employer contribution obligation, grouping them under a combined Monthly_UIF_Liability ledger flag.
+ * **Export Pipeline:** The module must provide a single-click export function generating a flat text summary schema or an upload-ready CSV structured precisely to SARS EMP201 data block formats.
+### 2.4 Automated Audit-Trail Package Builder
+ * **Dynamic Document Relational Indexing:** The system must index every finalized tax invoice and OCR-approved expense voucher with a unique ID linked directly to the corresponding monthly or bi-monthly VAT submission period.
+ * **Archive Compilation:** Upon user activation, the portal must pull the digital VAT201 summary view, the corresponding cross-referenced bank transaction export file, and all source OCR imagery files into a single, structured .zip archive or dedicated cloud storage node.
+ * **Audit Readiness Status:** The platform must verify that every single currency unit claimed as Input Tax contains a linked, validly parsed invoice image within the archive before declaring the period packet Verification Ready.
+## 3. System Workflow & State Requirements
+The engine must advance compliance records through strict operational states to maintain internal control continuity:
+```
+[ Active State ] ────────────────> [ Review / Staging State ] ──────────────> [ Finalized State ]
+* Daily invoice inputs             * System runs OCR anomalies check           * Metrics locked against edit
+* Receipt imaging logs             * Discrepancies highlighted in red          * Downloadable Audit .zip built
+* Real-time ledger entry           * "Finalize Period" button enabled          * eFiling field guide shown
+
+```
+ 1. **Drafting Phase (Operational Month):** Daily entry transactions populate the compliance variables implicitly behind the scenes.
+ 2. **Staging Phase (25th of the Month / Close Window):** System locks the specific tracking cycle from general workshop edits. The administrator dashboard surfaces explicit error flags (e.g., *"Warning: Slip dated June 12 lacks legible vendor VAT details"*).
+ 3. **Approval Phase:** The user actively executes a Finalize Period instruction. This action permanently freezes the data aggregates for that specific calendar block.
+ 4. **Extraction Phase:** The system unlocks the presentation view displaying explicit fields to reproduce in eFiling alongside the complete, structured audit packet download link.
+## 4. Technical & Non-Functional Compliance Rules
+ * **POPIA Isolation Infrastructure:** Because this subsystem aggregates highly sensitive personal tax identifiers and individual wage logs, the database tables handling the compliance engine staging files must be physically or logically partitioned. Access must require an enhanced authentication token valid only for user sessions matching the Owner/Administrator role profile.
+ * **Data Preservation Schedule:** In strict accordance with South African corporate taxation law, finalized transaction records, matching scanned supplier slips, and calculated monthly summary reports must be retained in an immutable, read-only cloud database bucket for a rolling duration of no less than five (5) full calendar years.
+To establish a standalone, production-ready specification for a **Small Business HR & Payroll Portal**—built specifically to handle local staff management, leave tracking, payslips, and automated SARS compliance readiness—the portal requirements must focus heavily on South African labor frameworks.
+This standalone system isolates the workforce management requirements into an automated, easy-to-use human resources center.
+## 1. Functional Requirements by HR Module
+### 1.1 Employee Profile & Digital File Management
+This module replaces manual paperwork with an organized, searchable digital filing system for all active staff members.
+ * **Mandatory Field Capture:** Every digital employee profile must contain:
+   * Full Legal Names (as per ID) and South African Identity Number (or Passport/Work Permit details).
+   * Tax Registration Number (for SARS verification tracking) and personal banking details (Bank, Account Number, Branch Code).
+   * Physical Address, Contact Numbers, and Next of Kin information.
+ * **Contract & Document Repository:** Storage framework enabling administrators to upload and attach scanned PDF documents (e.g., Signed Employment Contract, certified ID copies, Qualifications, and Disciplinary Records) directly to the profile.
+ * **Job Role & Structuring Mapping:** Dropdown tracking assignments for job types, structural salary bands (Fixed Salary vs. Hourly Wage), and scheduled working hour allocations.
+### 1.2 Leave Tracking & Accrual Engine
+This sub-system automates time-off management in strict accordance with the **Basic Conditions of Employment Act (BCEA)** rules.
+ * **Leave Bucket Separation:** The engine must partition employee leave balances into distinct categories: *Annual Leave*, *Sick Leave*, *Family Responsibility Leave*, and *Maternity/Paternity Leave*.
+ * **BCEA Statutory Accrual Math:** The portal must programmatically calculate and update leave allocations based on time worked:
+   * *Annual Leave:* Accrues at a rate of 1 day for every 17 days worked, or a fixed allocation of 21 consecutive days per annual cycle.
+   * *Sick Leave:* Manages a rolling 36-month cycle allocation (typically equivalent to the number of days the employee would normally work in a 6-week period).
+ * **Employee Self-Service Interface:** A restricted portal view where employees can log in to check real-time available leave balances and submit a digital leave application.
+ * **Manager Approval Workflow:** Automated generation of internal system notifications and email triggers alerting the business owner to review, approve, or reject pending leave requests. Approved days off must automatically deduct from the target leave bucket.
+### 1.3 Automated Payroll & Itemized Payslip Engine
+This module compiles monthly or weekly compensation data into legal, print-ready documents while processing necessary deductions.
+ * **Earnings Aggregator:** Combines basic salary or calculated hourly wages (pulled from approved time tracking sheets) alongside any approved performance bonuses or overtime hours.
+ * **Statutory Deduction Matrix:** The engine must automatically apply the following deductions based on current South African regulatory codes:
+   * **PAYE (Pay-As-You-Earn):** Calculates employee tax liability dynamically by passing gross monthly earnings through the progressive SARS tax bracket formulas.
+   * **UIF (Unemployment Insurance Fund) Employee Share:** Subtracts exactly 1% of gross earnings (up to the current statutory earnings ceiling).
+ * **Company Contribution Tracker:** Calculates the matching 1% employer UIF contribution obligation behind the scenes (this is tracked as a business expense and is not deducted from the employee's net take-home pay).
+ * **Secure Payslip Distribution:** Upon payroll finalization by the owner, the system must generate a PDF copy of an itemized payslip. The portal will automatically email this file to the employee as a password-protected document (using their ID number as the decryption key).
+### 1.4 SARS EMP201 Staging Area
+To eliminate submission anxiety, this dashboard acts as an internal staging platform for your monthly employer tax declarations.
+ * **Data Aggregation:** At the end of every calendar month, the system automatically pulls the total calculated values from the finalized payroll run.
+ * **EMP201 Layout Replication:** The screen displays a clear data grid that directly mirrors the actual fields on the SARS eFiling EMP201 form:
+   * *PAYE Liability Field:* The sum of all employee tax withheld.
+   * *UIF Liability Field:* The combined total of the 1% employee deduction and the 1% employer contribution.
+ * **UIF Declaration File Generation:** The system must generate a digital summary or file export containing employee IDs, monthly earnings, and UIF contribution breakdowns, making it easy to copy into the electronic declarations pool.
+## 2. Non-Functional, Security & Compliance Requirements
+### 2.1 POPIA (Protection of Personal Information Act) Data Privacy Compliance
+Because this system processes highly sensitive personal identifiers, bank routing numbers, and financial data, the platform must enforce strict data security layers:
+ * **Data Encryption:** All employee information must be completely encrypted at rest within the database and encrypted in transit using secure HTTPS connections.
+ * **Strict Access Control:** Database permissions must ensure that payroll variables, salaries, and ID records are accessible *only* to user profiles explicitly granted the Owner or HR Administrator role. General employees can only view their own personal profiles and payslips.
+### 2.2 System Audit Trail
+ * **Immutable HR Log:** Any manually performed override—such as an administrator manually editing an employee's leave balance, modifying a basic salary structure, or overriding a tax deduction figure—must write an unalterable log entry. This record must log the *User ID*, *Timestamp*, *Old Value*, and *New Value* for future internal review.
+### 2.3 Document Retention Infrastructure
+ * In line with South African labor and tax legislation, all historical payroll logs, generated payslips, and leave records must be securely stored within an archival data tier for a rolling period of **no less than 5 years**, remaining easily accessible for audit verifications.
+## 3. Recommended Workflow View
+```
+[ Monthly Employee Logins ] ───> [ Owner Review Panel ] ───> [ Compliance Output Area ]
+  * Staff submits leave            * Approves leave days        * Password-protected PDF Payslips
+  * Working hours captured         * Approves payroll run       * Pre-calculated EMP201 Data Grid
+
+```
+ 1. **Daily / Weekly:** Employees access their self-service profiles to view leave balances or log regular working hours.
+ 2. **Month-End Processing:** The business owner opens the payroll dashboard, reviews aggregated hours and approved leave, and clicks **"Finalize Payroll"**.
+ 3. **Distribution & Compliance:** The portal automatically emails secure payslips to the team and instantly populates the **SARS EMP201 Staging Dashboard** with the precise figures required for your monthly tax submission.
+To integrate job descriptions, standard operating procedures (SOPs), and operational guidelines directly into the portal—ensuring every worker always knows what tasks are expected of them—the system must host an interactive, module-driven **Operational Playbook Dashboard**.
+These settings translate the rules from "IT_Enterprise_Financial_Blueprint.docx" into clear instructions that automatically populate a worker's personalized portal view based on their log-in role.
+## 1. Role Definitions & Built-In Job Descriptions
+### 1.1 Service Technician
+ * **System Objectives:** Ensure strict hardware tracking accuracy and technical compliance at the point of workshop physical ingestion.
+ * **Portal Scope Limits:** Granted access *only* to the Job Card Workshop UI, inventory extraction tools, and personal HR Leave profiles. Programmatically blocked from financial ledgers, salary viewing, and payment receipt processing.
+ * **Key Responsibilities:**
+   * Log precise technical diagnostics and exact device serial numbers upon physical drop-off.
+   * Deduct high-turnover micro-stock (such as RAM modules or thermal paste containers) strictly against active, verified job numbers.
+   * Maintain workshop clean states, asset safety compliance, and check tool health.
+### 1.2 Administrative Desk / Cashier
+ * **System Objectives:** Mitigate storefront internal fraud risks by serving as the sole gatekeeper for retail transactions and cash management workflows.
+ * **Portal Scope Limits:** Granted access to Point of Sale (POS) tools, payment confirmation screens, invoice engines, and shift open/close logs. Restriced from technician repair boards, engineering settings, or individual staff payroll variables.
+ * **Key Responsibilities:**
+   * Accept and reconcile all incoming business funds (Cash, Speed-point Card transactions, or Payfast payments).
+   * Verify matched payment status strings prior to confirming physical item collection.
+   * Enforce daily shift cash balancing protocols and flag inventory unit tracking anomalies.
+### 1.3 Administrator / Business Owner
+ * **System Objectives:** Oversee operational health, authorize payroll parameters, manage tax compliance reporting pipelines, and analyze corporate liquidity trends.
+ * **Portal Scope Limits:** Unrestricted access across all operational modules, financial dashboard metrics, backend system settings, and encrypted staff HR profiles.
+ * **Key Responsibilities:**
+   * Perform monthly inventory count audits and verify cash safe balances against digital logs.
+   * Review and approve employee leave requests, overtime summaries, and monthly salary pay runs.
+   * Extract aggregated data from compliance staging views to file monthly SARS employer returns and VAT distributions.
+## 2. On-System Daily, Weekly & Monthly Tasks Guidelines
+Every morning when a user authenticates, their portal landing page will display a checklist of tasks based on their role:
+### 2.1 Daily Tasks Workflow Checklist
+#### Service Technician Morning Routine
+ * [ ] **Tool Registry Ingestion:** Inspect active workshop lab tools (variable bench power supplies, multimeters) to confirm operational safety.
+ * [ ] **Backlog Prioritization Check:** Query the job queue filter for devices marked Awaiting Parts or In-Progress to plan the day's workflow.
+#### Service Technician Evening Routine
+ * [ ] **Active State Update:** Ensure every device worked on has its digital log card updated to the correct status (e.g., Ready for Collection).
+ * [ ] **Micro-Stock Isolation:** Secure all high-value micro-components inside the locked static cabinetry nodes and log out any consumables used.
+#### Cashier Morning Routine
+ * [ ] **Float Vault Count:** Open the storefront drawer, count the cash float value manually, and type the figure into the forced field prompt to unlock the POS system.
+ * [ ] **Link Verification:** Check that the digital speed-point terminal and the local network connection are online and communicating with the server.
+#### Cashier Evening Routine
+ * [ ] **Daily Invoicing Matching:** Pull the evening close interface, count all cash drawer contents and card payment receipts, and submit the values to match them against the system-generated log.
+ * [ ] **Safe Deposit Log:** Move verified cash earnings into the secure on-site safe and mark the entry status as Deposited in the system ledger.
+### 2.2 Weekly Tasks Workflow Checklist
+#### Cashier (Every Friday Afternoon)
+ * [ ] **Procurement OCR Intake:** Scan and upload all procurement slips collected from distributors (Pinnacle, Mustek, Communica) to clear the week's processing tray.
+ * [ ] **Debtors Follow-up Run:** Access the outstanding invoice ledger and trigger automated email payment reminders to corporate clients with past-due balances.
+#### Business Owner (Every Friday)
+ * [ ] **Bank Statement Ledger Sync:** Log into the financial dashboard, import the weekly banking statement file, and reconcile matching lines to the Operating, Investing, or Financing cash flow streams.
+### 2.3 Monthly Tasks Workflow Checklist
+#### Service Technician & Cashier (Joint Work)
+ * [ ] **Physical Stocktake Cycle:** Team up at month-end to count all physical items on the shelves (screens, hard drives, thermal paste units) and log the numbers into the stock audit portal to highlight any inventory shrinkage.
+#### Business Owner (Month-End Close Out)
+ * [ ] **UIF & PAYE Verification:** Review employee timesheets, verify leave entries, and run the monthly payroll calculations to distribute password-protected PDF payslips.
+ * [ ] **SARS Filing Review:** Open the compliance view, verify that all OCR vendor receipts match the reported input tax figures, lock the period, and copy the final field values into SARS eFiling.
+## 3. Dynamic Technical Requirements for the Task Board
+To build this playbook framework directly into the platform, include these backend rules:
+ * **Forced Compliance Workflow Prompts:** The platform must explicitly prevent cashiers from launching the POS checkout screen until they complete the Morning Shift Open cash float verification form.
+ * **Interactive Task Auditing:** Every task card inside an individual's view must include a "Mark Complete" checkbox. Clicking this writes an audit timestamp entry log showing the worker's user ID and completion time.
+ * **Contextual Assistance Links:** Each checklist card must link directly to its target functional screen. For example, clicking the cashier's weekly task *"Run Debtors Follow-up"* will open the debtors ledger automatically to save time and prevent operational backlogs.
