@@ -4,9 +4,8 @@ djangorestframework==3.14.0
 django-cors-headers==4.0.0
 django-filter==23.2
 
-# Database — PyMySQL for PythonAnywhere (no C compiler needed)
+# Database — PyMySQL for PythonAnywhere MySQL (no C compiler needed)
 PyMySQL==1.2.0
-# psycopg2-binary>=2.9.9   # uncomment if using PostgreSQL instead
 
 # Authentication & JWT
 djangorestframework-simplejwt==5.5.1
@@ -23,14 +22,13 @@ Pillow==12.2.0
 # Environment config
 python-decouple==3.8
 
-# Production server
+# Production WSGI server
 gunicorn==21.2.0
 
 # HTTP client (PayFast ITN validation)
 requests==2.31.0
 
 # Utilities
-python-decouple==3.8
 django-phonenumber-field==7.2.0
 phonenumbers==8.13.0
 python-dateutil==2.8.2

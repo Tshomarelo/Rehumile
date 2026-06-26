@@ -1,29 +1,36 @@
 """
-Django settings for Rehumile Portal IMS
+Django Production Settings — Rehumile Portal IMS
+PythonAnywhere · MySQL · www.rehumile.co.za
 """
 
 import os
 from pathlib import Path
-import dj_database_url
+from datetime import timedelta
 from decouple import config
 
-# Wire PyMySQL to act as MySQLdb so Django's MySQL backend works on Windows
-try:
-    import pymysql
-    pymysql.install_as_MySQLdb()
-except ImportError:
-    pass
+# PyMySQL acts as MySQLdb — required on PythonAnywhere (no C compiler)
+import pymysql
+pymysql.install_as_MySQLdb()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = config('IMS_SECRET_KEY')  # mandatory — no insecure fallback
+# ── Security ──────────────────────────────────────────────────────────────────
+# Generate your key at https://djecrety.ir/ then set it in .env as IMS_SECRET_KEY
+SECRET_KEY = config('IMS_SECRET_KEY')
 
-DEBUG = config('DEBUG', default='True', cast=bool)
+DEBUG = False
 
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = [
+    'Rehumile.pythonanywhere.com',
+    'www.rehumile.co.za',
+    'rehumile.co.za',
+    'localhost',
+    '127.0.0.1',
+]
 
 AUTH_USER_MODEL = 'ims.User'
 
+# ── Apps ──────────────────────────────────────────────────────────────────────
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -39,6 +46,7 @@ INSTALLED_APPS = [
     'ims',
 ]
 
+# ── Middleware ────────────────────────────────────────────────────────────────
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
@@ -56,7 +64,7 @@ ROOT_URLCONF = 'config.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [BASE_DIR / 'static'],
+        'DIRS': [],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -70,20 +78,28 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'config.wsgi.application'
 
-# Database — use DATABASE_URL env var with SQLite fallback
-_db_url = config('DATABASE_URL', default='')
-if _db_url:
-    DATABASES = {
-        'default': dj_database_url.parse(_db_url, conn_max_age=600)
+# ── Database — MySQL on PythonAnywhere ───────────────────────────────────────
+# PythonAnywhere MySQL:
+#   Dashboard → Databases tab → set a password → note the host shown there
+#   Database name: Rehumile$HQ
+#   Host:          Rehumile.mysql.pythonanywhere-services.com
+#   User:          Rehumile
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': 'Rehumile$HQ',
+        'USER': 'Rehumile',
+        'PASSWORD': config('MYSQL_PASSWORD'),   # set in .env on PythonAnywhere
+        'HOST': 'Rehumile.mysql.pythonanywhere-services.com',
+        'PORT': '3306',
+        'OPTIONS': {
+            'charset': 'utf8mb4',
+            'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
+        },
     }
-else:
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': BASE_DIR / 'db.sqlite3',
-        }
-    }
+}
 
+# ── Password validation ───────────────────────────────────────────────────────
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
     {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},
@@ -91,48 +107,48 @@ AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
 ]
 
+# ── Internationalisation ──────────────────────────────────────────────────────
 LANGUAGE_CODE = 'en-us'
 TIME_ZONE = 'Africa/Johannesburg'
 USE_I18N = True
 USE_TZ = True
 
-# The Express proxy strips the /portal prefix before forwarding to Django,
-# so Django sees bare paths (/static/, /login/, /api/, etc.)
+# ── Static & Media files ──────────────────────────────────────────────────────
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
-STATICFILES_DIRS = []   # no extra dirs; all static assets live in STATIC_ROOT
+STATICFILES_DIRS = []
 STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.StaticFilesStorage'
-WHITENOISE_MAX_AGE = 0
-WHITENOISE_AUTOREFRESH = True   # rescans STATIC_ROOT on every request (dev)
+WHITENOISE_MAX_AGE = 31536000   # 1 year cache for production
+WHITENOISE_AUTOREFRESH = False
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
-PASSWORD_RESET_TIMEOUT = 86400  # 24 hours
-
-DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-
-# ── Email ─────────────────────────────────────────────────────────────────────
-_email_user = config('EMAIL_HOST_USER', default='')
-EMAIL_BACKEND = (
-    'django.core.mail.backends.smtp.EmailBackend'
-    if _email_user
-    else 'django.core.mail.backends.console.EmailBackend'
-)
-EMAIL_HOST = config('EMAIL_HOST', default='smtp.office365.com')
-EMAIL_PORT = config('EMAIL_PORT', default=587, cast=int)
-EMAIL_USE_TLS = config('EMAIL_USE_TLS', default=True, cast=bool)
-EMAIL_USE_SSL = config('EMAIL_USE_SSL', default=False, cast=bool)
-EMAIL_HOST_USER = _email_user
+# ── Email — Office 365 SMTP ───────────────────────────────────────────────────
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.office365.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_USE_SSL = False
+EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='')
 EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
-DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='noreply@rehumile.co.za')
+DEFAULT_FROM_EMAIL = 'noreply@rehumile.co.za'
 SERVER_EMAIL = DEFAULT_FROM_EMAIL
 
-# CORS — allow all origins in dev
-CORS_ALLOW_ALL_ORIGINS = True
+# ── CORS ──────────────────────────────────────────────────────────────────────
+CORS_ALLOWED_ORIGINS = [
+    'https://www.rehumile.co.za',
+    'https://rehumile.co.za',
+    'https://Rehumile.pythonanywhere.com',
+]
 CORS_ALLOW_CREDENTIALS = True
 
-# Django REST Framework
+# ── Security headers (production) ─────────────────────────────────────────────
+SECURE_BROWSER_XSS_FILTER = True
+SECURE_CONTENT_TYPE_NOSNIFF = True
+X_FRAME_OPTIONS = 'SAMEORIGIN'
+
+# ── REST Framework ────────────────────────────────────────────────────────────
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
@@ -148,15 +164,14 @@ REST_FRAMEWORK = {
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
 }
 
-# JWT Settings
-from datetime import timedelta
+# ── JWT ───────────────────────────────────────────────────────────────────────
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(hours=8),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
     'ROTATE_REFRESH_TOKENS': True,
 }
 
-# DRF Spectacular
+# ── DRF Spectacular ───────────────────────────────────────────────────────────
 SPECTACULAR_SETTINGS = {
     'TITLE': 'Rehumile Portal IMS API',
     'DESCRIPTION': 'Incident Management System API',
@@ -164,5 +179,5 @@ SPECTACULAR_SETTINGS = {
     'SERVE_INCLUDE_SCHEMA': False,
 }
 
-# The app runs under /portal prefix — handled by URL patterns directly
-
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+PASSWORD_RESET_TIMEOUT = 86400  # 24 hours
