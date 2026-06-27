@@ -7,8 +7,8 @@ import requests as http_requests
 logger = logging.getLogger(__name__)
 
 # ── Sandbox credentials ───────────────────────────────────────────────────────
-PAYFAST_MERCHANT_ID = '10050665'
-PAYFAST_MERCHANT_KEY = 'atupyve1h93dk'
+PAYFAST_MERCHANT_ID = '10000100'
+PAYFAST_MERCHANT_KEY = '46f0cd694581a'
 PAYFAST_PASSPHRASE = ''        # Set after adding passphrase in PayFast portal
 PAYFAST_SANDBOX = True
 
