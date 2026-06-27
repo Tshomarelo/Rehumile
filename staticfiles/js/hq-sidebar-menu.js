@@ -17,11 +17,11 @@
     // visible and clickable regardless of viewport width.
     '.modal-backdrop{top:56px!important}' +
     'div.modal.fade{top:56px!important;height:calc(100% - 56px)!important}' +
-    // Desktop only: when sidebar is visible, also push modal right of sidebar.
-    '@media(min-width:992px){' +
-      'body:not(.hq-sidebar-collapsed) .modal-backdrop{left:260px!important}' +
-      'body:not(.hq-sidebar-collapsed) div.modal.fade{left:260px!important;width:calc(100% - 260px)!important}' +
-    '}'
+    // Always lift the navbar above modal backdrop so hamburger stays clickable.
+    '.navbar.navbar-bg{position:relative;z-index:1060!important}' +
+    // Whenever sidebar is visible (any viewport), push modal right of sidebar.
+    'body:not(.hq-sidebar-collapsed) .modal-backdrop{left:260px!important}' +
+    'body:not(.hq-sidebar-collapsed) div.modal.fade{left:260px!important;width:calc(100% - 260px)!important}'
   );
   document.head.appendChild(_st);
 
