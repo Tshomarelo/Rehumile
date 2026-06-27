@@ -2399,12 +2399,11 @@ class InvoiceReminderView(APIView):
       <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08)">
 
         <!-- Header -->
-        <tr><td style="background:#50181E;padding:28px 40px">
+        <tr><td style="background:#50181E;padding:24px 40px">
           <table width="100%" cellpadding="0" cellspacing="0">
             <tr>
               <td>
-                <p style="margin:0;color:#B38F43;font-size:22px;font-weight:900;letter-spacing:-0.5px">REHUMILE TMW</p>
-                <p style="margin:4px 0 0;color:rgba(255,255,255,0.7);font-size:12px">IT Services &amp; Solutions</p>
+                <img src="https://www.rehumile.co.za/portal/static/img/rehumile-logo.jpeg" alt="Rehumile TMW" height="56" style="display:block;height:56px;object-fit:contain">
               </td>
               <td align="right">
                 <p style="margin:0;color:rgba(255,255,255,0.5);font-size:11px;text-transform:uppercase;letter-spacing:1px">Invoice Reminder</p>
@@ -2450,11 +2449,19 @@ class InvoiceReminderView(APIView):
           </table>
 
           <!-- CTA Button -->
-          <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:24px">
+          <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:16px">
             <tr><td align="center">
               <a href="{pay_link}" style="display:inline-block;background:linear-gradient(135deg,#B38F43,#d4ac58);color:#ffffff;font-size:16px;font-weight:700;text-decoration:none;padding:16px 40px;border-radius:10px;box-shadow:0 6px 20px rgba(179,143,67,0.35)">
                 Pay Invoice Now &rarr;
               </a>
+            </td></tr>
+          </table>
+
+          <!-- Portal / Register links -->
+          <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:24px">
+            <tr><td align="center" style="padding:12px;background:#f8f4ee;border-radius:8px">
+              <p style="margin:0 0 8px;color:#666;font-size:13px">Already have an account? <a href="{pay_link}" style="color:#50181E;font-weight:700;text-decoration:none">Log in to your client portal</a> to view all invoices and payment history.</p>
+              <p style="margin:0;color:#666;font-size:13px">New client? <a href="{base}/portal/register/" style="color:#B38F43;font-weight:700;text-decoration:none">Register here</a> to access your dashboard.</p>
             </td></tr>
           </table>
 

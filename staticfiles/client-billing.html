@@ -185,17 +185,64 @@
           const inv=JSON.parse(btn.dataset.inv);
           const w=window.open('','_blank');
           w.document.write(`<!DOCTYPE html><html><head><title>Invoice ${inv.invoice_number||inv.id}</title>
-          <style>body{font-family:Arial,sans-serif;padding:40px;color:#333}h1{color:#50181E}table{width:100%;border-collapse:collapse}th,td{padding:8px 12px;border:1px solid #ddd;text-align:left}th{background:#f5f5f5}tfoot td{font-weight:bold}.logo{font-size:22px;font-weight:700;color:#B38F43;background:#50181E;padding:12px 20px;border-radius:4px;display:inline-block;margin-bottom:20px}</style>
+          <style>
+            *{box-sizing:border-box}
+            body{font-family:'Segoe UI',Arial,sans-serif;padding:0;margin:0;color:#333;background:#fff}
+            .page{max-width:760px;margin:0 auto;padding:40px}
+            .header{background:#50181E;padding:24px 32px;display:flex;align-items:center;justify-content:space-between;border-radius:8px 8px 0 0}
+            .header img{height:60px;object-fit:contain}
+            .header-right{text-align:right;color:rgba(255,255,255,0.8);font-size:13px}
+            .header-right strong{display:block;color:#B38F43;font-size:18px;margin-bottom:2px}
+            .body{padding:32px 32px 24px;border:1px solid #e0e0e0;border-top:none;border-radius:0 0 8px 8px}
+            h2{color:#50181E;margin:0 0 20px;font-size:22px}
+            .meta{width:100%;border-collapse:collapse;margin-bottom:24px}
+            .meta td{padding:5px 0;border:none;font-size:14px;vertical-align:top}
+            .meta td:first-child{color:#888;width:140px;font-weight:600;text-transform:uppercase;font-size:11px;letter-spacing:.5px;padding-top:7px}
+            .meta td:last-child{font-size:15px;font-weight:600;color:#222}
+            .items{width:100%;border-collapse:collapse;margin-bottom:24px}
+            .items th{background:#50181E;color:#fff;padding:10px 14px;text-align:left;font-size:13px}
+            .items td{padding:10px 14px;border-bottom:1px solid #eee;font-size:14px}
+            .items tfoot td{font-weight:700;font-size:15px;background:#fafafa;border-top:2px solid #50181E}
+            .footer-bar{margin-top:28px;padding-top:16px;border-top:1px solid #eee;display:flex;justify-content:space-between;align-items:center;font-size:12px;color:#999}
+            .footer-bar a{color:#50181E;text-decoration:none;font-weight:600}
+            @media print{.page{padding:20px}.header{border-radius:0}}
+          </style>
           </head><body>
-          <div class="logo">REHUMILE TMW</div>
-          <h1>Invoice</h1>
-          <table style="margin-bottom:20px;border:none"><tr><td style="border:none"><strong>Invoice #:</strong> ${inv.invoice_number||'INV-'+inv.id.slice(0,8)}</td><td style="border:none"><strong>Status:</strong> ${inv.status?.toUpperCase()}</td></tr>
-          <tr><td style="border:none"><strong>Due Date:</strong> ${fmtDate(inv.due_date)}</td><td style="border:none"><strong>Period:</strong> ${fmtDate(inv.billing_period_start)} – ${fmtDate(inv.billing_period_end)}</td></tr>
-          ${inv.incident_ticket_id?`<tr><td style="border:none"><strong>Ticket Ref:</strong> <span style="font-family:monospace;color:#c0392b">${inv.incident_ticket_id}</span></td><td style="border:none"></td></tr>`:''}</table>
-          <table><thead><tr><th>Description</th><th>Amount</th></tr></thead>
-          <tbody><tr><td>${inv.description||'IT Support Services'}</td><td>${fmtZAR(inv.total_amount)}</td></tr></tbody>
-          <tfoot><tr><td>Total</td><td>${fmtZAR(inv.total_amount)}</td></tr></tfoot></table>
-          <p style="margin-top:30px;color:#888;font-size:12px">Rehumile TMW &bull; infor@rehumile.co.za &bull; 068 397 3484</p>
+          <div class="page">
+            <div class="header">
+              <img src="https://www.rehumile.co.za/portal/static/img/rehumile-logo.jpeg" alt="Rehumile TMW" onerror="this.style.display='none';this.nextElementSibling.style.display='block'">
+              <span style="display:none;color:#B38F43;font-size:22px;font-weight:900">REHUMILE TMW</span>
+              <div class="header-right">
+                <strong>INVOICE</strong>
+                ${inv.invoice_number||'INV-'+inv.id.slice(0,8)}
+              </div>
+            </div>
+            <div class="body">
+              <h2>Invoice</h2>
+              <table class="meta">
+                <tr><td>Invoice #</td><td>${inv.invoice_number||'INV-'+inv.id.slice(0,8)}</td></tr>
+                <tr><td>Status</td><td><span style="background:${inv.status==='paid'?'#d4edda':inv.status==='overdue'?'#f8d7da':'#fff3cd'};color:${inv.status==='paid'?'#155724':inv.status==='overdue'?'#721c24':'#856404'};padding:2px 10px;border-radius:12px;font-size:12px;font-weight:700;text-transform:uppercase">${inv.status}</span></td></tr>
+                <tr><td>Due Date</td><td style="color:#c0392b">${fmtDate(inv.due_date)}</td></tr>
+                <tr><td>Period</td><td>${fmtDate(inv.billing_period_start)} – ${fmtDate(inv.billing_period_end)}</td></tr>
+                ${inv.incident_ticket_id?`<tr><td>Ticket Ref</td><td><span style="font-family:monospace;color:#c0392b;font-weight:700">${inv.incident_ticket_id}</span></td></tr>`:''}
+              </table>
+              <table class="items">
+                <thead><tr><th>Description</th><th style="text-align:right">Amount</th></tr></thead>
+                <tbody><tr>
+                  <td>${inv.description||inv.notes||'IT Support Services'}</td>
+                  <td style="text-align:right">${fmtZAR(inv.total_amount)}</td>
+                </tr></tbody>
+                <tfoot><tr>
+                  <td>Total</td>
+                  <td style="text-align:right;color:#50181E">${fmtZAR(inv.total_amount)}</td>
+                </tr></tfoot>
+              </table>
+              <div class="footer-bar">
+                <span>Rehumile TMW &bull; infor@rehumile.co.za &bull; 068 397 3484</span>
+                <a href="https://www.rehumile.co.za">www.rehumile.co.za</a>
+              </div>
+            </div>
+          </div>
           <script>window.onload=()=>window.print();<\/script></body></html>`);
           w.document.close();
         };
