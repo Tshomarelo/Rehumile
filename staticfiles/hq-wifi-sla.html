@@ -7,6 +7,8 @@
   <title>Subscriber & Contract Registry | Rehumile IMS</title>
   <link href="/portal/static/css/app.css" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+  <!-- SheetJS for Excel/CSV parsing in the browser -->
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
 </head>
 <body>
 <div class="wrapper">
@@ -40,9 +42,12 @@
       <div class="container-fluid p-0">
         <div class="d-flex align-items-center justify-content-between mb-3">
           <h1 class="h3 mb-0"><strong>Subscriber &amp; Contract Registry</strong></h1>
-          <div class="d-flex gap-2">
+          <div class="d-flex gap-2 flex-wrap">
             <button class="btn btn-outline-success" id="genMonthlyBtn">
               <i class="align-middle me-1" data-feather="zap"></i> Generate Monthly Invoices
+            </button>
+            <button class="btn btn-outline-secondary" id="importBtn">
+              <i class="align-middle me-1" data-feather="upload"></i> Import Spreadsheet
             </button>
             <button class="btn btn-primary" id="newRecordBtn">
               <i class="align-middle me-1" data-feather="plus"></i> <span id="newBtnLabel">New Subscriber</span>
@@ -281,6 +286,78 @@
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
         <button type="button" class="btn btn-danger" id="saveSlaBtn">Save Contract</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Import Spreadsheet Modal -->
+<div class="modal fade" id="importModal" tabindex="-1">
+  <div class="modal-dialog modal-xl">
+    <div class="modal-content">
+      <div class="modal-header" style="background:#2c5282;color:white">
+        <h5 class="modal-title"><i data-feather="upload" style="width:18px;height:18px;margin-right:8px;vertical-align:middle"></i> Import Subscribers from Spreadsheet</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div id="importAlert"></div>
+
+        <!-- Step 1: Upload -->
+        <div id="importStep1">
+          <p class="text-muted small mb-3">
+            Upload a <strong>.xlsx</strong>, <strong>.xls</strong>, or <strong>.csv</strong> file.
+            Required columns: <code>client_name</code>, <code>retail_price</code>, <code>wholesale_cost</code>.
+            Optional: <code>axxess_id</code>, <code>contact_name</code>, <code>contact_email</code>, <code>contact_phone</code>, <code>status</code>, <code>notes</code>.
+          </p>
+          <div class="mb-3">
+            <a href="#" id="downloadTemplateBtn" class="btn btn-sm btn-outline-secondary me-2">
+              <i data-feather="download" style="width:13px;height:13px"></i> Download Template
+            </a>
+            <small class="text-muted">Not sure about the format? Download the template first.</small>
+          </div>
+          <div class="border rounded p-4 text-center" style="border-style:dashed!important;background:#f8f9fa;cursor:pointer" id="dropZone">
+            <i data-feather="file-text" style="width:40px;height:40px;opacity:.3"></i>
+            <p class="mt-2 mb-1 fw-semibold">Drop your file here or click to browse</p>
+            <small class="text-muted">Supports .xlsx, .xls, .csv — max 5MB</small>
+            <input type="file" id="importFile" accept=".xlsx,.xls,.csv" style="display:none">
+          </div>
+        </div>
+
+        <!-- Step 2: Preview -->
+        <div id="importStep2" style="display:none">
+          <div class="d-flex align-items-center justify-content-between mb-2">
+            <h6 class="mb-0">Preview — <span id="previewCount">0</span> rows found</h6>
+            <button class="btn btn-sm btn-outline-secondary" id="importBack">← Choose different file</button>
+          </div>
+          <div class="alert alert-warning small py-2" id="importWarnings" style="display:none"></div>
+          <div class="table-responsive" style="max-height:350px;overflow-y:auto">
+            <table class="table table-sm table-bordered table-hover small" id="previewTable">
+              <thead id="previewHead"></thead>
+              <tbody id="previewBody"></tbody>
+            </table>
+          </div>
+          <p class="text-muted small mt-2 mb-0">Rows with missing <code>client_name</code>, <code>retail_price</code>, or <code>wholesale_cost</code> will be skipped.</p>
+        </div>
+
+        <div id="importProgress" style="display:none">
+          <div class="text-center py-4">
+            <div class="spinner-border text-primary mb-3"></div>
+            <p id="importProgressText" class="text-muted">Importing… <span id="importProgressCount">0</span> / <span id="importProgressTotal">0</span></p>
+          </div>
+        </div>
+
+        <div id="importDone" style="display:none">
+          <div class="alert alert-success">
+            <strong>Import complete!</strong><br>
+            <span id="importSummary"></span>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        <button type="button" class="btn btn-primary" id="runImportBtn" style="display:none">
+          <i data-feather="upload" style="width:14px;height:14px"></i> Import <span id="importBtnCount">0</span> Subscribers
+        </button>
       </div>
     </div>
   </div>
@@ -718,6 +795,168 @@
     }catch(e){ document.getElementById('genResult').innerHTML=`<div class="alert alert-danger">${e.message}</div>`; }
     btn.disabled=false; btn.innerHTML='<i data-feather="zap" style="width:14px;height:14px"></i> Run Generation';
     if(window.feather)feather.replace();
+  };
+
+  // ── Spreadsheet Import ───────────────────────────────────────────────────────
+  let importRows = [];
+
+  document.getElementById('importBtn').onclick = () => {
+    importRows = [];
+    document.getElementById('importStep1').style.display = '';
+    document.getElementById('importStep2').style.display = 'none';
+    document.getElementById('importProgress').style.display = 'none';
+    document.getElementById('importDone').style.display = 'none';
+    document.getElementById('runImportBtn').style.display = 'none';
+    document.getElementById('importAlert').innerHTML = '';
+    document.getElementById('importFile').value = '';
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('importModal')).show();
+  };
+
+  // Drop zone click → file picker
+  document.getElementById('dropZone').onclick = () => document.getElementById('importFile').click();
+  document.getElementById('dropZone').ondragover = e => { e.preventDefault(); e.currentTarget.style.background='#e8f4fd'; };
+  document.getElementById('dropZone').ondragleave = e => { e.currentTarget.style.background='#f8f9fa'; };
+  document.getElementById('dropZone').ondrop = e => {
+    e.preventDefault(); e.currentTarget.style.background='#f8f9fa';
+    const f = e.dataTransfer.files[0]; if(f) parseFile(f);
+  };
+  document.getElementById('importFile').onchange = e => { const f = e.target.files[0]; if(f) parseFile(f); };
+
+  function parseFile(file) {
+    if(file.size > 5*1024*1024) { showAlert('importAlert','File too large. Max 5MB.'); return; }
+    const reader = new FileReader();
+    reader.onload = e => {
+      try {
+        const wb = XLSX.read(e.target.result, {type:'array'});
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const raw = XLSX.utils.sheet_to_json(ws, {defval:''});
+        processRows(raw);
+      } catch(err) { showAlert('importAlert','Could not parse file: '+err.message); }
+    };
+    reader.readAsArrayBuffer(file);
+  }
+
+  function processRows(raw) {
+    const COLS = {
+      client_name: ['client_name','client name','name','client'],
+      retail_price: ['retail_price','retail price','retail','price','monthly fee'],
+      wholesale_cost: ['wholesale_cost','wholesale cost','wholesale','axxess cost','cost'],
+      axxess_id: ['axxess_id','axxess id','axxess account','account id'],
+      contact_name: ['contact_name','contact name','contact'],
+      contact_email: ['contact_email','contact email','email'],
+      contact_phone: ['contact_phone','contact phone','phone','mobile'],
+      status: ['status'],
+      notes: ['notes','note'],
+    };
+    // Build header map
+    const headers = raw.length ? Object.keys(raw[0]).map(h=>h.trim().toLowerCase()) : [];
+    function findCol(aliases) {
+      for(const a of aliases) { const i = headers.indexOf(a); if(i>=0) return Object.keys(raw[0])[i]; }
+      return null;
+    }
+    const map = {};
+    for(const [field, aliases] of Object.entries(COLS)) map[field] = findCol(aliases);
+
+    const warnings = [];
+    if(!map.client_name) warnings.push('Could not find a "client_name" column — check column headers.');
+    if(!map.retail_price) warnings.push('Could not find a "retail_price" column.');
+    if(!map.wholesale_cost) warnings.push('Could not find a "wholesale_cost" column.');
+
+    importRows = raw.map((r,i) => ({
+      _row: i+2,
+      client_name: map.client_name ? String(r[map.client_name]||'').trim() : '',
+      retail_price: map.retail_price ? parseFloat(r[map.retail_price])||0 : 0,
+      wholesale_cost: map.wholesale_cost ? parseFloat(r[map.wholesale_cost])||0 : 0,
+      axxess_id: map.axxess_id ? String(r[map.axxess_id]||'').trim() : '',
+      contact_name: map.contact_name ? String(r[map.contact_name]||'').trim() : '',
+      contact_email: map.contact_email ? String(r[map.contact_email]||'').trim() : '',
+      contact_phone: map.contact_phone ? String(r[map.contact_phone]||'').trim() : '',
+      status: map.status ? String(r[map.status]||'active').trim().toLowerCase() : 'active',
+      notes: map.notes ? String(r[map.notes]||'').trim() : '',
+    })).filter(r => r.client_name);
+
+    // Show preview
+    document.getElementById('importStep1').style.display = 'none';
+    document.getElementById('importStep2').style.display = '';
+    document.getElementById('previewCount').textContent = importRows.length;
+    const warnEl = document.getElementById('importWarnings');
+    if(warnings.length) { warnEl.innerHTML = '⚠ '+warnings.join('<br>⚠ '); warnEl.style.display=''; }
+    else warnEl.style.display='none';
+
+    document.getElementById('previewHead').innerHTML = '<tr><th>#</th><th>Client Name</th><th>Retail</th><th>Wholesale</th><th>Margin</th><th>Axxess ID</th><th>Email</th><th>Status</th></tr>';
+    document.getElementById('previewBody').innerHTML = importRows.map((r,i) => {
+      const margin = r.retail_price - r.wholesale_cost;
+      const cls = margin < 0 ? 'text-danger' : 'text-success';
+      return `<tr>
+        <td class="text-muted">${r._row}</td>
+        <td><strong>${r.client_name}</strong></td>
+        <td>R ${r.retail_price.toFixed(2)}</td>
+        <td>R ${r.wholesale_cost.toFixed(2)}</td>
+        <td class="${cls}">R ${margin.toFixed(2)}</td>
+        <td>${r.axxess_id||'—'}</td>
+        <td>${r.contact_email||'—'}</td>
+        <td>${r.status}</td>
+      </tr>`;
+    }).join('');
+
+    document.getElementById('importBtnCount').textContent = importRows.length;
+    document.getElementById('runImportBtn').style.display = importRows.length ? '' : 'none';
+    if(window.feather) feather.replace();
+  }
+
+  document.getElementById('importBack').onclick = () => {
+    document.getElementById('importStep1').style.display = '';
+    document.getElementById('importStep2').style.display = 'none';
+    document.getElementById('runImportBtn').style.display = 'none';
+  };
+
+  document.getElementById('runImportBtn').onclick = async () => {
+    if(!importRows.length) return;
+    document.getElementById('importStep2').style.display = 'none';
+    document.getElementById('runImportBtn').style.display = 'none';
+    document.getElementById('importProgress').style.display = '';
+    document.getElementById('importProgressTotal').textContent = importRows.length;
+
+    let created=0, skipped=0, errors=[];
+    for(let i=0; i<importRows.length; i++) {
+      document.getElementById('importProgressCount').textContent = i+1;
+      const row = importRows[i];
+      const body = {
+        client_name: row.client_name,
+        axxess_id: row.axxess_id,
+        contact_name: row.contact_name,
+        contact_email: row.contact_email,
+        contact_phone: row.contact_phone,
+        retail_price: row.retail_price,
+        wholesale_cost: row.wholesale_cost,
+        status: ['active','suspended','cancelled'].includes(row.status) ? row.status : 'active',
+        notes: row.notes,
+        billing_day: 1,
+      };
+      try {
+        const r = await api('/portal/api/wifi-subscribers/', {method:'POST', body:JSON.stringify(body)});
+        if(r.ok) created++;
+        else { const d=await r.json(); skipped++; errors.push(`Row ${row._row} (${row.client_name}): ${d.client_name?.[0]||d.detail||JSON.stringify(d)}`); }
+      } catch(e) { skipped++; errors.push(`Row ${row._row}: network error`); }
+    }
+
+    document.getElementById('importProgress').style.display = 'none';
+    document.getElementById('importDone').style.display = '';
+    document.getElementById('importSummary').innerHTML =
+      `${created} subscriber${created!==1?'s':''} imported successfully.` +
+      (skipped ? ` ${skipped} skipped.` : '') +
+      (errors.length ? `<ul class="mt-2 mb-0 small">${errors.map(e=>`<li>${e}</li>`).join('')}</ul>` : '');
+    loadWifi();
+  };
+
+  // ── Download CSV template ─────────────────────────────────────────────────
+  document.getElementById('downloadTemplateBtn').onclick = e => {
+    e.preventDefault();
+    const header = 'client_name,axxess_id,retail_price,wholesale_cost,contact_name,contact_email,contact_phone,status,notes';
+    const example = 'Thebado Fuels,AX-00123,799.00,550.00,John Thebado,john@thebado.co.za,0711234567,active,Maputaland branch';
+    const blob = new Blob([header+'\n'+example], {type:'text/csv'});
+    const a = document.createElement('a'); a.href=URL.createObjectURL(blob);
+    a.download='wifi_subscribers_template.csv'; a.click();
   };
 
   // ── Init ─────────────────────────────────────────────────────────────────────

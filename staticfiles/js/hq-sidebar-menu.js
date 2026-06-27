@@ -13,23 +13,43 @@
   // body.hq-sidebar-collapsed is toggled below to track the sidebar state.
   var _st = document.createElement('style');
   _st.textContent = (
-    // Always: push modal below the sticky navbar so the hamburger toggle is
-    // visible and clickable regardless of viewport width.
+    // Backdrop always starts below navbar
     '.modal-backdrop{top:56px!important}' +
-    'div.modal.fade{top:56px!important;height:calc(100% - 56px)!important}' +
-    // Always lift the navbar above modal backdrop so hamburger stays clickable.
-    '.navbar.navbar-bg{position:relative;z-index:1060!important}' +
-    // Whenever sidebar is visible (any viewport), push modal right of sidebar.
-    'body:not(.hq-sidebar-collapsed) .modal-backdrop{left:260px!important}' +
-    'body:not(.hq-sidebar-collapsed) div.modal.fade{left:260px!important;width:calc(100% - 260px)!important}'
+    // Navbar sits above modal backdrop so hamburger is always clickable
+    '.navbar.navbar-bg{position:relative;z-index:1060!important}'
   );
   document.head.appendChild(_st);
+
+  // ── JS-driven modal positioning (more reliable than pure CSS) ───────────────
+  // Runs on every modal open/close and on sidebar toggle so modals never
+  // overlap the sidebar regardless of viewport width.
+  function _positionModals() {
+    var sidebarEl = document.getElementById('sidebar');
+    var sidebarOpen = sidebarEl && !sidebarEl.classList.contains('collapsed');
+    var left = sidebarOpen ? '260px' : '0';
+    var width = sidebarOpen ? 'calc(100% - 260px)' : '100%';
+    document.querySelectorAll('div.modal').forEach(function(m) {
+      m.style.top = '56px';
+      m.style.height = 'calc(100% - 56px)';
+      m.style.left = left;
+      m.style.width = width;
+    });
+    document.querySelectorAll('.modal-backdrop').forEach(function(b) {
+      b.style.top = '56px';
+      b.style.left = left;
+      b.style.width = width;
+    });
+  }
+  document.addEventListener('show.bs.modal', _positionModals);
+  document.addEventListener('shown.bs.modal', _positionModals);
+  document.addEventListener('hidden.bs.modal', _positionModals);
 
   // ── 2. Track sidebar collapsed state ───────────────────────────────────────
   var _sidebar = document.getElementById('sidebar');
   if (_sidebar) {
     function _syncCollapsed() {
       document.body.classList.toggle('hq-sidebar-collapsed', _sidebar.classList.contains('collapsed'));
+      _positionModals();
     }
     _syncCollapsed();
     new MutationObserver(_syncCollapsed).observe(_sidebar, { attributes: true, attributeFilter: ['class'] });
