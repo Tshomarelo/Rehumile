@@ -731,11 +731,33 @@ class Invoice(models.Model):
         db_index=True
     )
     
+    # Invoice type — classifies revenue stream for intelligence dashboard
+    INVOICE_TYPE_CHOICES = [
+        ('wifi', 'WiFi Subscription'),
+        ('sla', 'SLA Monthly Retainer'),
+        ('callout', 'SLA Call-Out'),
+        ('adhoc', 'Ad-Hoc / Project'),
+    ]
+    invoice_type = models.CharField(max_length=20, choices=INVOICE_TYPE_CHOICES, default='adhoc', db_index=True)
+
+    # Subscriber/contract references (set when invoice_type is wifi/sla/callout)
+    wifi_subscriber = models.ForeignKey(
+        'WifiSubscriber', null=True, blank=True, on_delete=models.SET_NULL, related_name='invoices',
+    )
+    sla_contract = models.ForeignKey(
+        'SLAContract', null=True, blank=True, on_delete=models.SET_NULL, related_name='invoices',
+    )
+    # Axxess wholesale cost at time of invoice — locked so history is accurate even if rate changes
+    wholesale_cost = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+
+    # Description (short human-readable label — used in print/email)
+    description = models.CharField(max_length=500, blank=True)
+
     # Notes
     notes = models.TextField(blank=True)
     due_date = models.DateField(null=True, blank=True)
     payment_date = models.DateField(null=True, blank=True)
-    
+
     # Timestamps
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -1769,3 +1791,102 @@ class Payment(models.Model):
 
     def __str__(self):
         return f"Payment {self.reference} — R{self.amount} [{self.status}]"
+
+
+# ============================================================================
+# REVENUE INTELLIGENCE — WiFi Subscribers, SLA Contracts, Allocation Settings
+# ============================================================================
+
+class SubscriberStatusChoices(models.TextChoices):
+    ACTIVE = 'active', _('Active')
+    SUSPENDED = 'suspended', _('Suspended')
+    CANCELLED = 'cancelled', _('Cancelled')
+
+
+class WifiSubscriber(models.Model):
+    """
+    Recurring WiFi/internet client managed via Axxess wholesale ISP.
+    Each subscriber generates an auto-invoice on the 1st of every month.
+    """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    axxess_id = models.CharField(max_length=150, blank=True, help_text='Axxess device/SIM identifier')
+    client_name = models.CharField(max_length=255, db_index=True)
+    contact_name = models.CharField(max_length=255, blank=True)
+    contact_email = models.EmailField(blank=True)
+    contact_phone = models.CharField(max_length=20, blank=True)
+    # Optional link to a portal Company — null for direct-pay clients
+    company = models.ForeignKey(
+        Company, null=True, blank=True, on_delete=models.SET_NULL,
+        related_name='wifi_subscriptions',
+    )
+    retail_price = models.DecimalField(max_digits=10, decimal_places=2, help_text='What you charge the client')
+    wholesale_cost = models.DecimalField(max_digits=10, decimal_places=2, help_text='Axxess cost — editable anytime')
+    billing_day = models.IntegerField(default=1, help_text='Day of month invoice is generated (default: 1st)')
+    status = models.CharField(max_length=20, choices=SubscriberStatusChoices.choices, default='active', db_index=True)
+    notes = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'wifi_subscribers'
+        ordering = ['client_name']
+
+    def __str__(self):
+        return f"{self.client_name} (R{self.retail_price}/month)"
+
+    @property
+    def gross_margin(self):
+        return float(self.retail_price) - float(self.wholesale_cost)
+
+    @property
+    def is_loss_making(self):
+        return self.wholesale_cost >= self.retail_price
+
+
+class SLAContract(models.Model):
+    """
+    Recurring SLA retainer contract — generates a monthly invoice like WiFi.
+    Call-outs above the retainer are raised as separate 'callout' invoices.
+    """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    client_name = models.CharField(max_length=255, db_index=True)
+    contact_name = models.CharField(max_length=255, blank=True)
+    contact_email = models.EmailField(blank=True)
+    contact_phone = models.CharField(max_length=20, blank=True)
+    company = models.ForeignKey(
+        Company, null=True, blank=True, on_delete=models.SET_NULL,
+        related_name='sla_contracts',
+    )
+    monthly_retainer = models.DecimalField(max_digits=10, decimal_places=2)
+    contract_description = models.TextField(blank=True, help_text='What the SLA covers')
+    contract_start = models.DateField()
+    contract_end = models.DateField(null=True, blank=True)
+    billing_day = models.IntegerField(default=1)
+    status = models.CharField(max_length=20, choices=SubscriberStatusChoices.choices, default='active', db_index=True)
+    notes = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'sla_contracts'
+        ordering = ['client_name']
+
+    def __str__(self):
+        return f"{self.client_name} SLA — R{self.monthly_retainer}/month"
+
+
+class RevenueAllocation(models.Model):
+    """
+    Profit allocation percentages — mirrors the Setup tab of the Excel ledger.
+    Singleton: only one record used (id=1). Editable from HQ Revenue Intelligence page.
+    """
+    reinvestment_pct = models.DecimalField(max_digits=5, decimal_places=4, default=0.15, help_text='e.g. 0.15 = 15%')
+    opex_pct = models.DecimalField(max_digits=5, decimal_places=4, default=0.15, help_text='e.g. 0.15 = 15%')
+    owner_pct = models.DecimalField(max_digits=5, decimal_places=4, default=0.70, help_text='e.g. 0.70 = 70%')
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'revenue_allocation'
+
+    def __str__(self):
+        return f"Allocation: {float(self.reinvestment_pct)*100:.0f}% / {float(self.opex_pct)*100:.0f}% / {float(self.owner_pct)*100:.0f}%"

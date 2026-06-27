@@ -16,6 +16,7 @@ from ims.portal_views import (
     portal_pos_view, portal_vouchers_view,
     portal_compliance_view, portal_vat201_view, portal_emp201_view,
     portal_hr_view, portal_playbook_view, portal_website_view,
+    portal_wifi_sla_view, portal_revenue_intelligence_view,
     client_dashboard_view, client_tickets_view, client_create_ticket_view,
     client_ticket_detail_view, client_billing_view, client_profile_view,
     client_contact_view, client_notifications_view,
@@ -66,6 +67,9 @@ _portal_patterns = [
     path('dashboard/hr/', portal_hr_view, name='portal-hr'),
     path('dashboard/playbook/', portal_playbook_view, name='portal-playbook'),
     path('dashboard/website/', portal_website_view, name='portal-website'),
+    # Revenue Intelligence
+    path('dashboard/wifi-sla/', portal_wifi_sla_view, name='portal-wifi-sla'),
+    path('dashboard/revenue-intelligence/', portal_revenue_intelligence_view, name='portal-revenue-intelligence'),
 ]
 
 urlpatterns = _portal_patterns + [

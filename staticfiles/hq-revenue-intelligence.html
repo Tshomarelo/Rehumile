@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <link rel="shortcut icon" href="/portal/static/img/icons/icon-48x48.png"/>
+  <title>Business Intelligence | Rehumile IMS</title>
+  <link href="/portal/static/css/app.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+</head>
+<body>
+<div class="wrapper">
+  <nav id="sidebar" class="sidebar js-sidebar">
+    <div class="sidebar-content js-simplebar">
+      <a class="sidebar-brand d-flex align-items-center p-2" href="/portal/dashboard/">
+        <img src="/portal/static/img/rehumile-logo.jpeg" style="height:36px;object-fit:contain" alt="Rehumile TMW">
+      </a>
+      <ul class="sidebar-nav"></ul>
+    </div>
+  </nav>
+  <div class="main">
+    <nav class="navbar navbar-expand navbar-light navbar-bg">
+      <a class="sidebar-toggle js-sidebar-toggle"><i class="hamburger align-self-center"></i></a>
+      <div class="navbar-collapse collapse">
+        <ul class="navbar-nav navbar-align">
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle d-none d-sm-inline-block" href="#" data-bs-toggle="dropdown">
+              <i class="align-middle me-1" data-feather="user"></i><span class="text-dark" id="navUserName">…</span>
+            </a>
+            <div class="dropdown-menu dropdown-menu-end">
+              <span class="dropdown-item-text small text-muted" id="navUserRole"></span>
+              <div class="dropdown-divider"></div>
+              <a class="dropdown-item" href="#" id="logoutBtn"><i class="align-middle me-1" data-feather="log-out"></i> Sign out</a>
+            </div>
+          </li>
+        </ul>
+      </div>
+    </nav>
+    <main class="content">
+      <div class="container-fluid p-0">
+
+        <!-- Header -->
+        <div class="d-flex align-items-center justify-content-between mb-3">
+          <div>
+            <h1 class="h3 mb-0"><strong>Business Intelligence</strong></h1>
+            <p class="text-muted small mb-0" id="intelligenceSubtitle">Revenue Intelligence Ledger</p>
+          </div>
+          <button class="btn btn-outline-secondary btn-sm" id="refreshBtn">
+            <i data-feather="refresh-cw" style="width:14px;height:14px"></i> Refresh
+          </button>
+        </div>
+        <div id="pageAlert"></div>
+
+        <!-- ── Current Month Live ─────────────────────────────────────────── -->
+        <div class="row mb-3" id="liveCards" style="display:none">
+          <div class="col-md-3 col-sm-6 mb-3">
+            <div class="card text-center py-3">
+              <h6 class="text-muted small mb-1">WiFi Revenue</h6>
+              <h4 class="mb-0 text-primary" id="live-wifi">R —</h4>
+              <small class="text-muted" id="live-wifi-sub"></small>
+            </div>
+          </div>
+          <div class="col-md-3 col-sm-6 mb-3">
+            <div class="card text-center py-3">
+              <h6 class="text-muted small mb-1">SLA Revenue</h6>
+              <h4 class="mb-0 text-primary" id="live-sla">R —</h4>
+              <small class="text-muted" id="live-sla-sub"></small>
+            </div>
+          </div>
+          <div class="col-md-3 col-sm-6 mb-3">
+            <div class="card text-center py-3">
+              <h6 class="text-muted small mb-1">Ad-Hoc Revenue</h6>
+              <h4 class="mb-0 text-info" id="live-adhoc">R —</h4>
+              <small class="text-muted">Growth income</small>
+            </div>
+          </div>
+          <div class="col-md-3 col-sm-6 mb-3">
+            <div class="card text-center py-3" style="background:#50181E">
+              <h6 class="text-white-50 small mb-1">Net Profit</h6>
+              <h4 class="mb-0 text-white" id="live-profit">R —</h4>
+              <small class="text-white-50" id="live-margin-pct"></small>
+            </div>
+          </div>
+        </div>
+
+        <!-- Profit Allocation -->
+        <div class="card mb-3" id="allocationCard" style="display:none">
+          <div class="card-header d-flex align-items-center justify-content-between">
+            <h5 class="card-title mb-0">Profit Allocation (15 / 15 / 70)</h5>
+            <button class="btn btn-sm btn-outline-secondary" id="editAllocBtn" style="display:none">
+              <i data-feather="edit-2" style="width:14px;height:14px"></i> Edit
+            </button>
+          </div>
+          <div class="card-body">
+            <div class="row text-center">
+              <div class="col-4">
+                <div class="p-3 rounded" style="background:#e8f5e9">
+                  <div class="small text-muted mb-1">Reinvestment</div>
+                  <h5 class="mb-0 text-success" id="alloc-reinvest">R —</h5>
+                  <small class="text-muted" id="alloc-reinvest-pct">15%</small>
+                </div>
+              </div>
+              <div class="col-4">
+                <div class="p-3 rounded" style="background:#fff3e0">
+                  <div class="small text-muted mb-1">OpEx</div>
+                  <h5 class="mb-0 text-warning" id="alloc-opex">R —</h5>
+                  <small class="text-muted" id="alloc-opex-pct">15%</small>
+                </div>
+              </div>
+              <div class="col-4">
+                <div class="p-3 rounded" style="background:#e3f2fd">
+                  <div class="small text-muted mb-1">Owner Draw</div>
+                  <h5 class="mb-0 text-primary" id="alloc-owner">R —</h5>
+                  <small class="text-muted" id="alloc-owner-pct">70%</small>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── Intelligence Flags ─────────────────────────────────────────── -->
+        <div class="card mb-3">
+          <div class="card-header d-flex align-items-center justify-content-between">
+            <h5 class="card-title mb-0">
+              <i data-feather="alert-triangle" style="width:16px;height:16px;color:#e67e22;margin-right:6px;vertical-align:middle"></i>
+              Intelligence Flags
+            </h5>
+            <span class="badge bg-warning text-dark" id="flagCount">0</span>
+          </div>
+          <div class="card-body p-0" id="flagsPanel">
+            <div class="text-center py-4 text-muted" id="flagsLoading">Analysing…</div>
+          </div>
+        </div>
+
+        <!-- ── Per-Client Profitability ───────────────────────────────────── -->
+        <div class="card mb-3">
+          <div class="card-header">
+            <h5 class="card-title mb-0">Per-Client Profitability (All Time)</h5>
+          </div>
+          <div class="card-body p-0">
+            <div class="text-center py-4 text-muted" id="clientLoading">Loading…</div>
+            <div class="table-responsive" id="clientTable" style="display:none">
+              <table class="table table-hover my-0 small">
+                <thead><tr>
+                  <th>#</th><th>Client</th><th>Type</th>
+                  <th>Revenue</th><th>Cost</th><th>Gross Margin</th><th>Margin %</th>
+                </tr></thead>
+                <tbody id="clientTbody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── 12-Month Breakdown ─────────────────────────────────────────── -->
+        <div class="card mb-3">
+          <div class="card-header d-flex align-items-center justify-content-between">
+            <h5 class="card-title mb-0">12-Month Breakdown</h5>
+            <small class="text-muted">Rolling 12 months</small>
+          </div>
+          <div class="card-body p-0">
+            <div class="text-center py-4 text-muted" id="monthlyLoading">Loading…</div>
+            <div class="table-responsive" id="monthlyTable" style="display:none">
+              <table class="table table-hover my-0 small">
+                <thead><tr>
+                  <th>Month</th>
+                  <th>WiFi</th><th>SLA</th><th>Ad-Hoc</th>
+                  <th>Axxess Cost</th><th>Net Profit</th>
+                  <th>Floor %</th><th>Growth %</th>
+                  <th>Owner Draw</th>
+                </tr></thead>
+                <tbody id="monthlyTbody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </main>
+    <footer class="footer"><div class="container-fluid"><p class="mb-0 text-muted">Rehumile TMW IMS &copy; 2025</p></div></footer>
+  </div>
+</div>
+
+<!-- Edit Allocation Modal -->
+<div class="modal fade" id="allocModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header" style="background:#50181E;color:white">
+        <h5 class="modal-title">Edit Profit Allocation</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div id="allocModalAlert"></div>
+        <p class="text-muted small">Percentages must add up to 100%.</p>
+        <div class="mb-3">
+          <label class="form-label fw-semibold">Reinvestment %</label>
+          <input type="number" class="form-control" id="a_reinvest" min="0" max="100" step="0.01" oninput="updateAllocTotal()">
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-semibold">OpEx %</label>
+          <input type="number" class="form-control" id="a_opex" min="0" max="100" step="0.01" oninput="updateAllocTotal()">
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-semibold">Owner Draw %</label>
+          <input type="number" class="form-control" id="a_owner" min="0" max="100" step="0.01" oninput="updateAllocTotal()">
+        </div>
+        <div class="alert alert-light border py-2">
+          Total: <strong id="allocTotal">0%</strong>
+          <span id="allocTotalWarn" class="text-danger ms-2 small" style="display:none">Must equal 100%</span>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-danger" id="saveAllocBtn">Save Allocation</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="/portal/static/js/app.js"></script>
+<script src="/portal/static/js/hq-sidebar-menu.js"></script>
+<script>(function(){function _i(){var s=document.querySelector('.js-sidebar'),t=document.querySelector('.js-sidebar-toggle');if(!s||!t)return;if(window.innerWidth<992&&localStorage.getItem('ims_sidebar')==='open')s.classList.add('collapsed');t.addEventListener('click',function(){setTimeout(function(){localStorage.setItem('ims_sidebar',s.classList.contains('collapsed')?'open':'closed');},50);});}document.readyState==='loading'?document.addEventListener('DOMContentLoaded',_i):_i();})();</script>
+<script>
+(function(){
+  const token = localStorage.getItem('ims_access');
+  if(!token){ window.location.href='/portal/login/'; return; }
+  const userData = JSON.parse(localStorage.getItem('ims_user')||'{}');
+  if(!['admin','agent','finance'].includes(userData.role)){ window.location.href='/portal/client/'; return; }
+  document.getElementById('navUserName').textContent=((userData.first_name||'')+' '+(userData.last_name||'')).trim()||userData.email||'User';
+  document.getElementById('navUserRole').textContent=(userData.role||'').toUpperCase();
+  document.getElementById('logoutBtn').onclick=e=>{ e.preventDefault(); localStorage.clear(); window.location.href='/portal/login/'; };
+
+  const isAdmin = userData.role==='admin';
+
+  async function api(url,opts={}){
+    const r=await fetch(url,{...opts,headers:{'Content-Type':'application/json','Authorization':'Bearer '+token,...(opts.headers||{})}});
+    if(r.status===401){ localStorage.clear(); window.location.href='/portal/login/'; throw new Error('Unauth'); }
+    return r;
+  }
+  function showAlert(id,msg,type='danger'){
+    document.getElementById(id).innerHTML=`<div class="alert alert-${type} alert-dismissible"><button type="button" class="btn-close" data-bs-dismiss="alert"></button>${msg}</div>`;
+  }
+  const R=n=>n!=null?'R '+parseFloat(n).toFixed(2):'R —';
+  const pct=n=>n!=null?(parseFloat(n)*100).toFixed(1)+'%':'—';
+
+  // ── Revenue Intelligence ─────────────────────────────────────────────────────
+  async function loadIntelligence(){
+    try{
+      const r=await api('/portal/api/revenue-intelligence/');
+      const d=await r.json();
+      if(!r.ok){ showAlert('pageAlert',d.detail||'Failed to load intelligence.'); return; }
+
+      // Current month subtitle
+      const now=new Date();
+      document.getElementById('intelligenceSubtitle').textContent=
+        `Live data — ${now.toLocaleString('en-ZA',{month:'long',year:'numeric'})}`;
+
+      // Live cards
+      const s=d.streams||{};
+      document.getElementById('live-wifi').textContent=R(s.wifi?.revenue);
+      document.getElementById('live-wifi-sub').textContent=`${s.wifi?.invoice_count||0} invoices`;
+      document.getElementById('live-sla').textContent=R(s.sla?.revenue);
+      document.getElementById('live-sla-sub').textContent=`${s.sla?.invoice_count||0} invoices`;
+      document.getElementById('live-adhoc').textContent=R(s.adhoc?.revenue);
+      const netProfit=parseFloat(d.net_profit||0);
+      const totalRev=parseFloat(d.total_revenue||0);
+      document.getElementById('live-profit').textContent=R(netProfit);
+      document.getElementById('live-margin-pct').textContent=totalRev>0?((netProfit/totalRev)*100).toFixed(1)+'% margin':'';
+      document.getElementById('liveCards').style.display='';
+
+      // Allocation
+      const alloc=d.allocation||{};
+      const allocReinvest=netProfit*parseFloat(alloc.reinvestment_pct||0.15);
+      const allocOpex=netProfit*parseFloat(alloc.opex_pct||0.15);
+      const allocOwner=netProfit*parseFloat(alloc.owner_pct||0.70);
+      document.getElementById('alloc-reinvest').textContent=R(allocReinvest);
+      document.getElementById('alloc-reinvest-pct').textContent=pct(alloc.reinvestment_pct);
+      document.getElementById('alloc-opex').textContent=R(allocOpex);
+      document.getElementById('alloc-opex-pct').textContent=pct(alloc.opex_pct);
+      document.getElementById('alloc-owner').textContent=R(allocOwner);
+      document.getElementById('alloc-owner-pct').textContent=pct(alloc.owner_pct);
+      document.getElementById('allocationCard').style.display='';
+      if(isAdmin) document.getElementById('editAllocBtn').style.display='';
+
+      // Store allocation for modal
+      window._currentAlloc = alloc;
+
+      // Intelligence Flags
+      const flags=d.flags||[];
+      document.getElementById('flagCount').textContent=flags.length;
+      const flagEl=document.getElementById('flagsPanel');
+      document.getElementById('flagsLoading').remove&&document.getElementById('flagsLoading').remove();
+      if(!flags.length){
+        flagEl.innerHTML='<div class="text-center py-4 text-success"><i data-feather="check-circle" style="width:32px;height:32px;opacity:.5"></i><p class="mt-2 mb-0">No issues detected — business is running clean.</p></div>';
+        document.getElementById('flagCount').className='badge bg-success';
+      } else {
+        const flagIcon={floor_month:'☀️',loss_making:'🔴',missed_revenue:'🎫',overdue_subscribers:'⏰'};
+        const flagCls={floor_month:'warning',loss_making:'danger',missed_revenue:'warning',overdue_subscribers:'danger'};
+        flagEl.innerHTML='<ul class="list-group list-group-flush">'+flags.map(f=>`
+          <li class="list-group-item d-flex align-items-start gap-2">
+            <span style="font-size:1.2em;line-height:1.4">${flagIcon[f.type]||'⚠️'}</span>
+            <div>
+              <strong class="text-${flagCls[f.type]||'secondary'}">${f.title}</strong>
+              <div class="small text-muted">${f.detail}</div>
+            </div>
+          </li>`).join('')+'</ul>';
+        document.getElementById('flagCount').className='badge bg-danger';
+      }
+
+      // Per-client profitability
+      const clients=d.client_profitability||[];
+      document.getElementById('clientLoading').style.display='none';
+      if(clients.length){
+        document.getElementById('clientTable').style.display='block';
+        document.getElementById('clientTbody').innerHTML=clients.map((c,i)=>{
+          const marginPct=parseFloat(c.revenue||0)>0?((parseFloat(c.gross_margin||0)/parseFloat(c.revenue))*100).toFixed(1):0;
+          const cls=parseFloat(c.gross_margin||0)<0?'text-danger':parseFloat(c.gross_margin||0)===0?'text-muted':'text-success';
+          return `<tr>
+            <td class="text-muted">${i+1}</td>
+            <td><strong>${c.client_name}</strong></td>
+            <td><span class="badge bg-light text-dark border">${c.type||'adhoc'}</span></td>
+            <td>${R(c.revenue)}</td>
+            <td>${R(c.cost)}</td>
+            <td class="${cls} fw-semibold">${R(c.gross_margin)}</td>
+            <td class="${cls}">${marginPct}%</td>
+          </tr>`;
+        }).join('');
+      } else {
+        document.getElementById('clientLoading').textContent='No client data yet.';
+      }
+
+      if(window.feather)feather.replace();
+    }catch(e){ if(e.message!=='Unauth') showAlert('pageAlert','Failed to load intelligence data.'); }
+  }
+
+  // ── 12-Month Breakdown ───────────────────────────────────────────────────────
+  async function loadMonthly(){
+    try{
+      const r=await api('/portal/api/revenue-intelligence/monthly/');
+      const rows=await r.json();
+      document.getElementById('monthlyLoading').style.display='none';
+      if(!Array.isArray(rows)||!rows.length){
+        document.getElementById('monthlyLoading').textContent='No historical data yet.';
+        document.getElementById('monthlyLoading').style.display='block';
+        return;
+      }
+      document.getElementById('monthlyTable').style.display='block';
+      document.getElementById('monthlyTbody').innerHTML=rows.map(m=>{
+        const profit=parseFloat(m.net_profit||0);
+        const profitCls=profit<0?'text-danger':profit===0?'text-muted':'text-success';
+        const floorPct=parseFloat(m.floor_pct||0)*100;
+        const growthPct=parseFloat(m.growth_pct||0)*100;
+        return `<tr>
+          <td><strong>${m.label}</strong></td>
+          <td>${R(m.wifi)}</td>
+          <td>${R(m.sla)}</td>
+          <td>${R(m.adhoc)}</td>
+          <td class="text-warning">${R(m.axxess_costs)}</td>
+          <td class="${profitCls} fw-semibold">${R(m.net_profit)}</td>
+          <td>
+            <div class="d-flex align-items-center gap-1">
+              <div class="progress flex-grow-1" style="height:6px;min-width:40px">
+                <div class="progress-bar bg-primary" style="width:${Math.min(floorPct,100)}%"></div>
+              </div>
+              <small>${floorPct.toFixed(0)}%</small>
+            </div>
+          </td>
+          <td>
+            <div class="d-flex align-items-center gap-1">
+              <div class="progress flex-grow-1" style="height:6px;min-width:40px">
+                <div class="progress-bar bg-info" style="width:${Math.min(growthPct,100)}%"></div>
+              </div>
+              <small>${growthPct.toFixed(0)}%</small>
+            </div>
+          </td>
+          <td class="text-primary">${R(m.owner_draw)}</td>
+        </tr>`;
+      }).join('');
+    }catch(e){ if(e.message!=='Unauth') document.getElementById('monthlyLoading').textContent='Failed to load monthly data.'; }
+  }
+
+  // ── Edit Allocation ──────────────────────────────────────────────────────────
+  document.getElementById('editAllocBtn').onclick=()=>{
+    const a=window._currentAlloc||{};
+    document.getElementById('a_reinvest').value=(parseFloat(a.reinvestment_pct||0.15)*100).toFixed(2);
+    document.getElementById('a_opex').value=(parseFloat(a.opex_pct||0.15)*100).toFixed(2);
+    document.getElementById('a_owner').value=(parseFloat(a.owner_pct||0.70)*100).toFixed(2);
+    document.getElementById('allocModalAlert').innerHTML='';
+    updateAllocTotal();
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('allocModal')).show();
+  };
+
+  window.updateAllocTotal=function(){
+    const total=(parseFloat(document.getElementById('a_reinvest').value)||0)+
+                (parseFloat(document.getElementById('a_opex').value)||0)+
+                (parseFloat(document.getElementById('a_owner').value)||0);
+    document.getElementById('allocTotal').textContent=total.toFixed(2)+'%';
+    document.getElementById('allocTotalWarn').style.display=Math.abs(total-100)>0.01?'inline':'none';
+  };
+
+  document.getElementById('saveAllocBtn').onclick=async()=>{
+    const r_pct=parseFloat(document.getElementById('a_reinvest').value)||0;
+    const o_pct=parseFloat(document.getElementById('a_opex').value)||0;
+    const ow_pct=parseFloat(document.getElementById('a_owner').value)||0;
+    if(Math.abs(r_pct+o_pct+ow_pct-100)>0.01){ showAlert('allocModalAlert','Percentages must sum to 100%.'); return; }
+    try{
+      const r=await api('/portal/api/revenue-allocation/',{method:'PATCH',body:JSON.stringify({
+        reinvestment_pct:(r_pct/100).toFixed(4),
+        opex_pct:(o_pct/100).toFixed(4),
+        owner_pct:(ow_pct/100).toFixed(4),
+      })});
+      const d=await r.json();
+      if(r.ok){
+        bootstrap.Modal.getInstance(document.getElementById('allocModal')).hide();
+        showAlert('pageAlert','Profit allocation updated.','success');
+        loadIntelligence();
+      } else { showAlert('allocModalAlert',d.detail||JSON.stringify(d)); }
+    }catch(e){ if(e.message!=='Unauth') showAlert('allocModalAlert','Failed to save.'); }
+  };
+
+  // ── Refresh ──────────────────────────────────────────────────────────────────
+  document.getElementById('refreshBtn').onclick=()=>{ loadIntelligence(); loadMonthly(); };
+
+  // ── Init ─────────────────────────────────────────────────────────────────────
+  loadIntelligence();
+  loadMonthly();
+})();
+</script>
+</body>
+</html>

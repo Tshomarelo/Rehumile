@@ -159,7 +159,7 @@
             <table class="table table-sm table-bordered" id="detailTable"></table>
             <hr>
             <h6>Change Status</h6>
-            <div class="d-flex gap-2 mb-3">
+            <div class="d-flex gap-2 mb-2">
               <select class="form-select form-select-sm w-auto" id="d_status">
                 <option value="open">Open</option>
                 <option value="in_progress">In Progress</option>
@@ -167,6 +167,15 @@
                 <option value="closed">Closed</option>
               </select>
               <button class="btn btn-sm btn-primary" id="updateStatus">Update Status</button>
+            </div>
+            <div id="noInvoiceWarn" class="alert alert-warning py-2 small mb-2" style="display:none">
+              ⚠ This ticket is marked billable but has no linked invoice.
+              <a href="/portal/invoices/" class="alert-link">Create invoice →</a>
+            </div>
+            <div id="slaCalloutRow" class="mb-3" style="display:none">
+              <button class="btn btn-sm btn-outline-primary" id="raiseCalloutBtn">
+                <i data-feather="file-plus" style="width:13px;height:13px"></i> Raise SLA Call-Out Invoice
+              </button>
             </div>
             <h6>Assign Agent</h6>
             <div class="d-flex gap-2 mb-3">
@@ -219,7 +228,7 @@
   const pBadge=p=>({'critical':'<span class="badge bg-danger">Critical</span>','high':'<span class="badge bg-warning text-dark">High</span>','medium':'<span class="badge bg-info text-dark">Medium</span>','low':'<span class="badge bg-secondary">Low</span>'}[p]||`<span class="badge bg-secondary">${p}</span>`);
   const fmtDate=d=>d?new Date(d).toLocaleDateString('en-ZA',{year:'numeric',month:'short',day:'numeric'}):'—';
 
-  let allIncidents=[], currentId=null;
+  let allIncidents=[], currentId=null, currentInc=null;
 
   async function loadIncidents(){
     try{
@@ -292,10 +301,24 @@
   };
 
   // Detail modal
+  // ── No-invoice warning on status select change ───────────────────────────
+  document.getElementById('d_status').addEventListener('change', function(){
+    const closingStatuses = ['resolved','closed'];
+    const warn = document.getElementById('noInvoiceWarn');
+    if(currentInc && closingStatuses.includes(this.value) && currentInc.is_billable && !currentInc.incident){
+      // check if any invoice is linked by looking at billable flag + no incident invoice ref
+      warn.style.display = 'block';
+    } else {
+      warn.style.display = 'none';
+    }
+  });
+
   window.openDetail = async function(id){
     currentId=id;
-    const inc = allIncidents.find(i=>i.id===id);
+    currentInc = allIncidents.find(i=>i.id===id);
+    const inc = currentInc;
     if(!inc) return;
+    document.getElementById('noInvoiceWarn').style.display='none';
     document.getElementById('detailTitle').textContent=`${inc.ticket_id||'Incident'} — ${inc.title}`;
     document.getElementById('d_status').value=inc.status;
     document.getElementById('detailTable').innerHTML=`
@@ -315,6 +338,19 @@
       document.getElementById('d_agent').innerHTML='<option value="">Select agent…</option>'+agents.map(a=>`<option value="${a.id}">${((a.first_name||'')+' '+(a.last_name||'')).trim()||a.email}</option>`).join('');
       if(inc.assigned_to) document.getElementById('d_agent').value=inc.assigned_to;
     }catch{}
+    // Check for active SLA contract on this company
+    document.getElementById('slaCalloutRow').style.display='none';
+    if(inc.company){
+      try{
+        const rSla = await api('/portal/api/sla-contracts/');
+        const _sj=await rSla.json(); const slas=Array.isArray(_sj)?_sj:(_sj.results||[]);
+        const activeSla = slas.find(s=>s.company===inc.company && s.status==='active');
+        if(activeSla){
+          document.getElementById('slaCalloutRow').style.display='block';
+          document.getElementById('raiseCalloutBtn').onclick=()=>raiseCalloutFromTicket(activeSla, inc);
+        }
+      }catch{}
+    }
     // Load comments
     try{
       const r3 = await api(`/portal/api/incidents/${id}/comments/`);
@@ -361,6 +397,37 @@
       } else{ const d=await r.json(); showAlert('detailAlert',d.detail||'Failed to post comment.'); }
     }catch(e){ if(e.message!=='Unauth') showAlert('detailAlert','Error posting comment.'); }
   };
+
+  // ── SLA Call-Out Invoice from ticket ────────────────────────────────────
+  async function raiseCalloutFromTicket(sla, inc){
+    const desc = `SLA call-out — ${inc.title} [${inc.ticket_id}]`;
+    const amount = inc.billable_amount || 0;
+    const promptAmt = prompt(`Call-out amount (ZAR) for "${sla.client_name}"?\nPre-filled from ticket billable amount.`, amount);
+    if(promptAmt===null) return;
+    const today = new Date().toISOString().slice(0,10);
+    const body = {
+      invoice_type:'callout',
+      sla_contract:sla.id,
+      company: inc.company||null,
+      incident: inc.id,
+      description: desc,
+      subtotal: parseFloat(promptAmt)||0,
+      tax_rate: 15,
+      billing_period_start: today,
+      billing_period_end: today,
+      ticket_count: 1,
+      hours_worked: inc.hours_worked||0,
+      status: 'draft',
+      invoice_number: 'CALLOUT-'+Date.now().toString().slice(-6),
+    };
+    try{
+      const r=await api('/portal/api/invoices/',{method:'POST',body:JSON.stringify(body)});
+      const d=await r.json();
+      if(r.ok){
+        showAlert('detailAlert',`Call-out invoice <strong>${d.invoice_number}</strong> created as draft. <a href="/portal/invoices/" class="alert-link">View invoices →</a>`,'success');
+      } else { showAlert('detailAlert',d.detail||JSON.stringify(d)); }
+    }catch(e){ if(e.message!=='Unauth') showAlert('detailAlert','Failed to create call-out invoice.'); }
+  }
 
   loadIncidents();
 })();

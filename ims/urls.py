@@ -62,5 +62,17 @@ urlpatterns = [
     path('payments/payfast-notify/', views.PayFastITNView.as_view(), name='payfast-itn'),
     path('payments/', views.PaymentListView.as_view(), name='payment-list'),
     path('invoices/<uuid:invoice_id>/remind/', views.InvoiceReminderView.as_view(), name='invoice-remind'),
+    # Revenue Intelligence — WiFi Subscribers
+    path('wifi-subscribers/', views.WifiSubscriberListView.as_view(), name='wifi-subscriber-list'),
+    path('wifi-subscribers/<uuid:pk>/', views.WifiSubscriberDetailView.as_view(), name='wifi-subscriber-detail'),
+    # Revenue Intelligence — SLA Contracts
+    path('sla-contracts/', views.SLAContractListView.as_view(), name='sla-contract-list'),
+    path('sla-contracts/<uuid:pk>/', views.SLAContractDetailView.as_view(), name='sla-contract-detail'),
+    # Revenue Intelligence — Settings & Auto-invoicing
+    path('revenue-allocation/', views.RevenueAllocationView.as_view(), name='revenue-allocation'),
+    path('billing/generate-monthly/', views.GenerateMonthlyInvoicesView.as_view(), name='generate-monthly'),
+    # Revenue Intelligence — Dashboard
+    path('revenue-intelligence/', views.RevenueIntelligenceView.as_view(), name='revenue-intelligence'),
+    path('revenue-intelligence/monthly/', views.RevenueMonthlyView.as_view(), name='revenue-monthly'),
     path('', include(router.urls)),
 ]

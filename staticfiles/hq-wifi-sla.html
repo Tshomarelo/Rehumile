@@ -1,0 +1,728 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <link rel="shortcut icon" href="/portal/static/img/icons/icon-48x48.png"/>
+  <title>Subscriber & Contract Registry | Rehumile IMS</title>
+  <link href="/portal/static/css/app.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+</head>
+<body>
+<div class="wrapper">
+  <nav id="sidebar" class="sidebar js-sidebar">
+    <div class="sidebar-content js-simplebar">
+      <a class="sidebar-brand d-flex align-items-center p-2" href="/portal/dashboard/">
+        <img src="/portal/static/img/rehumile-logo.jpeg" style="height:36px;object-fit:contain" alt="Rehumile TMW">
+      </a>
+      <ul class="sidebar-nav"></ul>
+    </div>
+  </nav>
+  <div class="main">
+    <nav class="navbar navbar-expand navbar-light navbar-bg">
+      <a class="sidebar-toggle js-sidebar-toggle"><i class="hamburger align-self-center"></i></a>
+      <div class="navbar-collapse collapse">
+        <ul class="navbar-nav navbar-align">
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle d-none d-sm-inline-block" href="#" data-bs-toggle="dropdown">
+              <i class="align-middle me-1" data-feather="user"></i><span class="text-dark" id="navUserName">…</span>
+            </a>
+            <div class="dropdown-menu dropdown-menu-end">
+              <span class="dropdown-item-text small text-muted" id="navUserRole"></span>
+              <div class="dropdown-divider"></div>
+              <a class="dropdown-item" href="#" id="logoutBtn"><i class="align-middle me-1" data-feather="log-out"></i> Sign out</a>
+            </div>
+          </li>
+        </ul>
+      </div>
+    </nav>
+    <main class="content">
+      <div class="container-fluid p-0">
+        <div class="d-flex align-items-center justify-content-between mb-3">
+          <h1 class="h3 mb-0"><strong>Subscriber &amp; Contract Registry</strong></h1>
+          <div class="d-flex gap-2">
+            <button class="btn btn-outline-success" id="genMonthlyBtn">
+              <i class="align-middle me-1" data-feather="zap"></i> Generate Monthly Invoices
+            </button>
+            <button class="btn btn-primary" id="newRecordBtn">
+              <i class="align-middle me-1" data-feather="plus"></i> <span id="newBtnLabel">New Subscriber</span>
+            </button>
+          </div>
+        </div>
+        <div id="pageAlert"></div>
+
+        <ul class="nav nav-tabs mb-3" id="mainTabs">
+          <li class="nav-item"><button class="nav-link active" id="tab-wifi" onclick="showTab('wifi')">
+            <i data-feather="wifi" style="width:14px;height:14px"></i> WiFi Subscribers
+            <span class="badge bg-secondary ms-1" id="wifiCount">0</span>
+          </button></li>
+          <li class="nav-item"><button class="nav-link" id="tab-sla" onclick="showTab('sla')">
+            <i data-feather="file-text" style="width:14px;height:14px"></i> SLA Contracts
+            <span class="badge bg-secondary ms-1" id="slaCount">0</span>
+          </button></li>
+        </ul>
+
+        <!-- WiFi Subscribers Panel -->
+        <div id="panel-wifi">
+          <div class="row mb-3" id="wifiStats" style="display:none">
+            <div class="col-sm-3"><div class="card text-center py-3"><h6 class="text-muted small mb-1">Active Subscribers</h6><h4 class="mb-0 text-success" id="stat-active">0</h4></div></div>
+            <div class="col-sm-3"><div class="card text-center py-3"><h6 class="text-muted small mb-1">Monthly Revenue</h6><h4 class="mb-0 text-primary" id="stat-revenue">R 0</h4></div></div>
+            <div class="col-sm-3"><div class="card text-center py-3"><h6 class="text-muted small mb-1">Axxess Cost</h6><h4 class="mb-0 text-warning" id="stat-cost">R 0</h4></div></div>
+            <div class="col-sm-3"><div class="card text-center py-3"><h6 class="text-muted small mb-1">Net Margin</h6><h4 class="mb-0 text-success" id="stat-margin">R 0</h4></div></div>
+          </div>
+          <div class="card">
+            <div class="card-header"><h5 class="card-title mb-0">WiFi Subscribers (Axxess)</h5></div>
+            <div class="card-body p-0">
+              <div id="wifiLoading" class="text-center py-4 text-muted">Loading…</div>
+              <div class="table-responsive" id="wifiTable" style="display:none">
+                <table class="table table-hover my-0 small">
+                  <thead><tr>
+                    <th>Client</th><th>Axxess ID</th><th>Contact</th>
+                    <th>Retail</th><th>Wholesale</th><th>Margin</th>
+                    <th>Status</th><th>Actions</th>
+                  </tr></thead>
+                  <tbody id="wifiTbody"></tbody>
+                </table>
+              </div>
+              <div id="wifiEmpty" class="text-center py-5 text-muted" style="display:none">
+                <i data-feather="wifi-off" style="width:48px;height:48px;opacity:.2"></i>
+                <p class="mt-2">No WiFi subscribers yet. Add your first Axxess client above.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- SLA Contracts Panel -->
+        <div id="panel-sla" style="display:none">
+          <div class="card">
+            <div class="card-header"><h5 class="card-title mb-0">SLA Monthly Retainer Contracts</h5></div>
+            <div class="card-body p-0">
+              <div id="slaLoading" class="text-center py-4 text-muted">Loading…</div>
+              <div class="table-responsive" id="slaTable" style="display:none">
+                <table class="table table-hover my-0 small">
+                  <thead><tr>
+                    <th>Client</th><th>Contact</th><th>Retainer</th>
+                    <th>Contract Start</th><th>Contract End</th>
+                    <th>Status</th><th>Actions</th>
+                  </tr></thead>
+                  <tbody id="slaTbody"></tbody>
+                </table>
+              </div>
+              <div id="slaEmpty" class="text-center py-5 text-muted" style="display:none">
+                <i data-feather="file-text" style="width:48px;height:48px;opacity:.2"></i>
+                <p class="mt-2">No SLA contracts yet.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+    <footer class="footer"><div class="container-fluid"><p class="mb-0 text-muted">Rehumile TMW IMS &copy; 2025</p></div></footer>
+  </div>
+</div>
+
+<!-- WiFi Subscriber Modal -->
+<div class="modal fade" id="wifiModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header" style="background:#50181E;color:white">
+        <h5 class="modal-title" id="wifiModalTitle">Add WiFi Subscriber</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div id="wifiModalAlert"></div>
+        <form id="wifiForm">
+          <input type="hidden" id="w_id">
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label class="form-label fw-semibold">Client Name <span class="text-danger">*</span></label>
+              <input type="text" class="form-control" id="w_client_name" required>
+            </div>
+            <div class="col-md-6 mb-3">
+              <label class="form-label fw-semibold">Axxess Account ID</label>
+              <input type="text" class="form-control" id="w_axxess_id" placeholder="e.g. AX-12345">
+            </div>
+          </div>
+          <div class="row">
+            <div class="col-md-4 mb-3">
+              <label class="form-label">Contact Name</label>
+              <input type="text" class="form-control" id="w_contact_name">
+            </div>
+            <div class="col-md-4 mb-3">
+              <label class="form-label">Contact Email</label>
+              <input type="email" class="form-control" id="w_contact_email">
+            </div>
+            <div class="col-md-4 mb-3">
+              <label class="form-label">Contact Phone</label>
+              <input type="text" class="form-control" id="w_contact_phone">
+            </div>
+          </div>
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label class="form-label fw-semibold">Retail Price (ZAR) <span class="text-danger">*</span></label>
+              <input type="number" class="form-control" id="w_retail_price" required min="0" step="0.01" oninput="calcWifiMargin()">
+            </div>
+            <div class="col-md-6 mb-3">
+              <label class="form-label fw-semibold">Axxess Wholesale Cost (ZAR) <span class="text-danger">*</span></label>
+              <input type="number" class="form-control" id="w_wholesale_cost" required min="0" step="0.01" oninput="calcWifiMargin()">
+            </div>
+          </div>
+          <div class="alert alert-light border py-2 mb-3" id="marginPreview" style="display:none">
+            <strong>Gross Margin: </strong><span id="marginAmt">R 0</span>
+            (<span id="marginPct">0%</span>)
+            <span id="marginWarn" class="text-danger ms-2 small" style="display:none">⚠ Loss-making line</span>
+          </div>
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label class="form-label">Linked Company (optional)</label>
+              <select class="form-select" id="w_company"><option value="">No linked company</option></select>
+            </div>
+            <div class="col-md-3 mb-3">
+              <label class="form-label">Billing Day</label>
+              <input type="number" class="form-control" id="w_billing_day" value="1" min="1" max="28">
+            </div>
+            <div class="col-md-3 mb-3">
+              <label class="form-label">Status</label>
+              <select class="form-select" id="w_status">
+                <option value="active" selected>Active</option>
+                <option value="suspended">Suspended</option>
+                <option value="cancelled">Cancelled</option>
+              </select>
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Notes</label>
+            <textarea class="form-control" id="w_notes" rows="2" placeholder="Location, package details, special notes…"></textarea>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-danger" id="saveWifiBtn">Save Subscriber</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SLA Contract Modal -->
+<div class="modal fade" id="slaModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header" style="background:#50181E;color:white">
+        <h5 class="modal-title" id="slaModalTitle">Add SLA Contract</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div id="slaModalAlert"></div>
+        <form id="slaForm">
+          <input type="hidden" id="s_id">
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label class="form-label fw-semibold">Client Name <span class="text-danger">*</span></label>
+              <input type="text" class="form-control" id="s_client_name" required>
+            </div>
+            <div class="col-md-6 mb-3">
+              <label class="form-label fw-semibold">Monthly Retainer (ZAR) <span class="text-danger">*</span></label>
+              <input type="number" class="form-control" id="s_retainer" required min="0" step="0.01">
+            </div>
+          </div>
+          <div class="row">
+            <div class="col-md-4 mb-3">
+              <label class="form-label">Contact Name</label>
+              <input type="text" class="form-control" id="s_contact_name">
+            </div>
+            <div class="col-md-4 mb-3">
+              <label class="form-label">Contact Email</label>
+              <input type="email" class="form-control" id="s_contact_email">
+            </div>
+            <div class="col-md-4 mb-3">
+              <label class="form-label">Contact Phone</label>
+              <input type="text" class="form-control" id="s_contact_phone">
+            </div>
+          </div>
+          <div class="row">
+            <div class="col-md-4 mb-3">
+              <label class="form-label">Contract Start <span class="text-danger">*</span></label>
+              <input type="date" class="form-control" id="s_contract_start" required>
+            </div>
+            <div class="col-md-4 mb-3">
+              <label class="form-label">Contract End <span class="text-muted small">(leave blank = open-ended)</span></label>
+              <input type="date" class="form-control" id="s_contract_end">
+            </div>
+            <div class="col-md-4 mb-3">
+              <label class="form-label">Billing Day</label>
+              <input type="number" class="form-control" id="s_billing_day" value="1" min="1" max="28">
+            </div>
+          </div>
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label class="form-label">Linked Company (optional)</label>
+              <select class="form-select" id="s_company"><option value="">No linked company</option></select>
+            </div>
+            <div class="col-md-6 mb-3">
+              <label class="form-label">Status</label>
+              <select class="form-select" id="s_status">
+                <option value="active" selected>Active</option>
+                <option value="suspended">Suspended</option>
+                <option value="cancelled">Cancelled</option>
+              </select>
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Contract Description / Scope</label>
+            <textarea class="form-control" id="s_description" rows="3" placeholder="What services are covered under this retainer…"></textarea>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Notes</label>
+            <textarea class="form-control" id="s_notes" rows="2"></textarea>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-danger" id="saveSlaBtn">Save Contract</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Generate Monthly Invoices Modal -->
+<div class="modal fade" id="genModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header" style="background:#1a7a4a;color:white">
+        <h5 class="modal-title"><i data-feather="zap" style="width:18px;height:18px;margin-right:8px;vertical-align:middle"></i> Generate Monthly Invoices</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="alert alert-info small">
+          This will auto-create invoices for all <strong>active WiFi subscribers</strong> and <strong>active SLA contracts</strong>
+          for the selected month. Already-invoiced clients are skipped (idempotent).
+        </div>
+        <div class="row">
+          <div class="col-6 mb-3">
+            <label class="form-label fw-semibold">Year</label>
+            <input type="number" class="form-control" id="gen_year" min="2020" max="2030">
+          </div>
+          <div class="col-6 mb-3">
+            <label class="form-label fw-semibold">Month</label>
+            <select class="form-select" id="gen_month">
+              <option value="1">January</option><option value="2">February</option>
+              <option value="3">March</option><option value="4">April</option>
+              <option value="5">May</option><option value="6">June</option>
+              <option value="7">July</option><option value="8">August</option>
+              <option value="9">September</option><option value="10">October</option>
+              <option value="11">November</option><option value="12">December</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-check mb-3">
+          <input type="checkbox" class="form-check-input" id="gen_send_email" checked>
+          <label class="form-check-label" for="gen_send_email">Send invoice email to each client</label>
+        </div>
+        <div id="genResult"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-success" id="runGenBtn">
+          <i data-feather="zap" style="width:14px;height:14px"></i> Run Generation
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Raise SLA Call-Out Modal -->
+<div class="modal fade" id="calloutModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header" style="background:#2c5282;color:white">
+        <h5 class="modal-title">Raise SLA Call-Out Invoice</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div id="calloutAlert"></div>
+        <p class="text-muted small mb-3">This raises a once-off call-out invoice on top of the monthly retainer for <strong id="calloutClientName"></strong>.</p>
+        <input type="hidden" id="co_sla_id">
+        <div class="mb-3">
+          <label class="form-label fw-semibold">Call-Out Amount (ZAR) <span class="text-danger">*</span></label>
+          <input type="number" class="form-control" id="co_amount" min="0" step="0.01" placeholder="0.00">
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-semibold">Description <span class="text-danger">*</span></label>
+          <input type="text" class="form-control" id="co_description" placeholder="e.g. Emergency call-out — server failure 24 Jun">
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Tax Rate (%)</label>
+          <input type="number" class="form-control" id="co_tax" value="15" min="0" max="100">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary" id="saveCalloutBtn">Create Call-Out Invoice</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="/portal/static/js/app.js"></script>
+<script src="/portal/static/js/hq-sidebar-menu.js"></script>
+<script>(function(){function _i(){var s=document.querySelector('.js-sidebar'),t=document.querySelector('.js-sidebar-toggle');if(!s||!t)return;if(window.innerWidth<992&&localStorage.getItem('ims_sidebar')==='open')s.classList.add('collapsed');t.addEventListener('click',function(){setTimeout(function(){localStorage.setItem('ims_sidebar',s.classList.contains('collapsed')?'open':'closed');},50);});}document.readyState==='loading'?document.addEventListener('DOMContentLoaded',_i):_i();})();</script>
+<script>
+(function(){
+  const token = localStorage.getItem('ims_access');
+  if(!token){ window.location.href='/portal/login/'; return; }
+  const userData = JSON.parse(localStorage.getItem('ims_user')||'{}');
+  if(!['admin','agent','finance'].includes(userData.role)){ window.location.href='/portal/client/'; return; }
+  document.getElementById('navUserName').textContent=((userData.first_name||'')+' '+(userData.last_name||'')).trim()||userData.email||'User';
+  document.getElementById('navUserRole').textContent=(userData.role||'').toUpperCase();
+  document.getElementById('logoutBtn').onclick=e=>{ e.preventDefault(); localStorage.clear(); window.location.href='/portal/login/'; };
+
+  const canEdit = ['admin','finance'].includes(userData.role);
+
+  async function api(url, opts={}){
+    const r=await fetch(url,{...opts,headers:{'Content-Type':'application/json','Authorization':'Bearer '+token,...(opts.headers||{})}});
+    if(r.status===401){ localStorage.clear(); window.location.href='/portal/login/'; throw new Error('Unauth'); }
+    return r;
+  }
+  function showAlert(id, msg, type='danger'){
+    document.getElementById(id).innerHTML=`<div class="alert alert-${type} alert-dismissible"><button type="button" class="btn-close" data-bs-dismiss="alert"></button>${msg}</div>`;
+  }
+  function statusBadge(s){
+    return {active:'<span class="badge bg-success">Active</span>',suspended:'<span class="badge bg-warning text-dark">Suspended</span>',cancelled:'<span class="badge bg-secondary">Cancelled</span>'}[s]||`<span class="badge bg-secondary">${s}</span>`;
+  }
+  const fmt=d=>d?new Date(d).toLocaleDateString('en-ZA',{year:'numeric',month:'short',day:'numeric'}):'—';
+  const R=n=>n!=null?'R '+parseFloat(n).toFixed(2):'—';
+
+  // ── Tab switching ────────────────────────────────────────────────────────────
+  let currentTab = 'wifi';
+  window.showTab = function(tab){
+    currentTab = tab;
+    ['wifi','sla'].forEach(t=>{
+      document.getElementById('panel-'+t).style.display = t===tab?'block':'none';
+      document.getElementById('tab-'+t).classList.toggle('active', t===tab);
+    });
+    document.getElementById('newBtnLabel').textContent = tab==='wifi' ? 'New Subscriber' : 'New SLA Contract';
+    if(tab==='sla' && !slaLoaded) loadSla();
+  };
+
+  // ── Companies loader ─────────────────────────────────────────────────────────
+  let companiesCache=[];
+  async function loadCompanies(){
+    if(companiesCache.length) return;
+    try{
+      const r=await api('/portal/api/companies/');
+      const _j=await r.json(); companiesCache=Array.isArray(_j)?_j:(_j.results||[]);
+    }catch{}
+  }
+  function populateCompanySelect(selId, currentVal){
+    const sel=document.getElementById(selId);
+    sel.innerHTML='<option value="">No linked company</option>'+companiesCache.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
+    if(currentVal) sel.value=currentVal;
+  }
+
+  // ── WiFi Subscribers ─────────────────────────────────────────────────────────
+  let wifiData=[];
+  async function loadWifi(){
+    document.getElementById('wifiLoading').style.display='block';
+    document.getElementById('wifiTable').style.display='none';
+    document.getElementById('wifiEmpty').style.display='none';
+    try{
+      const r=await api('/portal/api/wifi-subscribers/');
+      const _j=await r.json(); wifiData=Array.isArray(_j)?_j:(_j.results||[]);
+      document.getElementById('wifiLoading').style.display='none';
+      document.getElementById('wifiCount').textContent=wifiData.length;
+      // Stats
+      const active=wifiData.filter(w=>w.status==='active');
+      const totalRevenue=active.reduce((s,w)=>s+parseFloat(w.retail_price||0),0);
+      const totalCost=active.reduce((s,w)=>s+parseFloat(w.wholesale_cost||0),0);
+      document.getElementById('stat-active').textContent=active.length;
+      document.getElementById('stat-revenue').textContent=R(totalRevenue);
+      document.getElementById('stat-cost').textContent=R(totalCost);
+      document.getElementById('stat-margin').textContent=R(totalRevenue-totalCost);
+      document.getElementById('wifiStats').style.display='';
+      if(!wifiData.length){ document.getElementById('wifiEmpty').style.display='block'; if(window.feather)feather.replace(); return; }
+      document.getElementById('wifiTable').style.display='block';
+      document.getElementById('wifiTbody').innerHTML=wifiData.map(w=>{
+        const margin=parseFloat(w.gross_margin||0);
+        const pct=parseFloat(w.retail_price||0)>0?((margin/parseFloat(w.retail_price))*100).toFixed(0):0;
+        const marginCls=w.is_loss_making?'text-danger fw-bold':'text-success';
+        return `<tr>
+          <td><strong>${w.client_name}</strong>${w.company_name?`<br><small class="text-muted">${w.company_name}</small>`:''}</td>
+          <td><code class="small">${w.axxess_id||'—'}</code></td>
+          <td>${w.contact_email||w.contact_phone||'—'}</td>
+          <td>${R(w.retail_price)}</td>
+          <td>${R(w.wholesale_cost)}</td>
+          <td class="${marginCls}">${R(margin)} <small>(${pct}%)</small>${w.is_loss_making?'<br><span class="badge bg-danger small">Loss-making</span>':''}</td>
+          <td>${statusBadge(w.status)}</td>
+          <td class="d-flex gap-1 flex-wrap">${canEdit?`
+            <button class="btn btn-sm btn-outline-primary" onclick='editWifi(${JSON.stringify(w)})'>Edit</button>
+            <button class="btn btn-sm btn-outline-danger" onclick='deleteWifi("${w.id}","${w.client_name}")'>Del</button>`
+          :'<span class="text-muted small">View only</span>'}
+          </td>
+        </tr>`;
+      }).join('');
+      if(window.feather)feather.replace();
+    }catch(e){ if(e.message!=='Unauth') document.getElementById('wifiLoading').textContent='Failed to load subscribers.'; }
+  }
+
+  // ── New/Edit WiFi Modal ───────────────────────────────────────────────────────
+  document.getElementById('newRecordBtn').onclick=async()=>{
+    if(currentTab==='wifi') openWifiModal();
+    else openSlaModal();
+  };
+
+  async function openWifiModal(data){
+    await loadCompanies();
+    document.getElementById('wifiForm').reset();
+    document.getElementById('w_id').value='';
+    document.getElementById('wifiModalAlert').innerHTML='';
+    document.getElementById('wifiModalTitle').textContent=data?'Edit WiFi Subscriber':'Add WiFi Subscriber';
+    document.getElementById('marginPreview').style.display='none';
+    populateCompanySelect('w_company', data?.company||'');
+    if(data){
+      document.getElementById('w_id').value=data.id;
+      document.getElementById('w_client_name').value=data.client_name||'';
+      document.getElementById('w_axxess_id').value=data.axxess_id||'';
+      document.getElementById('w_contact_name').value=data.contact_name||'';
+      document.getElementById('w_contact_email').value=data.contact_email||'';
+      document.getElementById('w_contact_phone').value=data.contact_phone||'';
+      document.getElementById('w_retail_price').value=data.retail_price||'';
+      document.getElementById('w_wholesale_cost').value=data.wholesale_cost||'';
+      document.getElementById('w_billing_day').value=data.billing_day||1;
+      document.getElementById('w_status').value=data.status||'active';
+      document.getElementById('w_notes').value=data.notes||'';
+      calcWifiMargin();
+    }
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('wifiModal')).show();
+  }
+
+  window.editWifi=function(data){ openWifiModal(data); };
+
+  window.calcWifiMargin=function(){
+    const retail=parseFloat(document.getElementById('w_retail_price').value)||0;
+    const wholesale=parseFloat(document.getElementById('w_wholesale_cost').value)||0;
+    const margin=retail-wholesale;
+    const pct=retail>0?((margin/retail)*100).toFixed(1):'—';
+    document.getElementById('marginAmt').textContent=R(margin);
+    document.getElementById('marginPct').textContent=pct+'%';
+    document.getElementById('marginWarn').style.display=margin<0?'inline':'none';
+    document.getElementById('marginPreview').style.display=retail||wholesale?'block':'none';
+  };
+
+  document.getElementById('saveWifiBtn').onclick=async()=>{
+    const id=document.getElementById('w_id').value;
+    const body={
+      client_name:document.getElementById('w_client_name').value.trim(),
+      axxess_id:document.getElementById('w_axxess_id').value.trim(),
+      contact_name:document.getElementById('w_contact_name').value.trim(),
+      contact_email:document.getElementById('w_contact_email').value.trim(),
+      contact_phone:document.getElementById('w_contact_phone').value.trim(),
+      retail_price:parseFloat(document.getElementById('w_retail_price').value)||0,
+      wholesale_cost:parseFloat(document.getElementById('w_wholesale_cost').value)||0,
+      billing_day:parseInt(document.getElementById('w_billing_day').value)||1,
+      status:document.getElementById('w_status').value,
+      notes:document.getElementById('w_notes').value.trim(),
+      company:document.getElementById('w_company').value||null,
+    };
+    if(!body.client_name){ showAlert('wifiModalAlert','Client name is required.'); return; }
+    try{
+      const r=id
+        ? await api(`/portal/api/wifi-subscribers/${id}/`,{method:'PATCH',body:JSON.stringify(body)})
+        : await api('/portal/api/wifi-subscribers/',{method:'POST',body:JSON.stringify(body)});
+      const d=await r.json();
+      if(r.ok){
+        bootstrap.Modal.getInstance(document.getElementById('wifiModal')).hide();
+        showAlert('pageAlert',id?'Subscriber updated.':'Subscriber added.','success');
+        loadWifi();
+      } else { showAlert('wifiModalAlert',d.detail||JSON.stringify(d)); }
+    }catch(e){ if(e.message!=='Unauth') showAlert('wifiModalAlert','Failed to save.'); }
+  };
+
+  window.deleteWifi=async function(id,name){
+    if(!confirm(`Delete subscriber "${name}"? This cannot be undone.`)) return;
+    try{
+      const r=await api(`/portal/api/wifi-subscribers/${id}/`,{method:'DELETE'});
+      if(r.ok||r.status===204){ showAlert('pageAlert','Subscriber deleted.','warning'); loadWifi(); }
+      else{ const d=await r.json(); showAlert('pageAlert',d.detail||'Delete failed.'); }
+    }catch(e){ if(e.message!=='Unauth') showAlert('pageAlert','Failed to delete.'); }
+  };
+
+  // ── SLA Contracts ────────────────────────────────────────────────────────────
+  let slaData=[], slaLoaded=false;
+  async function loadSla(){
+    slaLoaded=true;
+    document.getElementById('slaLoading').style.display='block';
+    document.getElementById('slaTable').style.display='none';
+    document.getElementById('slaEmpty').style.display='none';
+    try{
+      const r=await api('/portal/api/sla-contracts/');
+      const _j=await r.json(); slaData=Array.isArray(_j)?_j:(_j.results||[]);
+      document.getElementById('slaLoading').style.display='none';
+      document.getElementById('slaCount').textContent=slaData.length;
+      if(!slaData.length){ document.getElementById('slaEmpty').style.display='block'; if(window.feather)feather.replace(); return; }
+      document.getElementById('slaTable').style.display='block';
+      document.getElementById('slaTbody').innerHTML=slaData.map(s=>`
+        <tr>
+          <td><strong>${s.client_name}</strong>${s.company_name?`<br><small class="text-muted">${s.company_name}</small>`:''}</td>
+          <td>${s.contact_email||s.contact_phone||'—'}</td>
+          <td><strong>${R(s.monthly_retainer)}/mo</strong></td>
+          <td>${fmt(s.contract_start)}</td>
+          <td>${s.contract_end?fmt(s.contract_end):'<span class="text-muted">Open-ended</span>'}</td>
+          <td>${statusBadge(s.status)}</td>
+          <td class="d-flex gap-1 flex-wrap">${canEdit?`
+            <button class="btn btn-sm btn-outline-primary" onclick='editSla(${JSON.stringify(s)})'>Edit</button>
+            <button class="btn btn-sm btn-outline-info" onclick='raiseCallout("${s.id}","${s.client_name}")'>Call-Out</button>
+            <button class="btn btn-sm btn-outline-danger" onclick='deleteSla("${s.id}","${s.client_name}")'>Del</button>`
+          :'<span class="text-muted small">View only</span>'}
+          </td>
+        </tr>`).join('');
+      if(window.feather)feather.replace();
+    }catch(e){ if(e.message!=='Unauth') document.getElementById('slaLoading').textContent='Failed to load contracts.'; }
+  }
+
+  async function openSlaModal(data){
+    await loadCompanies();
+    document.getElementById('slaForm').reset();
+    document.getElementById('s_id').value='';
+    document.getElementById('slaModalAlert').innerHTML='';
+    document.getElementById('slaModalTitle').textContent=data?'Edit SLA Contract':'Add SLA Contract';
+    populateCompanySelect('s_company', data?.company||'');
+    if(data){
+      document.getElementById('s_id').value=data.id;
+      document.getElementById('s_client_name').value=data.client_name||'';
+      document.getElementById('s_retainer').value=data.monthly_retainer||'';
+      document.getElementById('s_contact_name').value=data.contact_name||'';
+      document.getElementById('s_contact_email').value=data.contact_email||'';
+      document.getElementById('s_contact_phone').value=data.contact_phone||'';
+      document.getElementById('s_contract_start').value=data.contract_start||'';
+      document.getElementById('s_contract_end').value=data.contract_end||'';
+      document.getElementById('s_billing_day').value=data.billing_day||1;
+      document.getElementById('s_status').value=data.status||'active';
+      document.getElementById('s_description').value=data.contract_description||'';
+      document.getElementById('s_notes').value=data.notes||'';
+    }
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('slaModal')).show();
+  }
+
+  window.editSla=function(data){ openSlaModal(data); };
+
+  document.getElementById('saveSlaBtn').onclick=async()=>{
+    const id=document.getElementById('s_id').value;
+    const body={
+      client_name:document.getElementById('s_client_name').value.trim(),
+      monthly_retainer:parseFloat(document.getElementById('s_retainer').value)||0,
+      contact_name:document.getElementById('s_contact_name').value.trim(),
+      contact_email:document.getElementById('s_contact_email').value.trim(),
+      contact_phone:document.getElementById('s_contact_phone').value.trim(),
+      contract_start:document.getElementById('s_contract_start').value,
+      contract_end:document.getElementById('s_contract_end').value||null,
+      billing_day:parseInt(document.getElementById('s_billing_day').value)||1,
+      status:document.getElementById('s_status').value,
+      contract_description:document.getElementById('s_description').value.trim(),
+      notes:document.getElementById('s_notes').value.trim(),
+      company:document.getElementById('s_company').value||null,
+    };
+    if(!body.client_name||!body.contract_start){ showAlert('slaModalAlert','Client name and contract start date are required.'); return; }
+    try{
+      const r=id
+        ? await api(`/portal/api/sla-contracts/${id}/`,{method:'PATCH',body:JSON.stringify(body)})
+        : await api('/portal/api/sla-contracts/',{method:'POST',body:JSON.stringify(body)});
+      const d=await r.json();
+      if(r.ok){
+        bootstrap.Modal.getInstance(document.getElementById('slaModal')).hide();
+        showAlert('pageAlert',id?'Contract updated.':'Contract saved.','success');
+        loadSla();
+      } else { showAlert('slaModalAlert',d.detail||JSON.stringify(d)); }
+    }catch(e){ if(e.message!=='Unauth') showAlert('slaModalAlert','Failed to save.'); }
+  };
+
+  window.deleteSla=async function(id,name){
+    if(!confirm(`Delete SLA contract for "${name}"? This cannot be undone.`)) return;
+    try{
+      const r=await api(`/portal/api/sla-contracts/${id}/`,{method:'DELETE'});
+      if(r.ok||r.status===204){ showAlert('pageAlert','Contract deleted.','warning'); loadSla(); }
+      else{ const d=await r.json(); showAlert('pageAlert',d.detail||'Delete failed.'); }
+    }catch(e){ if(e.message!=='Unauth') showAlert('pageAlert','Failed to delete.'); }
+  };
+
+  // ── SLA Call-Out Invoice ─────────────────────────────────────────────────────
+  window.raiseCallout=function(slaId, clientName){
+    document.getElementById('co_sla_id').value=slaId;
+    document.getElementById('calloutClientName').textContent=clientName;
+    document.getElementById('co_amount').value='';
+    document.getElementById('co_description').value='';
+    document.getElementById('co_tax').value='15';
+    document.getElementById('calloutAlert').innerHTML='';
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('calloutModal')).show();
+  };
+
+  document.getElementById('saveCalloutBtn').onclick=async()=>{
+    const slaId=document.getElementById('co_sla_id').value;
+    const amount=parseFloat(document.getElementById('co_amount').value)||0;
+    const desc=document.getElementById('co_description').value.trim();
+    const taxRate=parseFloat(document.getElementById('co_tax').value)||0;
+    if(!amount||!desc){ showAlert('calloutAlert','Amount and description are required.'); return; }
+    const today=new Date().toISOString().slice(0,10);
+    const body={
+      invoice_type:'callout',
+      sla_contract:slaId,
+      description:desc,
+      subtotal:amount,
+      tax_rate:taxRate,
+      billing_period_start:today,
+      billing_period_end:today,
+      ticket_count:0,
+      hours_worked:0,
+      status:'draft',
+      invoice_number:'CALLOUT-'+Date.now().toString().slice(-6),
+    };
+    try{
+      const r=await api('/portal/api/invoices/',{method:'POST',body:JSON.stringify(body)});
+      const d=await r.json();
+      if(r.ok){
+        bootstrap.Modal.getInstance(document.getElementById('calloutModal')).hide();
+        showAlert('pageAlert',`Call-out invoice ${d.invoice_number} created as draft. Go to Invoices to send it.`,'success');
+      } else { showAlert('calloutAlert',d.detail||JSON.stringify(d)); }
+    }catch(e){ if(e.message!=='Unauth') showAlert('calloutAlert','Failed to create invoice.'); }
+  };
+
+  // ── Generate Monthly Invoices ────────────────────────────────────────────────
+  document.getElementById('genMonthlyBtn').onclick=()=>{
+    const now=new Date();
+    document.getElementById('gen_year').value=now.getFullYear();
+    document.getElementById('gen_month').value=now.getMonth()+1;
+    document.getElementById('genResult').innerHTML='';
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('genModal')).show();
+  };
+
+  document.getElementById('runGenBtn').onclick=async()=>{
+    const btn=document.getElementById('runGenBtn');
+    btn.disabled=true; btn.innerHTML='<span class="spinner-border spinner-border-sm me-1"></span>Generating…';
+    const year=parseInt(document.getElementById('gen_year').value);
+    const month=parseInt(document.getElementById('gen_month').value);
+    const sendEmail=document.getElementById('gen_send_email').checked;
+    try{
+      const r=await api('/portal/api/billing/generate-monthly/',{method:'POST',body:JSON.stringify({year,month,send_email:sendEmail})});
+      const d=await r.json();
+      if(r.ok){
+        const res=document.getElementById('genResult');
+        res.innerHTML=`<div class="alert alert-success">
+          <strong>Done!</strong><br>
+          WiFi invoices: ${d.wifi_created} created, ${d.wifi_skipped} skipped (already invoiced)<br>
+          SLA invoices: ${d.sla_created} created, ${d.sla_skipped} skipped<br>
+          ${sendEmail?`Emails sent: ${d.emails_sent}`:'Email sending: off'}
+        </div>`;
+        loadWifi();
+      } else { document.getElementById('genResult').innerHTML=`<div class="alert alert-danger">${d.detail||JSON.stringify(d)}</div>`; }
+    }catch(e){ document.getElementById('genResult').innerHTML=`<div class="alert alert-danger">${e.message}</div>`; }
+    btn.disabled=false; btn.innerHTML='<i data-feather="zap" style="width:14px;height:14px"></i> Run Generation';
+    if(window.feather)feather.replace();
+  };
+
+  // ── Init ─────────────────────────────────────────────────────────────────────
+  loadWifi();
+})();
+</script>
+</body>
+</html>

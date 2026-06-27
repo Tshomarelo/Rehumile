@@ -120,6 +120,12 @@
       ['/portal/dashboard/playbook/', 'Operational Playbook'],
     ]),
 
+    header('Revenue'),
+    submenu('nav-revenue', 'trending-up', 'Revenue', [
+      ['/portal/dashboard/wifi-sla/', 'Subscriber & Contract Registry'],
+      ['/portal/dashboard/revenue-intelligence/', 'Business Intelligence'],
+    ]),
+
     header('Website'),
     link('/portal/dashboard/website/', 'globe', 'Website Manager'),
 

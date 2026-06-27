@@ -181,6 +181,21 @@
             </div>
           </div>
           <div class="row">
+            <div class="col-md-6 mb-3">
+              <label class="form-label">Invoice Type</label>
+              <select class="form-select" id="f_invoice_type" onchange="onInvoiceTypeChange()">
+                <option value="adhoc" selected>Ad-Hoc / Project</option>
+                <option value="wifi">WiFi Subscription</option>
+                <option value="sla">SLA Monthly Retainer</option>
+                <option value="callout">SLA Call-Out</option>
+              </select>
+            </div>
+            <div class="col-md-6 mb-3" id="f_desc_row">
+              <label class="form-label">Description <span class="text-muted small">(optional)</span></label>
+              <input type="text" class="form-control" id="f_description" placeholder="e.g. June WiFi — Thebado Fuels">
+            </div>
+          </div>
+          <div class="row">
             <div class="col-md-12 mb-3">
               <label class="form-label">Ticket Reference <span class="text-muted small">(optional — link this invoice to a specific ticket)</span></label>
               <select class="form-select" id="f_incident"><option value="">None / General Invoice</option></select>
@@ -254,6 +269,10 @@
 <script src="/portal/static/js/hq-sidebar-menu.js"></script>
 <script>(function(){function _i(){var s=document.querySelector('.js-sidebar'),t=document.querySelector('.js-sidebar-toggle');if(!s||!t)return;if(window.innerWidth<992&&localStorage.getItem('ims_sidebar')==='open')s.classList.add('collapsed');t.addEventListener('click',function(){setTimeout(function(){localStorage.setItem('ims_sidebar',s.classList.contains('collapsed')?'open':'closed');},50);});}document.readyState==='loading'?document.addEventListener('DOMContentLoaded',_i):_i();})();</script>
 <script>
+window.onInvoiceTypeChange = function(){
+  // nothing to toggle for now — type is stored and displayed
+};
+
 window.calcTotal = function(){
   const sub=parseFloat(document.getElementById('f_subtotal').value)||0;
   const tax=parseFloat(document.getElementById('f_tax_rate').value)||0;
@@ -338,6 +357,8 @@ window.calcTotal = function(){
     document.getElementById('f_total_display').value='R 0.00';
     // Auto-suggest invoice number
     document.getElementById('f_inv_number').value='INV-'+new Date().getFullYear()+'-'+String(Date.now()).slice(-4);
+    document.getElementById('f_invoice_type').value='adhoc';
+    document.getElementById('f_description').value='';
   }
 
   document.getElementById('newInvoiceBtn').onclick=()=>{
@@ -361,6 +382,8 @@ window.calcTotal = function(){
     document.getElementById('f_due_date').value=inv.due_date||'';
     document.getElementById('f_status').value=inv.status||'draft';
     document.getElementById('f_notes').value=inv.notes||'';
+    document.getElementById('f_invoice_type').value=inv.invoice_type||'adhoc';
+    document.getElementById('f_description').value=inv.description||'';
     calcTotal();
     // Set company then load its tickets, then set incident
     setTimeout(async()=>{
@@ -387,10 +410,12 @@ window.calcTotal = function(){
     const status=document.getElementById('f_status').value;
     const notes=document.getElementById('f_notes').value.trim();
     const incident=document.getElementById('f_incident').value||null;
+    const invoice_type=document.getElementById('f_invoice_type').value||'adhoc';
+    const description=document.getElementById('f_description').value.trim();
     if(!company||!invoice_number||!billing_period_start||!billing_period_end){
       showAlert('modalAlert','Company, invoice number, and billing period are required.'); return;
     }
-    const body={company,invoice_number,billing_period_start,billing_period_end,ticket_count,hours_worked,subtotal,tax_rate,due_date,status,notes,incident};
+    const body={company,invoice_number,billing_period_start,billing_period_end,ticket_count,hours_worked,subtotal,tax_rate,due_date,status,notes,incident,invoice_type,description};
     try{
       const r=id
         ? await api(`/portal/api/invoices/${id}/`,{method:'PATCH',body:JSON.stringify(body)})

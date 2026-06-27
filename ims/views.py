@@ -2518,3 +2518,555 @@ Questions? Call 068 397 3484 or email infor@rehumile.co.za
             return Response({"detail": f"Email failed: {exc}"}, status=500)
 
         return Response({"detail": f"Reminder sent to {to_email}", "email": to_email})
+
+
+# ============================================================================
+# REVENUE INTELLIGENCE — WiFi Subscribers, SLA Contracts, Auto-Invoicing
+# ============================================================================
+
+from .models import WifiSubscriber, SLAContract, RevenueAllocation
+from .serializers import WifiSubscriberSerializer, SLAContractSerializer, RevenueAllocationSerializer
+from django.db.models import Sum, Q, F, OuterRef, Exists
+from datetime import date, timedelta
+import calendar as cal_module
+
+
+def _revenue_alloc():
+    """Return the single RevenueAllocation record, creating defaults if absent."""
+    obj, _ = RevenueAllocation.objects.get_or_create(id=1)
+    return obj
+
+
+def _month_bounds(year, month):
+    last_day = cal_module.monthrange(year, month)[1]
+    return date(year, month, 1), date(year, month, last_day)
+
+
+def _next_invoice_number():
+    today = date.today()
+    prefix = f"INV-{today.year}-{today.month:02d}"
+    existing = Invoice.objects.filter(invoice_number__startswith=prefix).count()
+    return f"{prefix}-{existing + 1:03d}"
+
+
+def _send_subscriber_invoice_email(invoice, to_email, base_url):
+    """Fire invoice email to a WiFi or SLA client."""
+    if not to_email:
+        return
+    pay_link = f"{base_url}/portal/client/billing/"
+    reg_link = f"{base_url}/portal/register/"
+    inv_num = invoice.invoice_number
+    amount = float(invoice.total_amount)
+    due = invoice.due_date.strftime("%d %B %Y") if invoice.due_date else "Upon receipt"
+    desc = invoice.description or "Monthly Service"
+    type_label = {"wifi": "WiFi Subscription", "sla": "SLA Monthly Retainer", "callout": "SLA Call-Out", "adhoc": "Service Invoice"}.get(invoice.invoice_type, "Invoice")
+
+    html_body = f"""<!DOCTYPE html>
+<html><head><meta charset="UTF-8"></head>
+<body style="margin:0;padding:0;font-family:'Segoe UI',Arial,sans-serif;background:#f4f4f7">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f7;padding:32px 0">
+<tr><td align="center">
+<table width="600" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.08)">
+<tr><td style="background:#50181E;padding:24px 40px">
+  <table width="100%" cellpadding="0" cellspacing="0"><tr>
+    <td><img src="https://www.rehumile.co.za/portal/static/img/rehumile-logo.jpeg" alt="Rehumile TMW" height="56" style="display:block;height:56px;object-fit:contain"></td>
+    <td align="right"><p style="margin:0;color:rgba(255,255,255,0.5);font-size:11px;text-transform:uppercase;letter-spacing:1px">{type_label}</p></td>
+  </tr></table>
+</td></tr>
+<tr><td style="padding:36px 40px">
+  <h2 style="margin:0 0 8px;color:#1a1a1a;font-size:24px">{type_label}</h2>
+  <p style="margin:0 0 24px;color:#666;font-size:15px">Please find your invoice details below. Payment is due by <strong>{due}</strong>.</p>
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#fafafa;border:1.5px solid #e8e8e8;border-radius:10px;margin-bottom:28px">
+    <tr><td style="padding:20px 24px;border-bottom:1px solid #e8e8e8"><p style="margin:0;font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#999;font-weight:700">Invoice Details</p></td></tr>
+    <tr><td style="padding:20px 24px">
+      <table width="100%" cellpadding="0" cellspacing="0">
+        <tr>
+          <td style="padding-bottom:12px"><p style="margin:0;font-size:12px;color:#999">Invoice Number</p><p style="margin:4px 0 0;font-size:16px;font-weight:700;color:#1a1a1a">{inv_num}</p></td>
+          <td style="padding-bottom:12px" align="right"><p style="margin:0;font-size:12px;color:#999">Amount Due</p><p style="margin:4px 0 0;font-size:24px;font-weight:900;color:#50181E">R {amount:,.2f}</p></td>
+        </tr>
+        <tr>
+          <td><p style="margin:0;font-size:12px;color:#999">Description</p><p style="margin:4px 0 0;font-size:14px;color:#444">{desc}</p></td>
+          <td align="right"><p style="margin:0;font-size:12px;color:#999">Due Date</p><p style="margin:4px 0 0;font-size:14px;font-weight:600;color:#c0392b">{due}</p></td>
+        </tr>
+      </table>
+    </td></tr>
+  </table>
+  <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:16px">
+    <tr><td align="center">
+      <a href="{pay_link}" style="display:inline-block;background:linear-gradient(135deg,#B38F43,#d4ac58);color:#fff;font-size:16px;font-weight:700;text-decoration:none;padding:16px 40px;border-radius:10px">Pay Invoice Now &rarr;</a>
+    </td></tr>
+  </table>
+  <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:24px">
+    <tr><td style="padding:12px;background:#f8f4ee;border-radius:8px;text-align:center">
+      <p style="margin:0 0 8px;color:#666;font-size:13px">Already have an account? <a href="{pay_link}" style="color:#50181E;font-weight:700;text-decoration:none">Log in to your client portal</a></p>
+      <p style="margin:0;color:#666;font-size:13px">New client? <a href="{reg_link}" style="color:#B38F43;font-weight:700;text-decoration:none">Register here</a> to access your dashboard.</p>
+    </td></tr>
+  </table>
+  <p style="margin:0;color:#888;font-size:13px;text-align:center">If you have already paid, please disregard this notice.</p>
+</td></tr>
+<tr><td style="background:#f8f8f8;padding:20px 40px;border-top:1px solid #ececec">
+  <table width="100%" cellpadding="0" cellspacing="0"><tr>
+    <td style="color:#aaa;font-size:12px"><p style="margin:0">Rehumile TMW &bull; Jozini, KwaZulu-Natal</p><p style="margin:4px 0 0">📞 068 397 3484 &bull; ✉️ infor@rehumile.co.za</p></td>
+    <td align="right"><a href="https://www.rehumile.co.za" style="color:#50181E;font-size:12px;text-decoration:none;font-weight:600">www.rehumile.co.za</a></td>
+  </tr></table>
+</td></tr>
+</table></td></tr></table>
+</body></html>"""
+
+    plain = f"{type_label} — Rehumile TMW\nInvoice: {inv_num}\nAmount: R {amount:,.2f}\nDue: {due}\n\nPay: {pay_link}\nRegister: {reg_link}"
+    try:
+        from django.core.mail import EmailMultiAlternatives
+        msg = EmailMultiAlternatives(
+            subject=f"{type_label} {inv_num} — Rehumile TMW",
+            body=plain,
+            from_email=django_settings.DEFAULT_FROM_EMAIL,
+            to=[to_email],
+        )
+        msg.attach_alternative(html_body, "text/html")
+        msg.send()
+    except Exception as exc:
+        pf_logger.error("Subscriber invoice email failed to %s: %s", to_email, exc)
+
+
+# ── WiFi Subscriber CRUD ──────────────────────────────────────────────────────
+
+class WifiSubscriberListView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        if request.user.role not in ('admin', 'finance', 'agent'):
+            return Response({'detail': 'HQ access required.'}, status=403)
+        qs = WifiSubscriber.objects.all().order_by('status', 'client_name')
+        return Response(WifiSubscriberSerializer(qs, many=True).data)
+
+    def post(self, request):
+        if request.user.role not in ('admin', 'finance'):
+            return Response({'detail': 'Admin/Finance access required.'}, status=403)
+        ser = WifiSubscriberSerializer(data=request.data)
+        if ser.is_valid():
+            ser.save()
+            return Response(ser.data, status=201)
+        return Response(ser.errors, status=400)
+
+
+class WifiSubscriberDetailView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def _get(self, pk):
+        try:
+            return WifiSubscriber.objects.get(pk=pk)
+        except WifiSubscriber.DoesNotExist:
+            return None
+
+    def get(self, request, pk):
+        obj = self._get(pk)
+        if not obj:
+            return Response({'detail': 'Not found.'}, status=404)
+        return Response(WifiSubscriberSerializer(obj).data)
+
+    def patch(self, request, pk):
+        if request.user.role not in ('admin', 'finance'):
+            return Response({'detail': 'Admin/Finance access required.'}, status=403)
+        obj = self._get(pk)
+        if not obj:
+            return Response({'detail': 'Not found.'}, status=404)
+        ser = WifiSubscriberSerializer(obj, data=request.data, partial=True)
+        if ser.is_valid():
+            ser.save()
+            return Response(ser.data)
+        return Response(ser.errors, status=400)
+
+    def delete(self, request, pk):
+        if request.user.role != 'admin':
+            return Response({'detail': 'Admin access required.'}, status=403)
+        obj = self._get(pk)
+        if not obj:
+            return Response({'detail': 'Not found.'}, status=404)
+        obj.delete()
+        return Response(status=204)
+
+
+# ── SLA Contract CRUD ─────────────────────────────────────────────────────────
+
+class SLAContractListView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        if request.user.role not in ('admin', 'finance', 'agent'):
+            return Response({'detail': 'HQ access required.'}, status=403)
+        qs = SLAContract.objects.all().order_by('status', 'client_name')
+        return Response(SLAContractSerializer(qs, many=True).data)
+
+    def post(self, request):
+        if request.user.role not in ('admin', 'finance'):
+            return Response({'detail': 'Admin/Finance access required.'}, status=403)
+        ser = SLAContractSerializer(data=request.data)
+        if ser.is_valid():
+            ser.save()
+            return Response(ser.data, status=201)
+        return Response(ser.errors, status=400)
+
+
+class SLAContractDetailView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def _get(self, pk):
+        try:
+            return SLAContract.objects.get(pk=pk)
+        except SLAContract.DoesNotExist:
+            return None
+
+    def get(self, request, pk):
+        obj = self._get(pk)
+        if not obj:
+            return Response({'detail': 'Not found.'}, status=404)
+        return Response(SLAContractSerializer(obj).data)
+
+    def patch(self, request, pk):
+        if request.user.role not in ('admin', 'finance'):
+            return Response({'detail': 'Admin/Finance access required.'}, status=403)
+        obj = self._get(pk)
+        if not obj:
+            return Response({'detail': 'Not found.'}, status=404)
+        ser = SLAContractSerializer(obj, data=request.data, partial=True)
+        if ser.is_valid():
+            ser.save()
+            return Response(ser.data)
+        return Response(ser.errors, status=400)
+
+    def delete(self, request, pk):
+        if request.user.role != 'admin':
+            return Response({'detail': 'Admin access required.'}, status=403)
+        obj = self._get(pk)
+        if not obj:
+            return Response({'detail': 'Not found.'}, status=404)
+        obj.delete()
+        return Response(status=204)
+
+
+# ── Revenue Allocation Settings ───────────────────────────────────────────────
+
+class RevenueAllocationView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        return Response(RevenueAllocationSerializer(_revenue_alloc()).data)
+
+    def patch(self, request):
+        if request.user.role != 'admin':
+            return Response({'detail': 'Admin access required.'}, status=403)
+        obj = _revenue_alloc()
+        ser = RevenueAllocationSerializer(obj, data=request.data, partial=True)
+        if ser.is_valid():
+            ser.save()
+            return Response(ser.data)
+        return Response(ser.errors, status=400)
+
+
+# ── Monthly Invoice Generation ────────────────────────────────────────────────
+
+class GenerateMonthlyInvoicesView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        if request.user.role not in ('admin', 'finance'):
+            return Response({'detail': 'Admin/Finance access required.'}, status=403)
+
+        year = int(request.data.get('year', date.today().year))
+        month = int(request.data.get('month', date.today().month))
+        send_email = request.data.get('send_email', True)
+        base_url = request.scheme + '://' + request.get_host()
+
+        m_start, m_end = _month_bounds(year, month)
+        created_wifi = 0
+        created_sla = 0
+        skipped = 0
+
+        # WiFi Subscribers
+        for sub in WifiSubscriber.objects.filter(status='active'):
+            exists = Invoice.objects.filter(
+                wifi_subscriber=sub,
+                billing_period_start=m_start,
+                billing_period_end=m_end,
+            ).exists()
+            if exists:
+                skipped += 1
+                continue
+            inv = Invoice.objects.create(
+                invoice_number=_next_invoice_number(),
+                company=sub.company,
+                wifi_subscriber=sub,
+                invoice_type='wifi',
+                billing_period_start=m_start,
+                billing_period_end=m_end,
+                due_date=date(year, month, sub.billing_day),
+                subtotal=sub.retail_price,
+                tax_rate=0,
+                tax_amount=0,
+                total_amount=sub.retail_price,
+                wholesale_cost=sub.wholesale_cost,
+                ticket_count=0,
+                hours_worked=0,
+                description=f"WiFi Subscription — {sub.client_name}",
+                status='sent',
+                sent_at=timezone.now(),
+            )
+            created_wifi += 1
+            if send_email and sub.contact_email:
+                _send_subscriber_invoice_email(inv, sub.contact_email, base_url)
+
+        # SLA Contracts
+        for contract in SLAContract.objects.filter(status='active'):
+            # Skip if contract has ended before this month
+            if contract.contract_end and contract.contract_end < m_start:
+                skipped += 1
+                continue
+            exists = Invoice.objects.filter(
+                sla_contract=contract,
+                invoice_type='sla',
+                billing_period_start=m_start,
+                billing_period_end=m_end,
+            ).exists()
+            if exists:
+                skipped += 1
+                continue
+            inv = Invoice.objects.create(
+                invoice_number=_next_invoice_number(),
+                company=contract.company,
+                sla_contract=contract,
+                invoice_type='sla',
+                billing_period_start=m_start,
+                billing_period_end=m_end,
+                due_date=date(year, month, contract.billing_day),
+                subtotal=contract.monthly_retainer,
+                tax_rate=0,
+                tax_amount=0,
+                total_amount=contract.monthly_retainer,
+                ticket_count=0,
+                hours_worked=0,
+                description=f"SLA Monthly Retainer — {contract.client_name}",
+                status='sent',
+                sent_at=timezone.now(),
+            )
+            created_sla += 1
+            if send_email and contract.contact_email:
+                _send_subscriber_invoice_email(inv, contract.contact_email, base_url)
+
+        return Response({
+            'detail': f"Generated {created_wifi} WiFi and {created_sla} SLA invoices. {skipped} skipped (already exist).",
+            'wifi_created': created_wifi,
+            'sla_created': created_sla,
+            'skipped': skipped,
+            'period': f"{m_start} to {m_end}",
+        })
+
+
+# ── Revenue Intelligence Dashboard ───────────────────────────────────────────
+
+class RevenueIntelligenceView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        if request.user.role not in ('admin', 'finance', 'agent'):
+            return Response({'detail': 'HQ access required.'}, status=403)
+
+        today = date.today()
+        m_start, m_end = _month_bounds(today.year, today.month)
+        alloc = _revenue_alloc()
+        r_pct = float(alloc.reinvestment_pct)
+        o_pct = float(alloc.opex_pct)
+        w_pct = float(alloc.owner_pct)
+
+        def paid_sum(qfilter):
+            return float(Invoice.objects.filter(**qfilter, status='paid').aggregate(t=Sum('total_amount'))['t'] or 0)
+
+        def outstanding_sum(qfilter):
+            return float(Invoice.objects.filter(**qfilter, status__in=['sent', 'overdue']).aggregate(t=Sum('total_amount'))['t'] or 0)
+
+        base = dict(billing_period_start__gte=m_start, billing_period_start__lte=m_end)
+
+        # ── Current month streams ──────────────────────────────────────────────
+        wifi_paid = paid_sum({**base, 'invoice_type': 'wifi'})
+        wifi_outstanding = outstanding_sum({**base, 'invoice_type': 'wifi'})
+        wifi_expected = float(WifiSubscriber.objects.filter(status='active').aggregate(t=Sum('retail_price'))['t'] or 0)
+
+        sla_paid = paid_sum({**base, 'invoice_type__in': ['sla', 'callout']})
+        sla_outstanding = outstanding_sum({**base, 'invoice_type__in': ['sla', 'callout']})
+        sla_expected = float(SLAContract.objects.filter(status='active').aggregate(t=Sum('monthly_retainer'))['t'] or 0)
+
+        adhoc_paid = paid_sum({**base, 'invoice_type': 'adhoc'})
+
+        axxess_costs = float(Invoice.objects.filter(
+            **base, invoice_type='wifi', wholesale_cost__isnull=False,
+        ).aggregate(t=Sum('wholesale_cost'))['t'] or 0)
+
+        total_revenue = wifi_paid + sla_paid + adhoc_paid
+        net_profit = total_revenue - axxess_costs
+
+        # ── Intelligence flags ─────────────────────────────────────────────────
+        flags = []
+
+        if adhoc_paid == 0:
+            floor_income = wifi_paid + sla_paid
+            flags.append({
+                'type': 'floor_month',
+                'level': 'warning',
+                'message': f'No ad-hoc income recorded this month. Your floor income is R {floor_income:,.2f} from WiFi + SLA only.',
+            })
+
+        loss_makers = list(WifiSubscriber.objects.filter(
+            status='active', wholesale_cost__gte=F('retail_price'),
+        ).values('id', 'client_name', 'retail_price', 'wholesale_cost'))
+        for lm in loss_makers:
+            lm['retail_price'] = float(lm['retail_price'])
+            lm['wholesale_cost'] = float(lm['wholesale_cost'])
+            flags.append({
+                'type': 'loss_making',
+                'level': 'danger',
+                'message': f"Loss-making line: {lm['client_name']} — costs R {lm['wholesale_cost']:,.2f}, billed R {lm['retail_price']:,.2f}.",
+                'data': lm,
+            })
+
+        # Closed tickets this month without any linked invoice
+        ticket_no_inv = list(
+            Invoice.objects.filter(**base).values_list('incident_id', flat=True).distinct()
+        )
+        from .models import Incident as IncidentModel
+        unlinked = list(IncidentModel.objects.filter(
+            status__in=['resolved', 'closed'],
+            updated_at__date__gte=m_start,
+            updated_at__date__lte=m_end,
+        ).exclude(id__in=[i for i in ticket_no_inv if i]).values(
+            'ticket_id', 'title', 'company__name',
+        )[:15])
+        if unlinked:
+            flags.append({
+                'type': 'missed_revenue',
+                'level': 'info',
+                'message': f"{len(unlinked)} ticket(s) closed this month with no linked invoice.",
+                'tickets': unlinked,
+            })
+
+        overdue_threshold = today - timedelta(days=7)
+        overdue_subs = list(Invoice.objects.filter(
+            invoice_type='wifi',
+            status__in=['sent', 'overdue'],
+            sent_at__date__lte=overdue_threshold,
+        ).select_related('wifi_subscriber').values(
+            'id', 'invoice_number', 'total_amount',
+            'wifi_subscriber__client_name', 'sent_at',
+        )[:15])
+        for o in overdue_subs:
+            o['total_amount'] = float(o['total_amount'] or 0)
+        if overdue_subs:
+            flags.append({
+                'type': 'overdue_subscribers',
+                'level': 'warning',
+                'message': f"{len(overdue_subs)} WiFi subscriber invoice(s) unpaid for more than 7 days.",
+                'invoices': overdue_subs,
+            })
+
+        # ── Per-client profitability ───────────────────────────────────────────
+        client_prof = []
+        for sub in WifiSubscriber.objects.filter(status='active').order_by('client_name'):
+            billed = float(Invoice.objects.filter(wifi_subscriber=sub).aggregate(t=Sum('total_amount'))['t'] or 0)
+            costs = float(Invoice.objects.filter(wifi_subscriber=sub, wholesale_cost__isnull=False).aggregate(t=Sum('wholesale_cost'))['t'] or 0)
+            client_prof.append({
+                'id': str(sub.id),
+                'client_name': sub.client_name,
+                'axxess_id': sub.axxess_id,
+                'retail_price': float(sub.retail_price),
+                'wholesale_cost': float(sub.wholesale_cost),
+                'margin': float(sub.retail_price) - float(sub.wholesale_cost),
+                'total_billed': billed,
+                'total_axxess_cost': costs,
+                'total_gross_profit': billed - costs,
+                'is_loss_making': sub.is_loss_making,
+            })
+        client_prof.sort(key=lambda x: x['total_gross_profit'], reverse=True)
+
+        return Response({
+            'period': {'start': m_start, 'end': m_end, 'label': m_start.strftime('%B %Y')},
+            'streams': {
+                'wifi': {'paid': wifi_paid, 'outstanding': wifi_outstanding, 'expected': wifi_expected},
+                'sla': {'paid': sla_paid, 'outstanding': sla_outstanding, 'expected': sla_expected},
+                'adhoc': {'paid': adhoc_paid},
+            },
+            'costs': {'axxess': axxess_costs},
+            'totals': {
+                'revenue': total_revenue,
+                'net_profit': net_profit,
+                'reinvestment': round(net_profit * r_pct, 2),
+                'opex': round(net_profit * o_pct, 2),
+                'owner_draw': round(net_profit * w_pct, 2),
+            },
+            'allocation': {
+                'reinvestment_pct': r_pct,
+                'opex_pct': o_pct,
+                'owner_pct': w_pct,
+            },
+            'flags': flags,
+            'client_profitability': client_prof,
+        })
+
+
+class RevenueMonthlyView(APIView):
+    """12-month historical breakdown by revenue stream."""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        if request.user.role not in ('admin', 'finance', 'agent'):
+            return Response({'detail': 'HQ access required.'}, status=403)
+
+        alloc = _revenue_alloc()
+        r_pct = float(alloc.reinvestment_pct)
+        o_pct = float(alloc.opex_pct)
+        w_pct = float(alloc.owner_pct)
+
+        today = date.today()
+        months = []
+
+        for i in range(11, -1, -1):
+            # Walk back i months from this month
+            y = today.year
+            m = today.month - i
+            while m <= 0:
+                m += 12
+                y -= 1
+            m_start, m_end = _month_bounds(y, m)
+
+            def _s(flt):
+                return float(Invoice.objects.filter(**flt).aggregate(t=Sum('total_amount'))['t'] or 0)
+
+            base = dict(billing_period_start__gte=m_start, billing_period_start__lte=m_end, status='paid')
+            wifi_rev = _s({**base, 'invoice_type': 'wifi'})
+            sla_rev = _s({**base, 'invoice_type__in': ['sla', 'callout']})
+            adhoc_rev = _s({**base, 'invoice_type': 'adhoc'})
+            ax_costs = float(Invoice.objects.filter(
+                billing_period_start__gte=m_start,
+                billing_period_start__lte=m_end,
+                invoice_type='wifi',
+                wholesale_cost__isnull=False,
+            ).aggregate(t=Sum('wholesale_cost'))['t'] or 0)
+
+            total = wifi_rev + sla_rev + adhoc_rev
+            net = total - ax_costs
+
+            months.append({
+                'label': m_start.strftime('%b %Y'),
+                'month_short': m_start.strftime('%b'),
+                'year': y,
+                'wifi_revenue': wifi_rev,
+                'sla_revenue': sla_rev,
+                'adhoc_revenue': adhoc_rev,
+                'total_revenue': total,
+                'axxess_costs': ax_costs,
+                'net_profit': net,
+                'reinvestment': round(net * r_pct, 2),
+                'opex': round(net * o_pct, 2),
+                'owner_draw': round(net * w_pct, 2),
+                'floor_pct': round((wifi_rev + sla_rev) / total * 100, 1) if total > 0 else 0,
+                'growth_pct': round(adhoc_rev / total * 100, 1) if total > 0 else 0,
+            })
+
+        return Response({'months': months, 'allocation': {'reinvestment_pct': r_pct, 'opex_pct': o_pct, 'owner_pct': w_pct}})

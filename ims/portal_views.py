@@ -146,6 +146,14 @@ def portal_website_view(request):
     return _serve('hq-website.html')
 
 
+def portal_wifi_sla_view(request):
+    return _serve('hq-wifi-sla.html')
+
+
+def portal_revenue_intelligence_view(request):
+    return _serve('hq-revenue-intelligence.html')
+
+
 def payment_success_view(request):
     return _serve('payment-success.html')
 
