@@ -6,7 +6,7 @@ from django.conf import settings as django_settings
 from django.http import JsonResponse, HttpResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
-from rest_framework import viewsets, status, generics
+from rest_framework import viewsets, status, generics, serializers as drf_serializers
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
@@ -552,10 +552,24 @@ class IncidentViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         user = self.request.user
         company = user.company
-        if not company and user.role == 'admin':
+
+        # HQ admins/agents must pass an explicit company in the request body
+        if not company and user.role in ('admin', 'agent'):
             company_id = self.request.data.get('company')
             if company_id:
-                company = Company.objects.get(id=company_id)
+                try:
+                    company = Company.objects.get(id=company_id)
+                except Company.DoesNotExist:
+                    raise drf_serializers.ValidationError({'company': 'Company not found.'})
+
+        if not company:
+            # Client users must have a company linked to their account
+            raise drf_serializers.ValidationError({
+                'detail': (
+                    'Your account is not linked to a company. '
+                    'Please contact the HQ administrator to have your account configured.'
+                )
+            })
 
         ticket_id = f"INC-{str(uuid.uuid4())[:8].upper()}"
         incident = serializer.save(
