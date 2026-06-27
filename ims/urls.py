@@ -74,5 +74,9 @@ urlpatterns = [
     # Revenue Intelligence — Dashboard
     path('revenue-intelligence/', views.RevenueIntelligenceView.as_view(), name='revenue-intelligence'),
     path('revenue-intelligence/monthly/', views.RevenueMonthlyView.as_view(), name='revenue-monthly'),
+    # Company Settings (banking details, contact info)
+    path('company-settings/', views.CompanySettingsView.as_view(), name='company-settings'),
+    # Invoice print detail
+    path('invoices/<uuid:pk>/print/', views.InvoicePrintView.as_view(), name='invoice-print'),
     path('', include(router.urls)),
 ]

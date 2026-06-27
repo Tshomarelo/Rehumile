@@ -3083,3 +3083,107 @@ class RevenueMonthlyView(APIView):
             })
 
         return Response({'months': months, 'allocation': {'reinvestment_pct': r_pct, 'opex_pct': o_pct, 'owner_pct': w_pct}})
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Company Settings (singleton — banking details & contact info)
+# ─────────────────────────────────────────────────────────────────────────────
+from .models import CompanySettings
+from .serializers import CompanySettingsSerializer
+
+
+def _company_settings():
+    obj, _ = CompanySettings.objects.get_or_create(pk=1)
+    return obj
+
+
+class CompanySettingsView(APIView):
+    """GET (all roles) / PATCH (admin only) company banking & contact settings."""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        return Response(CompanySettingsSerializer(_company_settings()).data)
+
+    def patch(self, request):
+        if request.user.role != 'admin':
+            return Response({'detail': 'Admin only.'}, status=403)
+        obj = _company_settings()
+        ser = CompanySettingsSerializer(obj, data=request.data, partial=True)
+        ser.is_valid(raise_exception=True)
+        ser.save()
+        return Response(ser.data)
+
+
+class InvoicePrintView(APIView):
+    """Full invoice detail for print page — includes company settings & line items."""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, pk):
+        from .models import InvoiceItem
+        try:
+            inv = Invoice.objects.select_related('company', 'wifi_subscriber', 'sla_contract', 'incident').get(pk=pk)
+        except Invoice.DoesNotExist:
+            return Response({'detail': 'Not found.'}, status=404)
+
+        items = list(InvoiceItem.objects.filter(invoice=inv).values(
+            'description', 'quantity', 'unit_price', 'total_price',
+        ))
+
+        # Build a single line item from invoice fields if no items exist
+        if not items and inv.description:
+            items = [{
+                'description': inv.description,
+                'quantity': 1,
+                'unit_price': float(inv.total_amount),
+                'total_price': float(inv.total_amount),
+            }]
+
+        client_name = (
+            inv.wifi_subscriber.client_name if inv.wifi_subscriber else
+            inv.sla_contract.client_name if inv.sla_contract else
+            inv.company.name if inv.company else ''
+        )
+        client_email = (
+            inv.wifi_subscriber.contact_email if inv.wifi_subscriber else
+            inv.sla_contract.contact_email if inv.sla_contract else
+            inv.company.contact_email if inv.company else ''
+        )
+        client_phone = (
+            inv.wifi_subscriber.contact_phone if inv.wifi_subscriber else
+            inv.sla_contract.contact_phone if inv.sla_contract else
+            inv.company.contact_phone if inv.company else ''
+        )
+        client_address = (
+            inv.company.billing_address if inv.company else ''
+        )
+        contact_person = inv.company.contact_person if inv.company else ''
+
+        settings = CompanySettingsSerializer(_company_settings()).data
+
+        return Response({
+            'invoice': {
+                'id': str(inv.id),
+                'invoice_number': inv.invoice_number,
+                'invoice_type': inv.invoice_type,
+                'description': inv.description,
+                'status': inv.status,
+                'date': inv.billing_period_start.strftime('%d.%m.%Y') if inv.billing_period_start else '',
+                'due_date': inv.due_date.strftime('%d.%m.%Y') if inv.due_date else '',
+                'billing_period_start': str(inv.billing_period_start),
+                'billing_period_end': str(inv.billing_period_end),
+                'subtotal': float(inv.subtotal),
+                'tax_rate': float(inv.tax_rate),
+                'tax_amount': float(inv.tax_amount),
+                'total_amount': float(inv.total_amount),
+                'notes': inv.notes,
+            },
+            'client': {
+                'name': client_name,
+                'contact_person': contact_person,
+                'email': client_email,
+                'phone': client_phone,
+                'address': client_address,
+            },
+            'items': items,
+            'company_settings': settings,
+        })

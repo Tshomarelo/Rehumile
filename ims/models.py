@@ -1892,3 +1892,39 @@ class RevenueAllocation(models.Model):
 
     def __str__(self):
         return f"Allocation: {float(self.reinvestment_pct)*100:.0f}% / {float(self.opex_pct)*100:.0f}% / {float(self.owner_pct)*100:.0f}%"
+
+
+class CompanySettings(models.Model):
+    """
+    Singleton (id=1). Holds Rehumile's own contact & banking details.
+    Edited from HQ Settings; rendered dynamically on invoices, website, and client portal.
+    """
+    # Contact
+    company_name = models.CharField(max_length=200, default='Rehumile TMW')
+    phone = models.CharField(max_length=50, default='')
+    email = models.EmailField(default='')
+    address = models.TextField(blank=True, default='')
+    website = models.URLField(blank=True, default='')
+    vat_number = models.CharField(max_length=50, blank=True, default='')
+
+    # Banking
+    account_name = models.CharField(max_length=100, default='')
+    bank_name = models.CharField(max_length=100, default='')
+    account_number = models.CharField(max_length=50, default='')
+    branch_code = models.CharField(max_length=20, default='')
+    swift_code = models.CharField(max_length=20, blank=True, default='')
+
+    # Invoice defaults
+    vat_rate = models.DecimalField(max_digits=5, decimal_places=4, default=0.00)
+    payment_terms = models.TextField(
+        default='Payment is due as per terms. Please use the invoice number as reference. '
+                'Late payments may attract interest as per our standard terms.'
+    )
+
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'company_settings'
+
+    def __str__(self):
+        return f'Company Settings ({self.company_name})'

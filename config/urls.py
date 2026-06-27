@@ -17,6 +17,7 @@ from ims.portal_views import (
     portal_compliance_view, portal_vat201_view, portal_emp201_view,
     portal_hr_view, portal_playbook_view, portal_website_view,
     portal_wifi_sla_view, portal_revenue_intelligence_view,
+    portal_settings_view, invoice_print_view,
     client_dashboard_view, client_tickets_view, client_create_ticket_view,
     client_ticket_detail_view, client_billing_view, client_profile_view,
     client_contact_view, client_notifications_view,
@@ -70,6 +71,9 @@ _portal_patterns = [
     # Revenue Intelligence
     path('dashboard/wifi-sla/', portal_wifi_sla_view, name='portal-wifi-sla'),
     path('dashboard/revenue-intelligence/', portal_revenue_intelligence_view, name='portal-revenue-intelligence'),
+    # Settings & Invoice Print
+    path('dashboard/settings/', portal_settings_view, name='portal-settings'),
+    path('invoices/print/<uuid:invoice_id>/', invoice_print_view, name='invoice-print'),
 ]
 
 urlpatterns = _portal_patterns + [

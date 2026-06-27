@@ -343,6 +343,7 @@ window.calcTotal = function(){
           <td class="d-none d-lg-table-cell">${fmtDate(inv.due_date)}</td>
           <td class="d-flex gap-1 flex-wrap">
             <button class="btn btn-sm btn-outline-primary" onclick='openEdit(${JSON.stringify(inv)})'>Edit</button>
+            <a class="btn btn-sm btn-outline-secondary" href="/portal/invoices/print/${inv.id}/" target="_blank" title="Print / Save PDF"><i data-feather="printer" style="width:13px;height:13px"></i></a>
             ${['sent','overdue','draft'].includes(inv.status) ? `<button class="btn btn-sm btn-outline-warning remind-btn" data-id="${inv.id}" data-num="${inv.invoice_number||'INV-'+inv.id.slice(0,8)}" title="Send email reminder"><i data-feather="mail" style="width:13px;height:13px"></i> Remind</button>` : ''}
           </td>
         </tr>`).join('');

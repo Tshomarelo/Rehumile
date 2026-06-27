@@ -153,6 +153,7 @@
     submenu('nav-system', 'settings', 'System', [
       ['/portal/dashboard/notifications/', 'Notifications'],
       ['/portal/dashboard/audit-log/', 'Audit Log'],
+      ['/portal/dashboard/settings/', 'Company Settings'],
       ['/portal/admin/', 'Admin Panel', '_blank'],
     ]),
   ].join('\n');

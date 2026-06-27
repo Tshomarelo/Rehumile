@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from django.utils.text import slugify
-from .models import Company, UserProfile, Incident, IncidentComment, Invoice, WifiSubscriber, SLAContract, RevenueAllocation
+from .models import Company, UserProfile, Incident, IncidentComment, Invoice, WifiSubscriber, SLAContract, RevenueAllocation, CompanySettings
 
 User = get_user_model()
 
@@ -246,6 +246,17 @@ class RevenueAllocationSerializer(serializers.ModelSerializer):
     class Meta:
         model = RevenueAllocation
         fields = ['id', 'reinvestment_pct', 'opex_pct', 'owner_pct', 'updated_at']
+        read_only_fields = ['id', 'updated_at']
+
+
+class CompanySettingsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CompanySettings
+        fields = [
+            'id', 'company_name', 'phone', 'email', 'address', 'website', 'vat_number',
+            'account_name', 'bank_name', 'account_number', 'branch_code', 'swift_code',
+            'vat_rate', 'payment_terms', 'updated_at',
+        ]
         read_only_fields = ['id', 'updated_at']
 
 

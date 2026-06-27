@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <link rel="shortcut icon" href="/portal/static/img/icons/icon-48x48.png"/>
+  <title>Company Settings | Rehumile IMS</title>
+  <link href="/portal/static/css/app.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+</head>
+<body>
+<div class="wrapper">
+  <nav id="sidebar" class="sidebar js-sidebar">
+    <div class="sidebar-content js-simplebar">
+      <a class="sidebar-brand d-flex align-items-center p-2" href="/portal/dashboard/">
+        <img src="/portal/static/img/rehumile-logo.jpeg" style="height:36px;object-fit:contain" alt="Rehumile TMW">
+      </a>
+      <ul class="sidebar-nav"></ul>
+    </div>
+  </nav>
+  <div class="main">
+    <nav class="navbar navbar-expand navbar-light navbar-bg">
+      <a class="sidebar-toggle js-sidebar-toggle"><i class="hamburger align-self-center"></i></a>
+      <div class="navbar-collapse collapse">
+        <ul class="navbar-nav navbar-align">
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle d-none d-sm-inline-block" href="#" data-bs-toggle="dropdown">
+              <i class="align-middle me-1" data-feather="user"></i><span class="text-dark" id="navUserName">…</span>
+            </a>
+            <div class="dropdown-menu dropdown-menu-end">
+              <span class="dropdown-item-text small text-muted" id="navUserRole"></span>
+              <div class="dropdown-divider"></div>
+              <a class="dropdown-item" href="#" id="logoutBtn"><i class="align-middle me-1" data-feather="log-out"></i> Sign out</a>
+            </div>
+          </li>
+        </ul>
+      </div>
+    </nav>
+    <main class="content">
+      <div class="container-fluid p-0">
+        <div class="d-flex align-items-center justify-content-between mb-3">
+          <div>
+            <h1 class="h3 mb-0"><strong>Company Settings</strong></h1>
+            <p class="text-muted small mb-0">Banking details &amp; contact info — shown on all invoices, website, and client portal</p>
+          </div>
+        </div>
+        <div id="pageAlert"></div>
+        <div id="readonlyBanner" class="alert alert-info py-2 small mb-3" style="display:none">
+          <i data-feather="info" style="width:14px;height:14px"></i>
+          You are viewing company settings in read-only mode. Only admins can edit these.
+        </div>
+
+        <form id="settingsForm">
+          <div class="row">
+            <!-- Contact Details -->
+            <div class="col-lg-6 mb-4">
+              <div class="card h-100">
+                <div class="card-header">
+                  <h5 class="card-title mb-0"><i data-feather="phone" style="width:16px;height:16px;margin-right:6px;vertical-align:middle"></i> Contact Details</h5>
+                </div>
+                <div class="card-body">
+                  <div class="mb-3">
+                    <label class="form-label fw-semibold">Company Name</label>
+                    <input type="text" class="form-control" id="s_company_name" placeholder="Rehumile TMW">
+                  </div>
+                  <div class="mb-3">
+                    <label class="form-label fw-semibold">Phone</label>
+                    <input type="text" class="form-control" id="s_phone" placeholder="068 039 7348">
+                  </div>
+                  <div class="mb-3">
+                    <label class="form-label fw-semibold">Email</label>
+                    <input type="email" class="form-control" id="s_email" placeholder="admin@rehumile.co.za">
+                  </div>
+                  <div class="mb-3">
+                    <label class="form-label fw-semibold">Address</label>
+                    <textarea class="form-control" id="s_address" rows="3" placeholder="Street, City, Province, Postal Code"></textarea>
+                  </div>
+                  <div class="mb-3">
+                    <label class="form-label fw-semibold">Website</label>
+                    <input type="url" class="form-control" id="s_website" placeholder="https://rehumile.co.za">
+                  </div>
+                  <div class="mb-0">
+                    <label class="form-label fw-semibold">VAT Number <span class="text-muted fw-normal">(optional)</span></label>
+                    <input type="text" class="form-control" id="s_vat_number" placeholder="e.g. 4120123456">
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Banking Details -->
+            <div class="col-lg-6 mb-4">
+              <div class="card h-100">
+                <div class="card-header">
+                  <h5 class="card-title mb-0"><i data-feather="credit-card" style="width:16px;height:16px;margin-right:6px;vertical-align:middle"></i> Banking Details</h5>
+                </div>
+                <div class="card-body">
+                  <div class="mb-3">
+                    <label class="form-label fw-semibold">Account Name</label>
+                    <input type="text" class="form-control" id="s_account_name" placeholder="T.TOTONG">
+                  </div>
+                  <div class="mb-3">
+                    <label class="form-label fw-semibold">Bank</label>
+                    <input type="text" class="form-control" id="s_bank_name" placeholder="NEDBANK">
+                  </div>
+                  <div class="mb-3">
+                    <label class="form-label fw-semibold">Account Number</label>
+                    <input type="text" class="form-control" id="s_account_number" placeholder="1278563369">
+                  </div>
+                  <div class="mb-3">
+                    <label class="form-label fw-semibold">Branch Code</label>
+                    <input type="text" class="form-control" id="s_branch_code" placeholder="198765">
+                  </div>
+                  <div class="mb-3">
+                    <label class="form-label fw-semibold">SWIFT Code <span class="text-muted fw-normal">(optional)</span></label>
+                    <input type="text" class="form-control" id="s_swift_code" placeholder="NEDSZAJJ">
+                  </div>
+                  <div class="mb-0">
+                    <label class="form-label fw-semibold">VAT Rate</label>
+                    <div class="input-group">
+                      <input type="number" class="form-control" id="s_vat_rate" min="0" max="1" step="0.0001" placeholder="0.15">
+                      <span class="input-group-text">decimal (0.15 = 15%)</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Payment Terms -->
+          <div class="card mb-4">
+            <div class="card-header">
+              <h5 class="card-title mb-0"><i data-feather="file-text" style="width:16px;height:16px;margin-right:6px;vertical-align:middle"></i> Invoice Notes / Payment Terms</h5>
+            </div>
+            <div class="card-body">
+              <textarea class="form-control" id="s_payment_terms" rows="3"
+                placeholder="Payment is due as per terms. Please use the invoice number as reference. Late payments may attract interest as per our standard terms."></textarea>
+              <small class="text-muted">This text appears at the bottom of every printed invoice.</small>
+            </div>
+          </div>
+
+          <!-- Preview card -->
+          <div class="card mb-4" id="previewCard" style="display:none">
+            <div class="card-header d-flex align-items-center justify-content-between">
+              <h5 class="card-title mb-0">Banking Details Preview (as it appears on invoices)</h5>
+            </div>
+            <div class="card-body">
+              <div class="row">
+                <div class="col-sm-6">
+                  <table class="table table-sm table-borderless mb-0 small">
+                    <tr><th class="text-muted fw-normal ps-0" style="width:130px">Account Name</th><td id="prev-account-name" class="fw-semibold">—</td></tr>
+                    <tr><th class="text-muted fw-normal ps-0">Bank</th><td id="prev-bank-name" class="fw-semibold">—</td></tr>
+                    <tr><th class="text-muted fw-normal ps-0">Account No.</th><td id="prev-account-number" class="fw-semibold">—</td></tr>
+                    <tr><th class="text-muted fw-normal ps-0">Branch Code</th><td id="prev-branch-code" class="fw-semibold">—</td></tr>
+                  </table>
+                </div>
+                <div class="col-sm-6">
+                  <table class="table table-sm table-borderless mb-0 small">
+                    <tr><th class="text-muted fw-normal ps-0" style="width:130px">Phone</th><td id="prev-phone" class="fw-semibold">—</td></tr>
+                    <tr><th class="text-muted fw-normal ps-0">Email</th><td id="prev-email" class="fw-semibold">—</td></tr>
+                    <tr><th class="text-muted fw-normal ps-0">VAT No.</th><td id="prev-vat" class="fw-semibold">—</td></tr>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div id="adminActions" style="display:none">
+            <button type="button" class="btn btn-primary px-4" id="saveBtn">
+              <i data-feather="save" style="width:14px;height:14px;margin-right:4px;vertical-align:middle"></i> Save Settings
+            </button>
+            <span class="text-muted small ms-3" id="lastSaved"></span>
+          </div>
+        </form>
+      </div>
+    </main>
+    <footer class="footer"><div class="container-fluid"><p class="mb-0 text-muted">Rehumile TMW IMS &copy; 2025</p></div></footer>
+  </div>
+</div>
+
+<script src="/portal/static/js/app.js"></script>
+<script src="/portal/static/js/hq-sidebar-menu.js"></script>
+<script>(function(){function _i(){var s=document.querySelector('.js-sidebar'),t=document.querySelector('.js-sidebar-toggle');if(!s||!t)return;if(window.innerWidth<992&&localStorage.getItem('ims_sidebar')==='open')s.classList.add('collapsed');t.addEventListener('click',function(){setTimeout(function(){localStorage.setItem('ims_sidebar',s.classList.contains('collapsed')?'open':'closed');},50);});}document.readyState==='loading'?document.addEventListener('DOMContentLoaded',_i):_i();})();</script>
+<script>
+(function(){
+  const token = localStorage.getItem('ims_access');
+  if(!token){ window.location.href='/portal/login/'; return; }
+  const userData = JSON.parse(localStorage.getItem('ims_user')||'{}');
+  if(!['admin','agent','finance'].includes(userData.role)){ window.location.href='/portal/client/'; return; }
+  document.getElementById('navUserName').textContent=((userData.first_name||'')+' '+(userData.last_name||'')).trim()||userData.email||'User';
+  document.getElementById('navUserRole').textContent=(userData.role||'').toUpperCase();
+  document.getElementById('logoutBtn').onclick=e=>{ e.preventDefault(); localStorage.clear(); window.location.href='/portal/login/'; };
+
+  const isAdmin = userData.role === 'admin';
+
+  async function api(url, opts={}){
+    const r = await fetch(url,{...opts,headers:{'Content-Type':'application/json','Authorization':'Bearer '+token,...(opts.headers||{})}});
+    if(r.status===401){ localStorage.clear(); window.location.href='/portal/login/'; throw new Error('Unauth'); }
+    return r;
+  }
+
+  function showAlert(id, msg, type='danger'){
+    document.getElementById(id).innerHTML=`<div class="alert alert-${type} alert-dismissible"><button type="button" class="btn-close" data-bs-dismiss="alert"></button>${msg}</div>`;
+  }
+
+  function populate(d){
+    document.getElementById('s_company_name').value = d.company_name||'';
+    document.getElementById('s_phone').value = d.phone||'';
+    document.getElementById('s_email').value = d.email||'';
+    document.getElementById('s_address').value = d.address||'';
+    document.getElementById('s_website').value = d.website||'';
+    document.getElementById('s_vat_number').value = d.vat_number||'';
+    document.getElementById('s_account_name').value = d.account_name||'';
+    document.getElementById('s_bank_name').value = d.bank_name||'';
+    document.getElementById('s_account_number').value = d.account_number||'';
+    document.getElementById('s_branch_code').value = d.branch_code||'';
+    document.getElementById('s_swift_code').value = d.swift_code||'';
+    document.getElementById('s_vat_rate').value = d.vat_rate||'0.00';
+    document.getElementById('s_payment_terms').value = d.payment_terms||'';
+    updatePreview(d);
+    if(d.updated_at){
+      document.getElementById('lastSaved').textContent = 'Last saved: ' + new Date(d.updated_at).toLocaleString('en-ZA');
+    }
+  }
+
+  function updatePreview(d){
+    document.getElementById('prev-account-name').textContent = d.account_name||'—';
+    document.getElementById('prev-bank-name').textContent = d.bank_name||'—';
+    document.getElementById('prev-account-number').textContent = d.account_number||'—';
+    document.getElementById('prev-branch-code').textContent = d.branch_code||'—';
+    document.getElementById('prev-phone').textContent = d.phone||'—';
+    document.getElementById('prev-email').textContent = d.email||'—';
+    document.getElementById('prev-vat').textContent = d.vat_number||'N/A';
+    document.getElementById('previewCard').style.display = '';
+  }
+
+  async function load(){
+    try{
+      const r = await api('/portal/api/company-settings/');
+      const d = await r.json();
+      if(r.ok) populate(d);
+      else showAlert('pageAlert', d.detail||'Failed to load settings.');
+    }catch(e){ if(e.message!=='Unauth') showAlert('pageAlert','Failed to load settings.'); }
+  }
+
+  // Setup read-only vs admin mode
+  if(!isAdmin){
+    document.getElementById('readonlyBanner').style.display='';
+    document.querySelectorAll('#settingsForm input, #settingsForm textarea, #settingsForm select').forEach(el=>el.disabled=true);
+  } else {
+    document.getElementById('adminActions').style.display='';
+  }
+
+  document.getElementById('saveBtn').onclick = async()=>{
+    const body = {
+      company_name: document.getElementById('s_company_name').value.trim(),
+      phone: document.getElementById('s_phone').value.trim(),
+      email: document.getElementById('s_email').value.trim(),
+      address: document.getElementById('s_address').value.trim(),
+      website: document.getElementById('s_website').value.trim(),
+      vat_number: document.getElementById('s_vat_number').value.trim(),
+      account_name: document.getElementById('s_account_name').value.trim(),
+      bank_name: document.getElementById('s_bank_name').value.trim(),
+      account_number: document.getElementById('s_account_number').value.trim(),
+      branch_code: document.getElementById('s_branch_code').value.trim(),
+      swift_code: document.getElementById('s_swift_code').value.trim(),
+      vat_rate: parseFloat(document.getElementById('s_vat_rate').value)||0,
+      payment_terms: document.getElementById('s_payment_terms').value.trim(),
+    };
+    const btn = document.getElementById('saveBtn');
+    const orig = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Saving…';
+    try{
+      const r = await api('/portal/api/company-settings/', {method:'PATCH', body:JSON.stringify(body)});
+      const d = await r.json();
+      if(r.ok){
+        showAlert('pageAlert','Settings saved successfully. All invoices, website &amp; client portal will now reflect these details.','success');
+        populate(d);
+        updatePreview(d);
+      } else {
+        showAlert('pageAlert', d.detail||JSON.stringify(d));
+      }
+    }catch(e){ if(e.message!=='Unauth') showAlert('pageAlert','Failed to save.'); }
+    btn.disabled = false;
+    btn.innerHTML = orig;
+  };
+
+  load();
+  if(window.feather) feather.replace();
+})();
+</script>
+</body>
+</html>

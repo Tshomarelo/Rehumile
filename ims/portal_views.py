@@ -164,3 +164,11 @@ def payment_cancel_view(request):
 
 def website_checkout_view(request):
     return _serve('website-checkout.html')
+
+
+def portal_settings_view(request):
+    return _serve('hq-settings.html')
+
+
+def invoice_print_view(request, invoice_id):
+    return _serve('invoice-print.html')
