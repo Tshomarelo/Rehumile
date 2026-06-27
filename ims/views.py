@@ -2224,7 +2224,7 @@ class PayFastInitiateView(APIView):
         if user.role == "client" and user.company != invoice.company:
             return Response({"detail": "Access denied."}, status=403)
 
-        amount = float(invoice.amount)
+        amount = float(invoice.total_amount)
         inv_ref = getattr(invoice, "invoice_number", None) or str(invoice.id)[:8]
         reference = f"INV-{inv_ref[:8].upper()}-{uuid_lib.uuid4().hex[:6].upper()}"
         item_name = f"Invoice {inv_ref}"
