@@ -2897,7 +2897,7 @@ class RevenueIntelligenceView(APIView):
         adhoc_paid = paid_sum({**base, 'invoice_type': 'adhoc'})
 
         axxess_costs = float(Invoice.objects.filter(
-            **base, invoice_type='wifi', wholesale_cost__isnull=False,
+            **base, invoice_type='wifi', wholesale_cost__isnull=False, status='paid',
         ).aggregate(t=Sum('wholesale_cost'))['t'] or 0)
 
         total_revenue = wifi_paid + sla_paid + adhoc_paid
@@ -3059,6 +3059,7 @@ class RevenueMonthlyView(APIView):
                 billing_period_start__lte=m_end,
                 invoice_type='wifi',
                 wholesale_cost__isnull=False,
+                status='paid',
             ).aggregate(t=Sum('wholesale_cost'))['t'] or 0)
 
             total = wifi_rev + sla_rev + adhoc_rev
