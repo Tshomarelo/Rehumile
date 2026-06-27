@@ -100,6 +100,7 @@
               <table class="table table-hover my-0">
                 <thead><tr>
                   <th>Invoice #</th>
+                  <th class="d-none d-md-table-cell">Ticket Ref</th>
                   <th>Description</th>
                   <th class="d-none d-lg-table-cell">Due Date</th>
                   <th>Amount</th>
@@ -169,6 +170,7 @@
       document.getElementById('invoiceTbody').innerHTML=invoices.map(inv=>`
         <tr>
           <td><strong>${inv.invoice_number||'INV-'+inv.id.slice(0,8)}</strong></td>
+          <td class="d-none d-md-table-cell">${inv.incident_ticket_id?`<code class="text-danger">${inv.incident_ticket_id}</code>`:'<span class="text-muted">—</span>'}</td>
           <td>${inv.description||inv.notes||'IT Support Services'}</td>
           <td class="d-none d-lg-table-cell">${fmtDate(inv.due_date)}</td>
           <td><strong>${fmtZAR(inv.total_amount)}</strong></td>
@@ -188,7 +190,8 @@
           <div class="logo">REHUMILE TMW</div>
           <h1>Invoice</h1>
           <table style="margin-bottom:20px;border:none"><tr><td style="border:none"><strong>Invoice #:</strong> ${inv.invoice_number||'INV-'+inv.id.slice(0,8)}</td><td style="border:none"><strong>Status:</strong> ${inv.status?.toUpperCase()}</td></tr>
-          <tr><td style="border:none"><strong>Due Date:</strong> ${fmtDate(inv.due_date)}</td><td style="border:none"><strong>Period:</strong> ${fmtDate(inv.billing_period_start)} – ${fmtDate(inv.billing_period_end)}</td></tr></table>
+          <tr><td style="border:none"><strong>Due Date:</strong> ${fmtDate(inv.due_date)}</td><td style="border:none"><strong>Period:</strong> ${fmtDate(inv.billing_period_start)} – ${fmtDate(inv.billing_period_end)}</td></tr>
+          ${inv.incident_ticket_id?`<tr><td style="border:none"><strong>Ticket Ref:</strong> <span style="font-family:monospace;color:#c0392b">${inv.incident_ticket_id}</span></td><td style="border:none"></td></tr>`:''}</table>
           <table><thead><tr><th>Description</th><th>Amount</th></tr></thead>
           <tbody><tr><td>${inv.description||'IT Support Services'}</td><td>${fmtZAR(inv.total_amount)}</td></tr></tbody>
           <tfoot><tr><td>Total</td><td>${fmtZAR(inv.total_amount)}</td></tr></tfoot></table>

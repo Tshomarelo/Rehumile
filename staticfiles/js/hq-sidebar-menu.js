@@ -1,0 +1,102 @@
+/* Rehumile TMW — HQ Shared Sidebar with Collapsible Submenus
+   Include AFTER app.js on every HQ page. Replaces the static sidebar-nav
+   with a full menu definition that auto-expands the current section.
+*/
+(function () {
+  var nav = document.querySelector('.sidebar .sidebar-nav');
+  if (!nav) return;
+
+  var path = window.location.pathname;
+
+  function isActive(href) {
+    try {
+      var p = new URL(href, location.href).pathname;
+      return p === path;
+    } catch (e) { return false; }
+  }
+
+  function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+
+  function header(label) {
+    return '<li class="sidebar-header">' + esc(label) + '</li>';
+  }
+
+  function link(href, icon, label, extra) {
+    var active = isActive(href) ? ' active' : '';
+    return '<li class="sidebar-item' + active + '">' +
+      '<a class="sidebar-link" href="' + href + '"' + (extra || '') + '>' +
+      '<i class="align-middle" data-feather="' + icon + '"></i>' +
+      ' <span class="align-middle">' + esc(label) + '</span></a></li>';
+  }
+
+  function submenu(id, icon, label, items) {
+    var anyActive = items.some(function (i) { return isActive(i[0]); });
+    var sub = items.map(function (i) {
+      var href = i[0], lbl = i[1], tgt = i[2] ? ' target="' + i[2] + '"' : '';
+      var active = isActive(href) ? ' active' : '';
+      return '<li class="sidebar-item' + active + '">' +
+        '<a class="sidebar-link" href="' + href + '"' + tgt + '>' + esc(lbl) + '</a></li>';
+    }).join('');
+    var collapsed = anyActive ? '' : ' collapsed';
+    var show = anyActive ? ' show' : '';
+    return '<li class="sidebar-item">' +
+      '<a data-bs-target="#' + id + '" data-bs-toggle="collapse" ' +
+      'class="sidebar-link' + collapsed + '" href="#">' +
+      '<i class="align-middle" data-feather="' + icon + '"></i>' +
+      ' <span class="align-middle">' + esc(label) + '</span></a>' +
+      '<ul id="' + id + '" class="sidebar-dropdown list-unstyled collapse' + show + '">' +
+      sub + '</ul></li>';
+  }
+
+  nav.innerHTML = [
+    header('Operations'),
+    link('/portal/dashboard/', 'sliders', 'HQ Dashboard'),
+    submenu('nav-incidents', 'alert-circle', 'Incidents', [
+      ['/portal/incidents/', 'All Incidents'],
+      ['/portal/dashboard/sla-monitor/', 'SLA Monitor'],
+    ]),
+    link('/portal/companies/', 'briefcase', 'Companies'),
+    link('/portal/users/', 'users', 'Users'),
+
+    header('Workshop'),
+    submenu('nav-workshop', 'tool', 'Workshop', [
+      ['/portal/dashboard/job-cards/', 'Job Cards'],
+      ['/portal/dashboard/inventory/', 'Inventory'],
+    ]),
+
+    header('Finance'),
+    submenu('nav-finance', 'dollar-sign', 'Finance', [
+      ['/portal/invoices/', 'Invoices'],
+      ['/portal/reports/', 'Reports'],
+      ['/portal/dashboard/pos/', 'POS'],
+      ['/portal/dashboard/vouchers/', 'Vouchers'],
+      ['/portal/dashboard/cash-management/', 'Cash Management'],
+      ['/portal/dashboard/financial-analytics/', 'Financial Analytics'],
+    ]),
+
+    header('Compliance'),
+    submenu('nav-compliance', 'shield', 'Compliance', [
+      ['/portal/dashboard/compliance/', 'SARS Hub'],
+      ['/portal/dashboard/vat201/', 'VAT201 Staging'],
+      ['/portal/dashboard/emp201/', 'EMP201 Payroll'],
+    ]),
+
+    header('HR'),
+    submenu('nav-hr', 'user-check', 'HR', [
+      ['/portal/dashboard/hr/', 'Employee Profiles'],
+      ['/portal/dashboard/playbook/', 'Operational Playbook'],
+    ]),
+
+    header('Website'),
+    link('/portal/dashboard/website/', 'globe', 'Website Manager'),
+
+    header('System'),
+    submenu('nav-system', 'settings', 'System', [
+      ['/portal/dashboard/notifications/', 'Notifications'],
+      ['/portal/dashboard/audit-log/', 'Audit Log'],
+      ['/portal/admin/', 'Admin Panel', '_blank'],
+    ]),
+  ].join('\n');
+
+  if (typeof feather !== 'undefined') feather.replace();
+})();

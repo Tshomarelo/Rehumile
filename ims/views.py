@@ -238,9 +238,10 @@ def _send_ticket_notification(incident, user):
             to=recipients,
         )
         msg.attach_alternative(html_body, 'text/html')
-        msg.send(fail_silently=True)
-    except Exception:
-        pass
+        msg.send(fail_silently=False)
+    except Exception as exc:
+        import logging
+        logging.getLogger('ims.email').error('Ticket notification failed for %s: %s', incident.ticket_id, exc)
 
 from .models import (
     Company, UserProfile, Incident, IncidentComment,
@@ -842,9 +843,10 @@ class PasswordResetRequestView(APIView):
                 to=[user_obj.email],
             )
             msg.attach_alternative(html_body, 'text/html')
-            msg.send(fail_silently=True)
-        except Exception:
-            pass
+            msg.send(fail_silently=False)
+        except Exception as exc:
+            import logging
+            logging.getLogger('ims.email').error('Password reset email failed for %s: %s', user_obj.email, exc)
 
         return Response({'detail': 'If that email exists, a reset link has been sent.'})
 
@@ -2357,7 +2359,7 @@ class InvoiceReminderView(APIView):
         # Resolve recipient email — prefer custom override, then company email, then incident requester
         to_email = request.data.get("email", "").strip()
         if not to_email and invoice.company:
-            to_email = getattr(invoice.company, "email", "") or ""
+            to_email = (invoice.company.billing_email or invoice.company.contact_email or "").strip()
         if not to_email and invoice.incident:
             to_email = getattr(invoice.incident.requester, "email", "") if invoice.incident.requester else ""
         if not to_email:
@@ -2486,6 +2488,7 @@ Questions? Call 068 397 3484 or email infor@rehumile.co.za
                 body=plain_body,
                 from_email=django_settings.DEFAULT_FROM_EMAIL,
                 to=[to_email],
+                cc=["finance@rehumile.co.za"],
             )
             msg.attach_alternative(html_body, "text/html")
             msg.send()
