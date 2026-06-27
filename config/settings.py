@@ -124,15 +124,15 @@ WHITENOISE_AUTOREFRESH = False
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
-# ── Email — Office 365 SMTP ───────────────────────────────────────────────────
+# ── Email — domains.co.za cPanel SMTP ────────────────────────────────────────
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = 'smtp.office365.com'
-EMAIL_PORT = 587
-EMAIL_USE_TLS = True
-EMAIL_USE_SSL = False
+EMAIL_HOST = 'mail.rehumile.co.za'
+EMAIL_PORT = 465
+EMAIL_USE_TLS = False
+EMAIL_USE_SSL = True
 EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='')
 EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
-DEFAULT_FROM_EMAIL = 'noreply@rehumile.co.za'
+DEFAULT_FROM_EMAIL = config('EMAIL_HOST_USER', default='noreply@rehumile.co.za')
 SERVER_EMAIL = DEFAULT_FROM_EMAIL
 
 # ── CORS ──────────────────────────────────────────────────────────────────────
