@@ -1,55 +1,45 @@
 /* Rehumile TMW — HQ Shared Sidebar with Collapsible Submenus
-   Include AFTER app.js on every HQ page. Replaces the static sidebar-nav
-   with a full menu definition that auto-expands the current section.
+   Include AFTER app.js on every HQ page.
 */
 (function () {
 
   // ── 1. Inject shared CSS ────────────────────────────────────────────────────
-  // Keep the navbar hamburger ALWAYS accessible (top:56px at every viewport).
-  // On desktop (≥992px) with the sidebar visible, also offset the modal left of
-  // the sidebar so the sidebar itself stays reachable.
-  // Targets div.modal.fade (Bootstrap-specific) — does NOT affect custom modal
-  // overlays (e.g. hq-website.html uses .modal-overlay, not div.modal.fade).
-  // body.hq-sidebar-collapsed is toggled below to track the sidebar state.
+  // Offcanvas and modal backdrops start BELOW the navbar (top:56px) so the
+  // hamburger / navbar is always accessible. The navbar does NOT need a high
+  // z-index — the backdrop never reaches it.
+  // Offcanvas panels also start at top:56px so they don't overlap the navbar.
   var _st = document.createElement('style');
   _st.textContent = (
-    // Backdrop always starts below navbar
+    // Modal backdrops (remindModal still uses a modal)
     '.modal-backdrop{top:56px!important}' +
-    // Navbar sits above modal backdrop so hamburger is always clickable
-    '.navbar.navbar-bg{position:relative;z-index:1060!important}'
+    // Offcanvas backdrop starts below navbar
+    '.offcanvas-backdrop{top:56px!important}' +
+    // Offcanvas panel starts below navbar and fills remaining height
+    '.offcanvas{top:56px!important;height:calc(100vh - 56px)!important}' +
+    // Navbar: position:relative so it sits in normal flow above the backdrop
+    // No artificial z-index — the backdrop/offcanvas don't reach up to navbar
+    '.navbar.navbar-bg{position:relative}'
   );
   document.head.appendChild(_st);
 
-  // ── JS-driven modal positioning (more reliable than pure CSS) ───────────────
-  // Runs on every modal open/close and on sidebar toggle so modals never
-  // overlap the sidebar regardless of viewport width.
+  // ── JS-driven modal positioning (for remindModal on invoices page) ───────────
   function _positionModals() {
-    var sidebarEl = document.getElementById('sidebar');
-    var sidebarOpen = sidebarEl && !sidebarEl.classList.contains('collapsed');
-    var left = sidebarOpen ? '260px' : '0';
-    var width = sidebarOpen ? 'calc(100% - 260px)' : '100%';
     document.querySelectorAll('div.modal').forEach(function(m) {
       m.style.top = '56px';
       m.style.height = 'calc(100% - 56px)';
-      m.style.left = left;
-      m.style.width = width;
     });
     document.querySelectorAll('.modal-backdrop').forEach(function(b) {
       b.style.top = '56px';
-      b.style.left = left;
-      b.style.width = width;
     });
   }
   document.addEventListener('show.bs.modal', _positionModals);
   document.addEventListener('shown.bs.modal', _positionModals);
-  document.addEventListener('hidden.bs.modal', _positionModals);
 
   // ── 2. Track sidebar collapsed state ───────────────────────────────────────
   var _sidebar = document.getElementById('sidebar');
   if (_sidebar) {
     function _syncCollapsed() {
       document.body.classList.toggle('hq-sidebar-collapsed', _sidebar.classList.contains('collapsed'));
-      _positionModals();
     }
     _syncCollapsed();
     new MutationObserver(_syncCollapsed).observe(_sidebar, { attributes: true, attributeFilter: ['class'] });
