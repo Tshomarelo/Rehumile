@@ -740,10 +740,13 @@
     const desc=document.getElementById('co_description').value.trim();
     const taxRate=parseFloat(document.getElementById('co_tax').value)||0;
     if(!amount||!desc){ showAlert('calloutAlert','Amount and description are required.'); return; }
+    // Find company from the SLA contract record
+    const slaRec = slaData.find(s=>s.id===slaId);
     const today=new Date().toISOString().slice(0,10);
     const body={
       invoice_type:'callout',
       sla_contract:slaId,
+      company: slaRec?.company||null,
       description:desc,
       subtotal:amount,
       tax_rate:taxRate,

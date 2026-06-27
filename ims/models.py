@@ -676,7 +676,9 @@ class Invoice(models.Model):
         Company,
         on_delete=models.CASCADE,
         related_name='invoices',
-        db_index=True
+        db_index=True,
+        null=True,
+        blank=True,
     )
     incident = models.ForeignKey(
         'Incident',
@@ -772,7 +774,7 @@ class Invoice(models.Model):
         ]
     
     def __str__(self):
-        return f"INV-{self.invoice_number} ({self.company.name})"
+        return f"INV-{self.invoice_number} ({self.company.name if self.company else 'No company'})"
 
 
 class InvoiceItem(models.Model):

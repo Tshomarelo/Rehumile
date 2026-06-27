@@ -2911,7 +2911,8 @@ class RevenueIntelligenceView(APIView):
             flags.append({
                 'type': 'floor_month',
                 'level': 'warning',
-                'message': f'No ad-hoc income recorded this month. Your floor income is R {floor_income:,.2f} from WiFi + SLA only.',
+                'title': 'No Ad-Hoc Income This Month',
+                'detail': f'Floor income only: R {floor_income:,.2f} from WiFi + SLA. No ad-hoc/project income recorded yet.',
             })
 
         loss_makers = list(WifiSubscriber.objects.filter(
@@ -2923,7 +2924,8 @@ class RevenueIntelligenceView(APIView):
             flags.append({
                 'type': 'loss_making',
                 'level': 'danger',
-                'message': f"Loss-making line: {lm['client_name']} — costs R {lm['wholesale_cost']:,.2f}, billed R {lm['retail_price']:,.2f}.",
+                'title': f"Loss-Making Line: {lm['client_name']}",
+                'detail': f"Billed R {lm['retail_price']:,.2f} but Axxess costs R {lm['wholesale_cost']:,.2f}. Review pricing.",
                 'data': lm,
             })
 
@@ -2943,7 +2945,8 @@ class RevenueIntelligenceView(APIView):
             flags.append({
                 'type': 'missed_revenue',
                 'level': 'info',
-                'message': f"{len(unlinked)} ticket(s) closed this month with no linked invoice.",
+                'title': f'{len(unlinked)} Ticket(s) Closed Without an Invoice',
+                'detail': 'These billable tickets were resolved/closed this month but have no linked invoice: ' + ', '.join(t['ticket_id'] for t in unlinked[:5]) + ('…' if len(unlinked) > 5 else ''),
                 'tickets': unlinked,
             })
 
@@ -2962,7 +2965,8 @@ class RevenueIntelligenceView(APIView):
             flags.append({
                 'type': 'overdue_subscribers',
                 'level': 'warning',
-                'message': f"{len(overdue_subs)} WiFi subscriber invoice(s) unpaid for more than 7 days.",
+                'title': f'{len(overdue_subs)} WiFi Invoice(s) Overdue (>7 days)',
+                'detail': 'Sent but unpaid for more than 7 days. Follow up or mark overdue.',
                 'invoices': overdue_subs,
             })
 
@@ -2974,15 +2978,24 @@ class RevenueIntelligenceView(APIView):
             client_prof.append({
                 'id': str(sub.id),
                 'client_name': sub.client_name,
-                'axxess_id': sub.axxess_id,
-                'retail_price': float(sub.retail_price),
-                'wholesale_cost': float(sub.wholesale_cost),
-                'margin': float(sub.retail_price) - float(sub.wholesale_cost),
-                'total_billed': billed,
-                'total_axxess_cost': costs,
-                'total_gross_profit': billed - costs,
+                'type': 'wifi',
+                'revenue': billed,
+                'cost': costs,
+                'gross_margin': billed - costs,
                 'is_loss_making': sub.is_loss_making,
             })
+        for contract in SLAContract.objects.filter(status='active').order_by('client_name'):
+            billed = float(Invoice.objects.filter(sla_contract=contract).aggregate(t=Sum('total_amount'))['t'] or 0)
+            client_prof.append({
+                'id': str(contract.id),
+                'client_name': contract.client_name,
+                'type': 'sla',
+                'revenue': billed,
+                'cost': 0,
+                'gross_margin': billed,
+                'is_loss_making': False,
+            })
+        client_prof.sort(key=lambda x: x['gross_margin'], reverse=True)
         client_prof.sort(key=lambda x: x['total_gross_profit'], reverse=True)
 
         return Response({
