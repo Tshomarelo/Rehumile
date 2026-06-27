@@ -41,7 +41,7 @@
       <div class="container-fluid p-0">
         <div class="d-flex align-items-center justify-content-between mb-3">
           <h1 class="h3 mb-0"><strong>Inventory &amp; Tool Registry</strong></h1>
-          <button class="btn btn-primary btn-sm" data-bs-toggle="offcanvas" data-bs-target="#newItemModal">
+          <button class="btn btn-primary btn-sm" data-hq-show="#newItemModal">
             <i class="align-middle me-1" data-feather="plus"></i> Add Item
           </button>
         </div>
@@ -98,10 +98,10 @@
   </div>
 </div>
 
-<!-- Add Item Offcanvas -->
-<div class="offcanvas offcanvas-end" tabindex="-1" id="newItemModal" style="width:560px">
-  <div class="offcanvas-header"><h5 class="offcanvas-title">Add Inventory Item</h5><button type="button" class="btn-close" data-bs-dismiss="offcanvas"></button></div>
-  <div class="offcanvas-body" style="overflow-y:auto">
+<!-- Add Item Drawer -->
+<div class="hq-drawer" id="newItemModal">
+  <div class="hq-drawer-header"><h5 class="hq-drawer-title">Add Inventory Item</h5><button type="button" class="btn-close btn-close-white" onclick="HQ.hideDrawer('newItemModal')"></button></div>
+  <div class="hq-drawer-body">
     <div id="itemAlert" class="alert d-none" role="alert"></div>
     <div class="mb-2"><label class="form-label">Type *</label>
       <select class="form-select" id="iType"><option value="consumable">Consumable Stock</option><option value="tool">Lab Tool / Asset</option></select>
@@ -118,18 +118,19 @@
       <div class="col"><label class="form-label">Sell Price (R)</label><input class="form-control" id="iSell" type="number" step="0.01" min="0" value="0"></div>
     </div>
   </div>
-  <div class="p-3 border-top bg-white d-flex justify-content-end gap-2">
-    <button class="btn btn-secondary" data-bs-dismiss="offcanvas">Cancel</button>
+  <div class="hq-drawer-footer">
+    <button class="btn btn-secondary" onclick="HQ.hideDrawer('newItemModal')">Cancel</button>
     <button class="btn btn-primary" id="itemSubmitBtn">
       <span id="itemSpinner" class="spinner-border spinner-border-sm me-1 d-none"></span>Save
     </button>
   </div>
 </div>
+<div class="hq-backdrop" id="newItemModal-bd" onclick="HQ.hideDrawer('newItemModal')"></div>
 
-<!-- Stock Transaction Offcanvas -->
-<div class="offcanvas offcanvas-end" tabindex="-1" id="stockModal" style="width:560px">
-  <div class="offcanvas-header"><h5 class="offcanvas-title" id="stockModalTitle">Stock Movement</h5><button type="button" class="btn-close" data-bs-dismiss="offcanvas"></button></div>
-  <div class="offcanvas-body" style="overflow-y:auto">
+<!-- Stock Transaction Drawer -->
+<div class="hq-drawer" id="stockModal">
+  <div class="hq-drawer-header"><h5 class="hq-drawer-title" id="stockModalTitle">Stock Movement</h5><button type="button" class="btn-close btn-close-white" onclick="HQ.hideDrawer('stockModal')"></button></div>
+  <div class="hq-drawer-body">
     <div id="stockAlert" class="alert d-none" role="alert"></div>
     <input type="hidden" id="stockItemId">
     <div class="mb-2"><label class="form-label">Type</label>
@@ -143,13 +144,14 @@
     <div class="mb-2" id="stockRefRow"><label class="form-label">Job Card / Invoice Reference <span class="text-danger">*</span></label><input class="form-control" id="stockRef" placeholder="e.g. JC-0012 or INV-001"></div>
     <div class="mb-2"><label class="form-label">Notes</label><input class="form-control" id="stockNotes"></div>
   </div>
-  <div class="p-3 border-top bg-white d-flex justify-content-end gap-2">
-    <button class="btn btn-secondary" data-bs-dismiss="offcanvas">Cancel</button>
+  <div class="hq-drawer-footer">
+    <button class="btn btn-secondary" onclick="HQ.hideDrawer('stockModal')">Cancel</button>
     <button class="btn btn-primary" id="stockSubmitBtn">
       <span id="stockSpinner" class="spinner-border spinner-border-sm me-1 d-none"></span>Submit
     </button>
   </div>
 </div>
+<div class="hq-backdrop" id="stockModal-bd" onclick="HQ.hideDrawer('stockModal')"></div>
 
 <script src="/portal/static/js/app.js"></script>
 <script src="/portal/static/js/hq-sidebar-menu.js"></script>
@@ -206,7 +208,7 @@
           document.getElementById('stockItemId').value=btn.dataset.id;
           document.getElementById('stockModalTitle').textContent='Stock Movement — '+btn.dataset.name;
           document.getElementById('stockAlert').className='alert d-none';
-          new bootstrap.Offcanvas(document.getElementById('stockModal')).show();
+          HQ.showDrawer('stockModal');
         });
       });
       if(window.feather)feather.replace();
@@ -244,7 +246,7 @@
         selling_price:document.getElementById('iSell').value,
       })});
       if(r.ok){
-        bootstrap.Offcanvas.getInstance(document.getElementById('newItemModal')).hide();
+        HQ.hideDrawer('newItemModal');
         showAlert('pageAlert','Item added successfully.','success');
         load();
       }else{const err=await r.json().catch(()=>({}));showAlert('itemAlert',err.detail||JSON.stringify(err));}
@@ -268,7 +270,7 @@
       })});
       if(r.ok){
         const d=await r.json();
-        bootstrap.Offcanvas.getInstance(document.getElementById('stockModal')).hide();
+        HQ.hideDrawer('stockModal');
         showAlert('pageAlert','Stock updated. New qty: '+d.quantity_on_hand,'success');
         load();
       }else{const err=await r.json().catch(()=>({}));showAlert('stockAlert',err.detail||JSON.stringify(err));}

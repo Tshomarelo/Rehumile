@@ -40,7 +40,7 @@
       <div class="container-fluid p-0">
         <div class="d-flex align-items-center justify-content-between mb-3">
           <h1 class="h3 mb-0"><strong>Job Cards</strong></h1>
-          <button class="btn btn-primary btn-sm" data-bs-toggle="offcanvas" data-bs-target="#newJobModal">
+          <button class="btn btn-primary btn-sm" data-hq-show="#newJobModal">
             <i class="align-middle me-1" data-feather="plus"></i> New Job Card
           </button>
         </div>
@@ -84,10 +84,10 @@
   </div>
 </div>
 
-<!-- New Job Card Offcanvas -->
-<div class="offcanvas offcanvas-end" tabindex="-1" id="newJobModal" style="width:720px">
-  <div class="offcanvas-header"><h5 class="offcanvas-title">New Job Card</h5><button type="button" class="btn-close" data-bs-dismiss="offcanvas"></button></div>
-  <div class="offcanvas-body" style="overflow-y:auto">
+<!-- New Job Card Drawer -->
+<div class="hq-drawer hq-wide" id="newJobModal">
+  <div class="hq-drawer-header"><h5 class="hq-drawer-title">New Job Card</h5><button type="button" class="btn-close btn-close-white" onclick="HQ.hideDrawer('newJobModal')"></button></div>
+  <div class="hq-drawer-body">
     <div id="jcFormAlert" class="alert d-none" role="alert"></div>
     <form id="jcForm">
       <div class="row g-3">
@@ -109,13 +109,14 @@
       </div>
     </form>
   </div>
-  <div class="p-3 border-top bg-white d-flex justify-content-end gap-2">
-    <button type="button" class="btn btn-secondary" data-bs-dismiss="offcanvas">Cancel</button>
+  <div class="hq-drawer-footer">
+    <button type="button" class="btn btn-secondary" onclick="HQ.hideDrawer('newJobModal')">Cancel</button>
     <button type="button" class="btn btn-primary" id="jcSubmitBtn">
       <span id="jcSpinner" class="spinner-border spinner-border-sm me-1 d-none"></span>Create Job Card
     </button>
   </div>
 </div>
+<div class="hq-backdrop" id="newJobModal-bd" onclick="HQ.hideDrawer('newJobModal')"></div>
 
 <script src="/portal/static/js/app.js"></script>
 <script src="/portal/static/js/hq-sidebar-menu.js"></script>
@@ -201,7 +202,7 @@
       });
       if(r.ok){
         const data=await r.json();
-        bootstrap.Offcanvas.getInstance(document.getElementById('newJobModal')).hide();
+        HQ.hideDrawer('newJobModal');
         document.getElementById('jcForm').reset();
         // show page-level success alert
         let pageAlert=document.getElementById('pageAlert');

@@ -40,7 +40,7 @@
       <div class="container-fluid p-0">
         <div class="d-flex align-items-center justify-content-between mb-3">
           <h1 class="h3 mb-0"><strong>Incidents</strong></h1>
-          <button class="btn btn-primary" data-bs-toggle="offcanvas" data-bs-target="#createModal">
+          <button class="btn btn-primary" data-hq-show="#createModal">
             <i class="align-middle me-1" data-feather="plus"></i> New Incident
           </button>
         </div>
@@ -99,10 +99,10 @@
   </div>
 </div>
 
-<!-- Create Incident Offcanvas -->
-<div class="offcanvas offcanvas-end" tabindex="-1" id="createModal" style="width:720px">
-  <div class="offcanvas-header"><h5 class="offcanvas-title">New Incident</h5><button type="button" class="btn-close" data-bs-dismiss="offcanvas"></button></div>
-  <div class="offcanvas-body" style="overflow-y:auto">
+<!-- Create Incident Drawer -->
+<div class="hq-drawer hq-wide" id="createModal">
+  <div class="hq-drawer-header"><h5 class="hq-drawer-title">New Incident</h5><button type="button" class="btn-close btn-close-white" onclick="HQ.hideDrawer('createModal')"></button></div>
+  <div class="hq-drawer-body">
     <div id="createAlert"></div>
     <form id="createForm">
       <div class="mb-3"><label class="form-label">Title <span class="text-danger">*</span></label>
@@ -134,19 +134,20 @@
       </div>
     </form>
   </div>
-  <div class="p-3 border-top bg-white d-flex justify-content-end gap-2">
-    <button type="button" class="btn btn-secondary" data-bs-dismiss="offcanvas">Cancel</button>
+  <div class="hq-drawer-footer">
+    <button type="button" class="btn btn-secondary" onclick="HQ.hideDrawer('createModal')">Cancel</button>
     <button type="button" class="btn btn-primary" id="createSubmit">Create Incident</button>
   </div>
 </div>
+<div class="hq-backdrop" id="createModal-bd" onclick="HQ.hideDrawer('createModal')"></div>
 
-<!-- Detail/Edit Offcanvas -->
-<div class="offcanvas offcanvas-end" tabindex="-1" id="detailModal" style="width:720px">
-  <div class="offcanvas-header">
-    <h5 class="offcanvas-title" id="detailTitle">Incident Detail</h5>
-    <button type="button" class="btn-close" data-bs-dismiss="offcanvas"></button>
+<!-- Detail/Edit Drawer -->
+<div class="hq-drawer hq-wide" id="detailModal">
+  <div class="hq-drawer-header">
+    <h5 class="hq-drawer-title" id="detailTitle">Incident Detail</h5>
+    <button type="button" class="btn-close btn-close-white" onclick="HQ.hideDrawer('detailModal')"></button>
   </div>
-  <div class="offcanvas-body" style="overflow-y:auto">
+  <div class="hq-drawer-body">
     <div id="detailAlert"></div>
     <div class="row">
       <div class="col-md-8">
@@ -194,6 +195,7 @@
     </div>
   </div>
 </div>
+<div class="hq-backdrop" id="detailModal-bd" onclick="HQ.hideDrawer('detailModal')"></div>
 
 <script src="/portal/static/js/app.js"></script>
 <script src="/portal/static/js/hq-sidebar-menu.js"></script>
@@ -259,7 +261,7 @@
     }catch{}
   }
 
-  document.getElementById('createModal').addEventListener('show.bs.offcanvas',()=>{ loadCompanies(); });
+  document.getElementById('createModal').addEventListener('hq:show',()=>{ loadCompanies(); });
 
   document.getElementById('createSubmit').onclick = async()=>{
     const title=document.getElementById('c_title').value.trim();
@@ -277,7 +279,7 @@
       const r = await api('/portal/api/incidents/',{method:'POST',body:JSON.stringify({title,description:desc,category:cat,priority,is_billable:billable,company})});
       const data = await r.json();
       if(r.ok){
-        bootstrap.Offcanvas.getInstance(document.getElementById('createModal')).hide();
+        HQ.hideDrawer('createModal');
         document.getElementById('createForm').reset();
         showAlert('pageAlert','Incident created successfully.','success');
         loadIncidents();
@@ -327,7 +329,7 @@
       <tr><th>SLA Breached</th><td>${inc.is_sla_breached?'<span class="text-danger">Yes</span>':'<span class="text-success">No</span>'}</td><th>Billable</th><td>${inc.is_billable?'Yes':'No'}</td></tr>
       <tr><th colspan="4" class="bg-light">Description</th></tr>
       <tr><td colspan="4">${(inc.description||'—').replace(/\n/g,'<br>')}</td></tr>`;
-    bootstrap.Offcanvas.getOrCreateInstance(document.getElementById('detailModal')).show();
+    HQ.showDrawer('detailModal');
     // Load agents
     try{
       const r2 = await api('/portal/api/users/');

@@ -71,13 +71,13 @@
   </div>
 </div>
 
-<!-- Create/Edit Offcanvas -->
-<div class="offcanvas offcanvas-end" tabindex="-1" id="companyModal" style="width:720px">
-  <div class="offcanvas-header">
-    <h5 class="offcanvas-title" id="modalTitle">Add Company</h5>
-    <button type="button" class="btn-close" data-bs-dismiss="offcanvas"></button>
+<!-- Create/Edit Drawer -->
+<div class="hq-drawer hq-wide" id="companyModal">
+  <div class="hq-drawer-header">
+    <h5 class="hq-drawer-title" id="modalTitle">Add Company</h5>
+    <button type="button" class="btn-close btn-close-white" onclick="HQ.hideDrawer('companyModal')"></button>
   </div>
-  <div class="offcanvas-body" style="overflow-y:auto">
+  <div class="hq-drawer-body">
     <div id="modalAlert"></div>
     <form id="companyForm">
       <input type="hidden" id="editId">
@@ -128,26 +128,28 @@
       </div>
     </form>
   </div>
-  <div class="p-3 border-top bg-white d-flex justify-content-end gap-2">
-    <button type="button" class="btn btn-secondary" data-bs-dismiss="offcanvas">Cancel</button>
+  <div class="hq-drawer-footer">
+    <button type="button" class="btn btn-secondary" onclick="HQ.hideDrawer('companyModal')">Cancel</button>
     <button type="button" class="btn btn-primary" id="saveBtn">Save Company</button>
   </div>
 </div>
+<div class="hq-backdrop" id="companyModal-bd" onclick="HQ.hideDrawer('companyModal')"></div>
 
-<!-- Delete Confirm Offcanvas -->
-<div class="offcanvas offcanvas-end" tabindex="-1" id="deleteModal" style="width:560px">
-  <div class="offcanvas-header">
-    <h5 class="offcanvas-title">Confirm Delete</h5>
-    <button type="button" class="btn-close" data-bs-dismiss="offcanvas"></button>
+<!-- Delete Confirm Drawer -->
+<div class="hq-drawer" id="deleteModal">
+  <div class="hq-drawer-header">
+    <h5 class="hq-drawer-title">Confirm Delete</h5>
+    <button type="button" class="btn-close btn-close-white" onclick="HQ.hideDrawer('deleteModal')"></button>
   </div>
-  <div class="offcanvas-body" style="overflow-y:auto">
+  <div class="hq-drawer-body">
     <p>Are you sure you want to remove <strong id="deleteCompanyName"></strong>? This action cannot be undone.</p>
   </div>
-  <div class="p-3 border-top bg-white d-flex justify-content-end gap-2">
-    <button type="button" class="btn btn-secondary" data-bs-dismiss="offcanvas">Cancel</button>
+  <div class="hq-drawer-footer">
+    <button type="button" class="btn btn-secondary" onclick="HQ.hideDrawer('deleteModal')">Cancel</button>
     <button type="button" class="btn btn-danger" id="confirmDelete">Delete</button>
   </div>
 </div>
+<div class="hq-backdrop" id="deleteModal-bd" onclick="HQ.hideDrawer('deleteModal')"></div>
 
 <script src="/portal/static/js/app.js"></script>
 <script src="/portal/static/js/hq-sidebar-menu.js"></script>
@@ -208,7 +210,7 @@
     document.getElementById('saveBtn').textContent='Save Company';
   }
 
-  document.getElementById('newCompanyBtn').onclick=()=>{ resetForm(); bootstrap.Offcanvas.getOrCreateInstance(document.getElementById('companyModal')).show(); };
+  document.getElementById('newCompanyBtn').onclick=()=>{ resetForm(); HQ.showDrawer('companyModal'); };
 
   window.openEdit=function(c){
     resetForm();
@@ -223,7 +225,7 @@
     document.getElementById('f_sla_type').value=c.sla_type||'silver';
     document.getElementById('f_status').value=c.status||'active';
     document.getElementById('f_description').value=c.description||'';
-    bootstrap.Offcanvas.getOrCreateInstance(document.getElementById('companyModal')).show();
+    HQ.showDrawer('companyModal');
   };
 
   document.getElementById('saveBtn').onclick=async()=>{
@@ -249,7 +251,7 @@
         : await api('/portal/api/companies/',{method:'POST',body:JSON.stringify(body)});
       const data=await r.json();
       if(r.ok){
-        bootstrap.Offcanvas.getInstance(document.getElementById('companyModal')).hide();
+        HQ.hideDrawer('companyModal');
         showAlert('pageAlert',id?'Company updated successfully.':'Company created successfully.','success');
         loadCompanies();
       } else { showAlert('modalAlert',data.detail||JSON.stringify(data)); }
@@ -261,7 +263,7 @@
   window.openDelete=function(id, name){
     deleteTargetId=id;
     document.getElementById('deleteCompanyName').textContent=name;
-    bootstrap.Offcanvas.getOrCreateInstance(document.getElementById('deleteModal')).show();
+    HQ.showDrawer('deleteModal');
   };
 
   document.getElementById('confirmDelete').onclick=async()=>{
@@ -273,7 +275,7 @@
     try{
       const r=await api(`/portal/api/companies/${deleteTargetId}/`,{method:'DELETE'});
       if(r.ok||r.status===204){
-        bootstrap.Offcanvas.getInstance(document.getElementById('deleteModal')).hide();
+        HQ.hideDrawer('deleteModal');
         showAlert('pageAlert','Company deleted successfully.','success');
         loadCompanies();
       } else { showAlert('pageAlert','Failed to delete company.'); }

@@ -126,13 +126,13 @@
   </div>
 </div>
 
-<!-- WiFi Subscriber Offcanvas -->
-<div class="offcanvas offcanvas-end" tabindex="-1" id="wifiModal" style="width:720px">
-  <div class="offcanvas-header" style="background:#50181E;color:white">
-    <h5 class="offcanvas-title" id="wifiModalTitle">Add WiFi Subscriber</h5>
-    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas"></button>
+<!-- WiFi Subscriber Drawer -->
+<div class="hq-drawer hq-wide" id="wifiModal">
+  <div class="hq-drawer-header">
+    <h5 class="hq-drawer-title" id="wifiModalTitle">Add WiFi Subscriber</h5>
+    <button type="button" class="btn-close btn-close-white" onclick="HQ.hideDrawer('wifiModal')"></button>
   </div>
-  <div class="offcanvas-body" style="overflow-y:auto">
+  <div class="hq-drawer-body">
     <div id="wifiModalAlert"></div>
     <form id="wifiForm">
       <input type="hidden" id="w_id">
@@ -199,19 +199,20 @@
       </div>
     </form>
   </div>
-  <div class="p-3 border-top bg-white d-flex justify-content-end gap-2">
-    <button type="button" class="btn btn-secondary" data-bs-dismiss="offcanvas">Cancel</button>
+  <div class="hq-drawer-footer">
+    <button type="button" class="btn btn-secondary" onclick="HQ.hideDrawer('wifiModal')">Cancel</button>
     <button type="button" class="btn btn-danger" id="saveWifiBtn">Save Subscriber</button>
   </div>
 </div>
+<div class="hq-backdrop" id="wifiModal-bd" onclick="HQ.hideDrawer('wifiModal')"></div>
 
-<!-- SLA Contract Offcanvas -->
-<div class="offcanvas offcanvas-end" tabindex="-1" id="slaModal" style="width:720px">
-  <div class="offcanvas-header" style="background:#50181E;color:white">
-    <h5 class="offcanvas-title" id="slaModalTitle">Add SLA Contract</h5>
-    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas"></button>
+<!-- SLA Contract Drawer -->
+<div class="hq-drawer hq-wide" id="slaModal">
+  <div class="hq-drawer-header">
+    <h5 class="hq-drawer-title" id="slaModalTitle">Add SLA Contract</h5>
+    <button type="button" class="btn-close btn-close-white" onclick="HQ.hideDrawer('slaModal')"></button>
   </div>
-  <div class="offcanvas-body" style="overflow-y:auto">
+  <div class="hq-drawer-body">
     <div id="slaModalAlert"></div>
     <form id="slaForm">
       <input type="hidden" id="s_id">
@@ -277,19 +278,20 @@
       </div>
     </form>
   </div>
-  <div class="p-3 border-top bg-white d-flex justify-content-end gap-2">
-    <button type="button" class="btn btn-secondary" data-bs-dismiss="offcanvas">Cancel</button>
+  <div class="hq-drawer-footer">
+    <button type="button" class="btn btn-secondary" onclick="HQ.hideDrawer('slaModal')">Cancel</button>
     <button type="button" class="btn btn-danger" id="saveSlaBtn">Save Contract</button>
   </div>
 </div>
+<div class="hq-backdrop" id="slaModal-bd" onclick="HQ.hideDrawer('slaModal')"></div>
 
-<!-- Import Spreadsheet Offcanvas -->
-<div class="offcanvas offcanvas-end" tabindex="-1" id="importModal" style="width:720px">
-  <div class="offcanvas-header" style="background:#2c5282;color:white">
-    <h5 class="offcanvas-title"><i data-feather="upload" style="width:18px;height:18px;margin-right:8px;vertical-align:middle"></i> Import Subscribers from Spreadsheet</h5>
-    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas"></button>
+<!-- Import Spreadsheet Drawer -->
+<div class="hq-drawer hq-wide" id="importModal">
+  <div class="hq-drawer-header">
+    <h5 class="hq-drawer-title"><i data-feather="upload" style="width:18px;height:18px;margin-right:8px;vertical-align:middle"></i> Import Subscribers from Spreadsheet</h5>
+    <button type="button" class="btn-close btn-close-white" onclick="HQ.hideDrawer('importModal')"></button>
   </div>
-  <div class="offcanvas-body" style="overflow-y:auto">
+  <div class="hq-drawer-body">
     <div id="importAlert"></div>
 
     <!-- Step 1: Upload -->
@@ -343,21 +345,22 @@
       </div>
     </div>
   </div>
-  <div class="p-3 border-top bg-white d-flex justify-content-end gap-2">
-    <button type="button" class="btn btn-secondary" data-bs-dismiss="offcanvas">Close</button>
+  <div class="hq-drawer-footer">
+    <button type="button" class="btn btn-secondary" onclick="HQ.hideDrawer('importModal')">Close</button>
     <button type="button" class="btn btn-primary" id="runImportBtn" style="display:none">
       <i data-feather="upload" style="width:14px;height:14px"></i> Import <span id="importBtnCount">0</span> Subscribers
     </button>
   </div>
 </div>
+<div class="hq-backdrop" id="importModal-bd" onclick="HQ.hideDrawer('importModal')"></div>
 
-<!-- Generate Monthly Invoices Offcanvas -->
-<div class="offcanvas offcanvas-end" tabindex="-1" id="genModal" style="width:560px">
-  <div class="offcanvas-header" style="background:#1a7a4a;color:white">
-    <h5 class="offcanvas-title"><i data-feather="zap" style="width:18px;height:18px;margin-right:8px;vertical-align:middle"></i> Generate Monthly Invoices</h5>
-    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas"></button>
+<!-- Generate Monthly Invoices Drawer -->
+<div class="hq-drawer" id="genModal">
+  <div class="hq-drawer-header">
+    <h5 class="hq-drawer-title"><i data-feather="zap" style="width:18px;height:18px;margin-right:8px;vertical-align:middle"></i> Generate Monthly Invoices</h5>
+    <button type="button" class="btn-close btn-close-white" onclick="HQ.hideDrawer('genModal')"></button>
   </div>
-  <div class="offcanvas-body" style="overflow-y:auto">
+  <div class="hq-drawer-body">
     <div class="alert alert-info small">
       This will auto-create invoices for all <strong>active WiFi subscribers</strong> and <strong>active SLA contracts</strong>
       for the selected month. Already-invoiced clients are skipped (idempotent).
@@ -385,21 +388,22 @@
     </div>
     <div id="genResult"></div>
   </div>
-  <div class="p-3 border-top bg-white d-flex justify-content-end gap-2">
-    <button type="button" class="btn btn-secondary" data-bs-dismiss="offcanvas">Cancel</button>
+  <div class="hq-drawer-footer">
+    <button type="button" class="btn btn-secondary" onclick="HQ.hideDrawer('genModal')">Cancel</button>
     <button type="button" class="btn btn-success" id="runGenBtn">
       <i data-feather="zap" style="width:14px;height:14px"></i> Run Generation
     </button>
   </div>
 </div>
+<div class="hq-backdrop" id="genModal-bd" onclick="HQ.hideDrawer('genModal')"></div>
 
-<!-- Raise SLA Call-Out Offcanvas -->
-<div class="offcanvas offcanvas-end" tabindex="-1" id="calloutModal" style="width:560px">
-  <div class="offcanvas-header" style="background:#2c5282;color:white">
-    <h5 class="offcanvas-title">Raise SLA Call-Out Invoice</h5>
-    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas"></button>
+<!-- Raise SLA Call-Out Drawer -->
+<div class="hq-drawer" id="calloutModal">
+  <div class="hq-drawer-header">
+    <h5 class="hq-drawer-title">Raise SLA Call-Out Invoice</h5>
+    <button type="button" class="btn-close btn-close-white" onclick="HQ.hideDrawer('calloutModal')"></button>
   </div>
-  <div class="offcanvas-body" style="overflow-y:auto">
+  <div class="hq-drawer-body">
     <div id="calloutAlert"></div>
     <p class="text-muted small mb-3">This raises a once-off call-out invoice on top of the monthly retainer for <strong id="calloutClientName"></strong>.</p>
     <input type="hidden" id="co_sla_id">
@@ -416,11 +420,12 @@
       <input type="number" class="form-control" id="co_tax" value="15" min="0" max="100">
     </div>
   </div>
-  <div class="p-3 border-top bg-white d-flex justify-content-end gap-2">
-    <button type="button" class="btn btn-secondary" data-bs-dismiss="offcanvas">Cancel</button>
+  <div class="hq-drawer-footer">
+    <button type="button" class="btn btn-secondary" onclick="HQ.hideDrawer('calloutModal')">Cancel</button>
     <button type="button" class="btn btn-primary" id="saveCalloutBtn">Create Call-Out Invoice</button>
   </div>
 </div>
+<div class="hq-backdrop" id="calloutModal-bd" onclick="HQ.hideDrawer('calloutModal')"></div>
 
 <script src="/portal/static/js/app.js"></script>
 <script src="/portal/static/js/hq-sidebar-menu.js"></script>
@@ -523,7 +528,7 @@
     }catch(e){ if(e.message!=='Unauth') document.getElementById('wifiLoading').textContent='Failed to load subscribers.'; }
   }
 
-  // ── New/Edit WiFi Offcanvas ───────────────────────────────────────────────────
+  // ── New/Edit WiFi Drawer ─────────────────────────────────────────────────────
   document.getElementById('newRecordBtn').onclick=async()=>{
     if(currentTab==='wifi') openWifiModal();
     else openSlaModal();
@@ -551,7 +556,7 @@
       document.getElementById('w_notes').value=data.notes||'';
       calcWifiMargin();
     }
-    bootstrap.Offcanvas.getOrCreateInstance(document.getElementById('wifiModal')).show();
+    HQ.showDrawer('wifiModal');
   }
 
   window.editWifi=function(data){ openWifiModal(data); };
@@ -593,7 +598,7 @@
         : await api('/portal/api/wifi-subscribers/',{method:'POST',body:JSON.stringify(body)});
       const d=await r.json();
       if(r.ok){
-        bootstrap.Offcanvas.getInstance(document.getElementById('wifiModal')).hide();
+        HQ.hideDrawer('wifiModal');
         showAlert('pageAlert',id?'Subscriber updated successfully.':'Subscriber added successfully.','success');
         loadWifi();
       } else { showAlert('wifiModalAlert',d.detail||JSON.stringify(d)); }
@@ -665,7 +670,7 @@
       document.getElementById('s_description').value=data.contract_description||'';
       document.getElementById('s_notes').value=data.notes||'';
     }
-    bootstrap.Offcanvas.getOrCreateInstance(document.getElementById('slaModal')).show();
+    HQ.showDrawer('slaModal');
   }
 
   window.editSla=function(data){ openSlaModal(data); };
@@ -697,7 +702,7 @@
         : await api('/portal/api/sla-contracts/',{method:'POST',body:JSON.stringify(body)});
       const d=await r.json();
       if(r.ok){
-        bootstrap.Offcanvas.getInstance(document.getElementById('slaModal')).hide();
+        HQ.hideDrawer('slaModal');
         showAlert('pageAlert',id?'Contract updated successfully.':'Contract saved successfully.','success');
         loadSla();
       } else { showAlert('slaModalAlert',d.detail||JSON.stringify(d)); }
@@ -723,7 +728,7 @@
     document.getElementById('co_description').value='';
     document.getElementById('co_tax').value='15';
     document.getElementById('calloutAlert').innerHTML='';
-    bootstrap.Offcanvas.getOrCreateInstance(document.getElementById('calloutModal')).show();
+    HQ.showDrawer('calloutModal');
   };
 
   document.getElementById('saveCalloutBtn').onclick=async()=>{
@@ -732,7 +737,6 @@
     const desc=document.getElementById('co_description').value.trim();
     const taxRate=parseFloat(document.getElementById('co_tax').value)||0;
     if(!amount||!desc){ showAlert('calloutAlert','Amount and description are required.'); return; }
-    // Find company from the SLA contract record
     const slaRec = slaData.find(s=>s.id===slaId);
     const today=new Date().toISOString().slice(0,10);
     const body={
@@ -757,7 +761,7 @@
       const r=await api('/portal/api/invoices/',{method:'POST',body:JSON.stringify(body)});
       const d=await r.json();
       if(r.ok){
-        bootstrap.Offcanvas.getInstance(document.getElementById('calloutModal')).hide();
+        HQ.hideDrawer('calloutModal');
         showAlert('pageAlert',`Call-out invoice ${d.invoice_number} created as draft. Go to Invoices to send it.`,'success');
       } else { showAlert('calloutAlert',d.detail||JSON.stringify(d)); }
     }catch(e){ if(e.message!=='Unauth') showAlert('calloutAlert','Failed to create invoice.'); }
@@ -771,7 +775,7 @@
     document.getElementById('gen_year').value=now.getFullYear();
     document.getElementById('gen_month').value=now.getMonth()+1;
     document.getElementById('genResult').innerHTML='';
-    bootstrap.Offcanvas.getOrCreateInstance(document.getElementById('genModal')).show();
+    HQ.showDrawer('genModal');
   };
 
   document.getElementById('runGenBtn').onclick=async()=>{
@@ -813,10 +817,9 @@
     document.getElementById('runImportBtn').style.display = 'none';
     document.getElementById('importAlert').innerHTML = '';
     document.getElementById('importFile').value = '';
-    bootstrap.Offcanvas.getOrCreateInstance(document.getElementById('importModal')).show();
+    HQ.showDrawer('importModal');
   };
 
-  // Drop zone click → file picker
   document.getElementById('dropZone').onclick = () => document.getElementById('importFile').click();
   document.getElementById('dropZone').ondragover = e => { e.preventDefault(); e.currentTarget.style.background='#e8f4fd'; };
   document.getElementById('dropZone').ondragleave = e => { e.currentTarget.style.background='#f8f9fa'; };
@@ -852,7 +855,6 @@
       status: ['status'],
       notes: ['notes','note'],
     };
-    // Build header map
     const headers = raw.length ? Object.keys(raw[0]).map(h=>h.trim().toLowerCase()) : [];
     function findCol(aliases) {
       for(const a of aliases) { const i = headers.indexOf(a); if(i>=0) return Object.keys(raw[0])[i]; }
@@ -879,7 +881,6 @@
       notes: map.notes ? String(r[map.notes]||'').trim() : '',
     })).filter(r => r.client_name);
 
-    // Show preview
     document.getElementById('importStep1').style.display = 'none';
     document.getElementById('importStep2').style.display = '';
     document.getElementById('previewCount').textContent = importRows.length;
@@ -953,7 +954,6 @@
     loadWifi();
   };
 
-  // ── Download CSV template ─────────────────────────────────────────────────
   document.getElementById('downloadTemplateBtn').onclick = e => {
     e.preventDefault();
     const header = 'client_name,axxess_id,retail_price,wholesale_cost,contact_name,contact_email,contact_phone,status,notes';

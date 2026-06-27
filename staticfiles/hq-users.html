@@ -71,13 +71,13 @@
   </div>
 </div>
 
-<!-- Create User Offcanvas -->
-<div class="offcanvas offcanvas-end" tabindex="-1" id="userModal" style="width:720px">
-  <div class="offcanvas-header">
-    <h5 class="offcanvas-title">Add User</h5>
-    <button type="button" class="btn-close" data-bs-dismiss="offcanvas"></button>
+<!-- Create User Drawer -->
+<div class="hq-drawer hq-wide" id="userModal">
+  <div class="hq-drawer-header">
+    <h5 class="hq-drawer-title">Add User</h5>
+    <button type="button" class="btn-close btn-close-white" onclick="HQ.hideDrawer('userModal')"></button>
   </div>
-  <div class="offcanvas-body" style="overflow-y:auto">
+  <div class="hq-drawer-body">
     <div id="modalAlert"></div>
     <form id="userForm">
       <div class="row">
@@ -123,16 +123,20 @@
       </div>
     </form>
   </div>
-  <div class="p-3 border-top bg-white d-flex justify-content-end gap-2">
-    <button type="button" class="btn btn-secondary" data-bs-dismiss="offcanvas">Cancel</button>
+  <div class="hq-drawer-footer">
+    <button type="button" class="btn btn-secondary" onclick="HQ.hideDrawer('userModal')">Cancel</button>
     <button type="button" class="btn btn-primary" id="saveUserBtn">Create User</button>
   </div>
 </div>
+<div class="hq-backdrop" id="userModal-bd" onclick="HQ.hideDrawer('userModal')"></div>
 
-<!-- Status Update Offcanvas -->
-<div class="offcanvas offcanvas-end" tabindex="-1" id="statusModal" style="width:560px">
-  <div class="offcanvas-header"><h5 class="offcanvas-title">Update User Status</h5><button type="button" class="btn-close" data-bs-dismiss="offcanvas"></button></div>
-  <div class="offcanvas-body" style="overflow-y:auto">
+<!-- Status Update Drawer -->
+<div class="hq-drawer" id="statusModal">
+  <div class="hq-drawer-header">
+    <h5 class="hq-drawer-title">Update User Status</h5>
+    <button type="button" class="btn-close btn-close-white" onclick="HQ.hideDrawer('statusModal')"></button>
+  </div>
+  <div class="hq-drawer-body">
     <p>Change status for <strong id="statusUserName"></strong>:</p>
     <input type="hidden" id="statusUserId">
     <div class="d-grid gap-2">
@@ -142,6 +146,7 @@
     </div>
   </div>
 </div>
+<div class="hq-backdrop" id="statusModal-bd" onclick="HQ.hideDrawer('statusModal')"></div>
 
 <script src="/portal/static/js/app.js"></script>
 <script src="/portal/static/js/hq-sidebar-menu.js"></script>
@@ -204,7 +209,7 @@
     document.getElementById('userForm').reset();
     document.getElementById('modalAlert').innerHTML='';
     loadCompaniesIntoSelect();
-    bootstrap.Offcanvas.getOrCreateInstance(document.getElementById('userModal')).show();
+    HQ.showDrawer('userModal');
   };
 
   document.getElementById('saveUserBtn').onclick=async()=>{
@@ -228,7 +233,7 @@
       const r=await api('/portal/api/users/',{method:'POST',body:JSON.stringify(body)});
       const data=await r.json();
       if(r.ok){
-        bootstrap.Offcanvas.getInstance(document.getElementById('userModal')).hide();
+        HQ.hideDrawer('userModal');
         showAlert('pageAlert','User created successfully.','success');
         loadUsers();
       } else { showAlert('modalAlert',data.email?data.email[0]:data.detail||JSON.stringify(data)); }
@@ -240,7 +245,7 @@
   window.openStatus=function(id, name){
     document.getElementById('statusUserId').value=id;
     document.getElementById('statusUserName').textContent=name;
-    bootstrap.Offcanvas.getOrCreateInstance(document.getElementById('statusModal')).show();
+    HQ.showDrawer('statusModal');
   };
 
   window.setStatus=async function(newStatus, btnEl){
@@ -253,7 +258,7 @@
     try{
       const r=await api(`/portal/api/users/${id}/status/`,{method:'PATCH',body:JSON.stringify({status:newStatus})});
       if(r.ok){
-        bootstrap.Offcanvas.getInstance(document.getElementById('statusModal')).hide();
+        HQ.hideDrawer('statusModal');
         showAlert('pageAlert','User status updated.','success');
         loadUsers();
       } else { const d=await r.json(); showAlert('pageAlert',d.detail||'Failed to update status.'); }

@@ -49,7 +49,7 @@
       <div class="container-fluid p-0">
         <div class="d-flex align-items-center justify-content-between mb-2">
           <h1 class="h3 mb-0"><strong>HR &amp; Payroll</strong></h1>
-          <button class="btn btn-primary" data-bs-toggle="offcanvas" data-bs-target="#addEmpModal">
+          <button class="btn btn-primary" data-hq-show="#addEmpModal">
             <i class="align-middle me-1" data-feather="user-plus"></i> Add Employee
           </button>
         </div>
@@ -101,10 +101,10 @@
   </div>
 </div>
 
-<!-- Add Employee Offcanvas -->
-<div class="offcanvas offcanvas-end" tabindex="-1" id="addEmpModal" style="width:720px">
-  <div class="offcanvas-header"><h5 class="offcanvas-title">New Employee Profile</h5><button type="button" class="btn-close" data-bs-dismiss="offcanvas"></button></div>
-  <div class="offcanvas-body" style="overflow-y:auto">
+<!-- Add Employee Drawer -->
+<div class="hq-drawer hq-wide" id="addEmpModal">
+  <div class="hq-drawer-header"><h5 class="hq-drawer-title">New Employee Profile</h5><button type="button" class="btn-close btn-close-white" onclick="HQ.hideDrawer('addEmpModal')"></button></div>
+  <div class="hq-drawer-body">
     <div class="row g-2">
       <div class="col-md-6"><label class="form-label">First Name</label><input class="form-control" id="empFirst"></div>
       <div class="col-md-6"><label class="form-label">Last Name</label><input class="form-control" id="empLast"></div>
@@ -128,11 +128,12 @@
       <div class="col-md-6"><label class="form-label">Next of Kin Name</label><input class="form-control" id="empKinName"></div>
     </div>
   </div>
-  <div class="p-3 border-top bg-white d-flex justify-content-end gap-2">
-    <button class="btn btn-secondary" data-bs-dismiss="offcanvas">Cancel</button>
+  <div class="hq-drawer-footer">
+    <button class="btn btn-secondary" onclick="HQ.hideDrawer('addEmpModal')">Cancel</button>
     <button class="btn btn-primary" id="btnSaveEmp">Save Profile</button>
   </div>
 </div>
+<div class="hq-backdrop" id="addEmpModal-bd" onclick="HQ.hideDrawer('addEmpModal')"></div>
 
 <script src="/portal/static/js/app.js"></script>
 <script src="/portal/static/js/hq-sidebar-menu.js"></script>
@@ -279,7 +280,7 @@ document.getElementById('btnSaveEmp').addEventListener('click', async () => {
     if (!r) { btn.disabled = false; btn.innerHTML = orig; return; }
     const d = await r.json();
     if (r.ok) {
-      bootstrap.Offcanvas.getInstance(document.getElementById('addEmpModal')).hide();
+      HQ.hideDrawer('addEmpModal');
       showAlert('pageAlert', 'Employee profile saved successfully.', 'success');
       loadEmployees();
     } else {
