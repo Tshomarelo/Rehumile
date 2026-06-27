@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="utf-8"><meta http-equiv="X-UA-Compatible" content="IE=edge">
@@ -40,7 +40,7 @@
       <div class="container-fluid p-0">
         <div class="d-flex align-items-center justify-content-between mb-3">
           <h1 class="h3 mb-0"><strong>Job Cards</strong></h1>
-          <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#newJobModal">
+          <button class="btn btn-primary btn-sm" data-bs-toggle="offcanvas" data-bs-target="#newJobModal">
             <i class="align-middle me-1" data-feather="plus"></i> New Job Card
           </button>
         </div>
@@ -84,40 +84,36 @@
   </div>
 </div>
 
-<!-- New Job Card Modal -->
-<div class="modal fade" id="newJobModal" tabindex="-1">
-  <div class="modal-dialog modal-lg">
-    <div class="modal-content">
-      <div class="modal-header"><h5 class="modal-title">New Job Card</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
-      <div class="modal-body">
-        <div id="jcFormAlert" class="alert d-none" role="alert"></div>
-        <form id="jcForm">
-          <div class="row g-3">
-            <div class="col-md-6"><label class="form-label">Customer Name *</label><input class="form-control" id="jcCustName" required></div>
-            <div class="col-md-3"><label class="form-label">Phone</label><input class="form-control" id="jcCustPhone" type="tel"></div>
-            <div class="col-md-3"><label class="form-label">Email</label><input class="form-control" id="jcCustEmail" type="email"></div>
-            <div class="col-md-4"><label class="form-label">Device Type *</label>
-              <select class="form-select" id="jcDevType" required>
-                <option value="">Select…</option>
-                <option>Laptop</option><option>Desktop</option><option>Smartphone</option>
-                <option>Tablet</option><option>Printer</option><option>Network Device</option><option>Other</option>
-              </select>
-            </div>
-            <div class="col-md-4"><label class="form-label">Brand</label><input class="form-control" id="jcDevBrand" placeholder="e.g. Dell, HP, Apple"></div>
-            <div class="col-md-4"><label class="form-label">Model</label><input class="form-control" id="jcDevModel"></div>
-            <div class="col-12"><label class="form-label">Serial Number *</label><input class="form-control" id="jcSerial" required placeholder="Device serial number (compulsory)"></div>
-            <div class="col-12"><label class="form-label">Physical Condition *</label><textarea class="form-control" id="jcCondition" rows="2" required placeholder="Describe external physical condition — cracks, missing parts, liquid damage, etc."></textarea></div>
-            <div class="col-12"><label class="form-label">Initial Diagnosis *</label><textarea class="form-control" id="jcDiagnosis" rows="2" required placeholder="Initial fault description and diagnostic notes"></textarea></div>
-          </div>
-        </form>
+<!-- New Job Card Offcanvas -->
+<div class="offcanvas offcanvas-end" tabindex="-1" id="newJobModal" style="width:720px">
+  <div class="offcanvas-header"><h5 class="offcanvas-title">New Job Card</h5><button type="button" class="btn-close" data-bs-dismiss="offcanvas"></button></div>
+  <div class="offcanvas-body" style="overflow-y:auto">
+    <div id="jcFormAlert" class="alert d-none" role="alert"></div>
+    <form id="jcForm">
+      <div class="row g-3">
+        <div class="col-md-6"><label class="form-label">Customer Name *</label><input class="form-control" id="jcCustName" required></div>
+        <div class="col-md-3"><label class="form-label">Phone</label><input class="form-control" id="jcCustPhone" type="tel"></div>
+        <div class="col-md-3"><label class="form-label">Email</label><input class="form-control" id="jcCustEmail" type="email"></div>
+        <div class="col-md-4"><label class="form-label">Device Type *</label>
+          <select class="form-select" id="jcDevType" required>
+            <option value="">Select…</option>
+            <option>Laptop</option><option>Desktop</option><option>Smartphone</option>
+            <option>Tablet</option><option>Printer</option><option>Network Device</option><option>Other</option>
+          </select>
+        </div>
+        <div class="col-md-4"><label class="form-label">Brand</label><input class="form-control" id="jcDevBrand" placeholder="e.g. Dell, HP, Apple"></div>
+        <div class="col-md-4"><label class="form-label">Model</label><input class="form-control" id="jcDevModel"></div>
+        <div class="col-12"><label class="form-label">Serial Number *</label><input class="form-control" id="jcSerial" required placeholder="Device serial number (compulsory)"></div>
+        <div class="col-12"><label class="form-label">Physical Condition *</label><textarea class="form-control" id="jcCondition" rows="2" required placeholder="Describe external physical condition — cracks, missing parts, liquid damage, etc."></textarea></div>
+        <div class="col-12"><label class="form-label">Initial Diagnosis *</label><textarea class="form-control" id="jcDiagnosis" rows="2" required placeholder="Initial fault description and diagnostic notes"></textarea></div>
       </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-        <button type="button" class="btn btn-primary" id="jcSubmitBtn">
-          <span id="jcSpinner" class="spinner-border spinner-border-sm me-1 d-none"></span>Create Job Card
-        </button>
-      </div>
-    </div>
+    </form>
+  </div>
+  <div class="p-3 border-top bg-white d-flex justify-content-end gap-2">
+    <button type="button" class="btn btn-secondary" data-bs-dismiss="offcanvas">Cancel</button>
+    <button type="button" class="btn btn-primary" id="jcSubmitBtn">
+      <span id="jcSpinner" class="spinner-border spinner-border-sm me-1 d-none"></span>Create Job Card
+    </button>
   </div>
 </div>
 
@@ -205,7 +201,7 @@
       });
       if(r.ok){
         const data=await r.json();
-        bootstrap.Modal.getInstance(document.getElementById('newJobModal')).hide();
+        bootstrap.Offcanvas.getInstance(document.getElementById('newJobModal')).hide();
         document.getElementById('jcForm').reset();
         // show page-level success alert
         let pageAlert=document.getElementById('pageAlert');

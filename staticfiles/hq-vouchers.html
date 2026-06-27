@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="utf-8"><meta http-equiv="X-UA-Compatible" content="IE=edge">
@@ -91,53 +91,45 @@
   </div>
 </div>
 
-<!-- Generate Vouchers Modal (admin only) -->
-<div class="modal fade" id="generateModal" tabindex="-1">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header"><h5 class="modal-title">Generate Vouchers</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
-      <div class="modal-body">
-        <div id="genAlert" class="alert d-none" role="alert"></div>
-        <div class="row g-2">
-          <div class="col-6"><label class="form-label">Quantity</label><input class="form-control" id="genQty" type="number" min="1" max="50" value="5"></div>
-          <div class="col-6"><label class="form-label">Duration (hours)</label>
-            <select class="form-select" id="genDuration">
-              <option value="1">1 hour</option><option value="2">2 hours</option><option value="6">6 hours</option>
-              <option value="12">12 hours</option><option value="24" selected>24 hours</option><option value="72">3 days</option><option value="168">7 days</option>
-            </select>
-          </div>
-          <div class="col-12"><label class="form-label">Selling Price (R)</label><input class="form-control" id="genPrice" type="number" step="0.50" min="0" value="20.00"></div>
-        </div>
+<!-- Generate Vouchers Offcanvas (admin only) -->
+<div class="offcanvas offcanvas-end" tabindex="-1" id="generateModal" style="width:560px">
+  <div class="offcanvas-header"><h5 class="offcanvas-title">Generate Vouchers</h5><button type="button" class="btn-close" data-bs-dismiss="offcanvas"></button></div>
+  <div class="offcanvas-body" style="overflow-y:auto">
+    <div id="genAlert" class="alert d-none" role="alert"></div>
+    <div class="row g-2">
+      <div class="col-6"><label class="form-label">Quantity</label><input class="form-control" id="genQty" type="number" min="1" max="50" value="5"></div>
+      <div class="col-6"><label class="form-label">Duration (hours)</label>
+        <select class="form-select" id="genDuration">
+          <option value="1">1 hour</option><option value="2">2 hours</option><option value="6">6 hours</option>
+          <option value="12">12 hours</option><option value="24" selected>24 hours</option><option value="72">3 days</option><option value="168">7 days</option>
+        </select>
       </div>
-      <div class="modal-footer">
-        <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-        <button class="btn btn-primary" id="genSubmit">
-          <span id="genSpinner" class="spinner-border spinner-border-sm me-1 d-none"></span>Generate
-        </button>
-      </div>
+      <div class="col-12"><label class="form-label">Selling Price (R)</label><input class="form-control" id="genPrice" type="number" step="0.50" min="0" value="20.00"></div>
     </div>
+  </div>
+  <div class="p-3 border-top bg-white d-flex justify-content-end gap-2">
+    <button class="btn btn-secondary" data-bs-dismiss="offcanvas">Cancel</button>
+    <button class="btn btn-primary" id="genSubmit">
+      <span id="genSpinner" class="spinner-border spinner-border-sm me-1 d-none"></span>Generate
+    </button>
   </div>
 </div>
 
-<!-- Sell Voucher Modal -->
-<div class="modal fade" id="sellModal" tabindex="-1">
-  <div class="modal-dialog modal-sm">
-    <div class="modal-content">
-      <div class="modal-header"><h5 class="modal-title">Sell Voucher</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
-      <div class="modal-body">
-        <div id="sellAlert" class="alert d-none" role="alert"></div>
-        <p>Code: <strong class="voucher-code" id="sellCode"></strong></p>
-        <input type="hidden" id="sellVoucherId">
-        <label class="form-label">Payment Method</label>
-        <select class="form-select" id="sellMethod">
-          <option value="cash">Cash</option><option value="card">Card</option><option value="eft">EFT</option>
-        </select>
-      </div>
-      <div class="modal-footer">
-        <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-        <button class="btn btn-success" id="sellSubmit">Confirm Sale</button>
-      </div>
-    </div>
+<!-- Sell Voucher Offcanvas -->
+<div class="offcanvas offcanvas-end" tabindex="-1" id="sellModal" style="width:560px">
+  <div class="offcanvas-header"><h5 class="offcanvas-title">Sell Voucher</h5><button type="button" class="btn-close" data-bs-dismiss="offcanvas"></button></div>
+  <div class="offcanvas-body" style="overflow-y:auto">
+    <div id="sellAlert" class="alert d-none" role="alert"></div>
+    <p>Code: <strong class="voucher-code" id="sellCode"></strong></p>
+    <input type="hidden" id="sellVoucherId">
+    <label class="form-label">Payment Method</label>
+    <select class="form-select" id="sellMethod">
+      <option value="cash">Cash</option><option value="card">Card</option><option value="eft">EFT</option>
+    </select>
+  </div>
+  <div class="p-3 border-top bg-white d-flex justify-content-end gap-2">
+    <button class="btn btn-secondary" data-bs-dismiss="offcanvas">Cancel</button>
+    <button class="btn btn-success" id="sellSubmit">Confirm Sale</button>
   </div>
 </div>
 
@@ -195,7 +187,7 @@
           document.getElementById('sellVoucherId').value=btn.dataset.vid;
           document.getElementById('sellCode').textContent=btn.dataset.code;
           document.getElementById('sellAlert').className='alert d-none';
-          new bootstrap.Modal(document.getElementById('sellModal')).show();
+          new bootstrap.Offcanvas(document.getElementById('sellModal')).show();
         });
       });
       if(window.feather)feather.replace();
@@ -213,7 +205,7 @@
   if(u.role!=='admin'){document.getElementById('createVoucherBtn').style.display='none';}
   document.getElementById('createVoucherBtn').addEventListener('click',()=>{
     document.getElementById('genAlert').className='alert d-none';
-    new bootstrap.Modal(document.getElementById('generateModal')).show();
+    new bootstrap.Offcanvas(document.getElementById('generateModal')).show();
   });
 
   function showAlert(id,msg,type='danger'){
@@ -242,7 +234,7 @@
         })});
         if(r.ok)created++;
       }
-      bootstrap.Modal.getInstance(document.getElementById('generateModal')).hide();
+      bootstrap.Offcanvas.getInstance(document.getElementById('generateModal')).hide();
       showAlert('pageAlert',created+' voucher(s) generated successfully.','success');
       load();
     }catch(e){
@@ -265,7 +257,7 @@
       })});
       const res=await r.json();
       if(r.ok){
-        bootstrap.Modal.getInstance(document.getElementById('sellModal')).hide();
+        bootstrap.Offcanvas.getInstance(document.getElementById('sellModal')).hide();
         showAlert('pageAlert','Voucher sold successfully. Code: '+res.voucher_code,'success');
         load();
       }else{showAlert('sellAlert',res.detail||'Error.');}

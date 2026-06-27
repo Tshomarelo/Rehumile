@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="utf-8"><meta http-equiv="X-UA-Compatible" content="IE=edge">
@@ -41,7 +41,7 @@
       <div class="container-fluid p-0">
         <div class="d-flex align-items-center justify-content-between mb-3">
           <h1 class="h3 mb-0"><strong>Inventory &amp; Tool Registry</strong></h1>
-          <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#newItemModal">
+          <button class="btn btn-primary btn-sm" data-bs-toggle="offcanvas" data-bs-target="#newItemModal">
             <i class="align-middle me-1" data-feather="plus"></i> Add Item
           </button>
         </div>
@@ -98,64 +98,56 @@
   </div>
 </div>
 
-<!-- Add Item Modal -->
-<div class="modal fade" id="newItemModal" tabindex="-1">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header"><h5 class="modal-title">Add Inventory Item</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
-      <div class="modal-body">
-        <div id="itemAlert" class="alert d-none" role="alert"></div>
-        <div class="mb-2"><label class="form-label">Type *</label>
-          <select class="form-select" id="iType"><option value="consumable">Consumable Stock</option><option value="tool">Lab Tool / Asset</option></select>
-        </div>
-        <div class="mb-2"><label class="form-label">Name *</label><input class="form-control" id="iName"></div>
-        <div class="mb-2"><label class="form-label">Category</label><input class="form-control" id="iCategory" placeholder="e.g. Storage, RAM, Soldering"></div>
-        <div class="mb-2"><label class="form-label">Serial / Part #</label><input class="form-control" id="iSerial"></div>
-        <div class="row g-2 mb-2">
-          <div class="col"><label class="form-label">Qty on Hand</label><input class="form-control" id="iQty" type="number" min="0" value="0"></div>
-          <div class="col"><label class="form-label">Reorder Level</label><input class="form-control" id="iReorder" type="number" min="0" value="5"></div>
-        </div>
-        <div class="row g-2 mb-2">
-          <div class="col"><label class="form-label">Unit Cost (R)</label><input class="form-control" id="iCost" type="number" step="0.01" min="0" value="0"></div>
-          <div class="col"><label class="form-label">Sell Price (R)</label><input class="form-control" id="iSell" type="number" step="0.01" min="0" value="0"></div>
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-        <button class="btn btn-primary" id="itemSubmitBtn">
-          <span id="itemSpinner" class="spinner-border spinner-border-sm me-1 d-none"></span>Save
-        </button>
-      </div>
+<!-- Add Item Offcanvas -->
+<div class="offcanvas offcanvas-end" tabindex="-1" id="newItemModal" style="width:560px">
+  <div class="offcanvas-header"><h5 class="offcanvas-title">Add Inventory Item</h5><button type="button" class="btn-close" data-bs-dismiss="offcanvas"></button></div>
+  <div class="offcanvas-body" style="overflow-y:auto">
+    <div id="itemAlert" class="alert d-none" role="alert"></div>
+    <div class="mb-2"><label class="form-label">Type *</label>
+      <select class="form-select" id="iType"><option value="consumable">Consumable Stock</option><option value="tool">Lab Tool / Asset</option></select>
     </div>
+    <div class="mb-2"><label class="form-label">Name *</label><input class="form-control" id="iName"></div>
+    <div class="mb-2"><label class="form-label">Category</label><input class="form-control" id="iCategory" placeholder="e.g. Storage, RAM, Soldering"></div>
+    <div class="mb-2"><label class="form-label">Serial / Part #</label><input class="form-control" id="iSerial"></div>
+    <div class="row g-2 mb-2">
+      <div class="col"><label class="form-label">Qty on Hand</label><input class="form-control" id="iQty" type="number" min="0" value="0"></div>
+      <div class="col"><label class="form-label">Reorder Level</label><input class="form-control" id="iReorder" type="number" min="0" value="5"></div>
+    </div>
+    <div class="row g-2 mb-2">
+      <div class="col"><label class="form-label">Unit Cost (R)</label><input class="form-control" id="iCost" type="number" step="0.01" min="0" value="0"></div>
+      <div class="col"><label class="form-label">Sell Price (R)</label><input class="form-control" id="iSell" type="number" step="0.01" min="0" value="0"></div>
+    </div>
+  </div>
+  <div class="p-3 border-top bg-white d-flex justify-content-end gap-2">
+    <button class="btn btn-secondary" data-bs-dismiss="offcanvas">Cancel</button>
+    <button class="btn btn-primary" id="itemSubmitBtn">
+      <span id="itemSpinner" class="spinner-border spinner-border-sm me-1 d-none"></span>Save
+    </button>
   </div>
 </div>
 
-<!-- Stock Transaction Modal -->
-<div class="modal fade" id="stockModal" tabindex="-1">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header"><h5 class="modal-title" id="stockModalTitle">Stock Movement</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
-      <div class="modal-body">
-        <div id="stockAlert" class="alert d-none" role="alert"></div>
-        <input type="hidden" id="stockItemId">
-        <div class="mb-2"><label class="form-label">Type</label>
-          <select class="form-select" id="stockType">
-            <option value="in">Stock In</option>
-            <option value="out">Stock Out (requires reference)</option>
-            <option value="adjustment">Manual Adjustment</option>
-          </select>
-        </div>
-        <div class="mb-2"><label class="form-label">Quantity *</label><input class="form-control" id="stockQty" type="number" min="1" value="1"></div>
-        <div class="mb-2" id="stockRefRow"><label class="form-label">Job Card / Invoice Reference <span class="text-danger">*</span></label><input class="form-control" id="stockRef" placeholder="e.g. JC-0012 or INV-001"></div>
-        <div class="mb-2"><label class="form-label">Notes</label><input class="form-control" id="stockNotes"></div>
-      </div>
-      <div class="modal-footer">
-        <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-        <button class="btn btn-primary" id="stockSubmitBtn">
-          <span id="stockSpinner" class="spinner-border spinner-border-sm me-1 d-none"></span>Submit
-        </button>
-      </div>
+<!-- Stock Transaction Offcanvas -->
+<div class="offcanvas offcanvas-end" tabindex="-1" id="stockModal" style="width:560px">
+  <div class="offcanvas-header"><h5 class="offcanvas-title" id="stockModalTitle">Stock Movement</h5><button type="button" class="btn-close" data-bs-dismiss="offcanvas"></button></div>
+  <div class="offcanvas-body" style="overflow-y:auto">
+    <div id="stockAlert" class="alert d-none" role="alert"></div>
+    <input type="hidden" id="stockItemId">
+    <div class="mb-2"><label class="form-label">Type</label>
+      <select class="form-select" id="stockType">
+        <option value="in">Stock In</option>
+        <option value="out">Stock Out (requires reference)</option>
+        <option value="adjustment">Manual Adjustment</option>
+      </select>
     </div>
+    <div class="mb-2"><label class="form-label">Quantity *</label><input class="form-control" id="stockQty" type="number" min="1" value="1"></div>
+    <div class="mb-2" id="stockRefRow"><label class="form-label">Job Card / Invoice Reference <span class="text-danger">*</span></label><input class="form-control" id="stockRef" placeholder="e.g. JC-0012 or INV-001"></div>
+    <div class="mb-2"><label class="form-label">Notes</label><input class="form-control" id="stockNotes"></div>
+  </div>
+  <div class="p-3 border-top bg-white d-flex justify-content-end gap-2">
+    <button class="btn btn-secondary" data-bs-dismiss="offcanvas">Cancel</button>
+    <button class="btn btn-primary" id="stockSubmitBtn">
+      <span id="stockSpinner" class="spinner-border spinner-border-sm me-1 d-none"></span>Submit
+    </button>
   </div>
 </div>
 
@@ -214,7 +206,7 @@
           document.getElementById('stockItemId').value=btn.dataset.id;
           document.getElementById('stockModalTitle').textContent='Stock Movement — '+btn.dataset.name;
           document.getElementById('stockAlert').className='alert d-none';
-          new bootstrap.Modal(document.getElementById('stockModal')).show();
+          new bootstrap.Offcanvas(document.getElementById('stockModal')).show();
         });
       });
       if(window.feather)feather.replace();
@@ -252,7 +244,7 @@
         selling_price:document.getElementById('iSell').value,
       })});
       if(r.ok){
-        bootstrap.Modal.getInstance(document.getElementById('newItemModal')).hide();
+        bootstrap.Offcanvas.getInstance(document.getElementById('newItemModal')).hide();
         showAlert('pageAlert','Item added successfully.','success');
         load();
       }else{const err=await r.json().catch(()=>({}));showAlert('itemAlert',err.detail||JSON.stringify(err));}
@@ -276,7 +268,7 @@
       })});
       if(r.ok){
         const d=await r.json();
-        bootstrap.Modal.getInstance(document.getElementById('stockModal')).hide();
+        bootstrap.Offcanvas.getInstance(document.getElementById('stockModal')).hide();
         showAlert('pageAlert','Stock updated. New qty: '+d.quantity_on_hand,'success');
         load();
       }else{const err=await r.json().catch(()=>({}));showAlert('stockAlert',err.detail||JSON.stringify(err));}

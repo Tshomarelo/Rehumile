@@ -126,319 +126,299 @@
   </div>
 </div>
 
-<!-- WiFi Subscriber Modal -->
-<div class="modal fade" id="wifiModal" tabindex="-1">
-  <div class="modal-dialog modal-lg">
-    <div class="modal-content">
-      <div class="modal-header" style="background:#50181E;color:white">
-        <h5 class="modal-title" id="wifiModalTitle">Add WiFi Subscriber</h5>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+<!-- WiFi Subscriber Offcanvas -->
+<div class="offcanvas offcanvas-end" tabindex="-1" id="wifiModal" style="width:720px">
+  <div class="offcanvas-header" style="background:#50181E;color:white">
+    <h5 class="offcanvas-title" id="wifiModalTitle">Add WiFi Subscriber</h5>
+    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas"></button>
+  </div>
+  <div class="offcanvas-body" style="overflow-y:auto">
+    <div id="wifiModalAlert"></div>
+    <form id="wifiForm">
+      <input type="hidden" id="w_id">
+      <div class="row">
+        <div class="col-md-6 mb-3">
+          <label class="form-label fw-semibold">Client Name <span class="text-danger">*</span></label>
+          <input type="text" class="form-control" id="w_client_name" required>
+        </div>
+        <div class="col-md-6 mb-3">
+          <label class="form-label fw-semibold">Axxess Account ID</label>
+          <input type="text" class="form-control" id="w_axxess_id" placeholder="e.g. AX-12345">
+        </div>
       </div>
-      <div class="modal-body">
-        <div id="wifiModalAlert"></div>
-        <form id="wifiForm">
-          <input type="hidden" id="w_id">
-          <div class="row">
-            <div class="col-md-6 mb-3">
-              <label class="form-label fw-semibold">Client Name <span class="text-danger">*</span></label>
-              <input type="text" class="form-control" id="w_client_name" required>
-            </div>
-            <div class="col-md-6 mb-3">
-              <label class="form-label fw-semibold">Axxess Account ID</label>
-              <input type="text" class="form-control" id="w_axxess_id" placeholder="e.g. AX-12345">
-            </div>
-          </div>
-          <div class="row">
-            <div class="col-md-4 mb-3">
-              <label class="form-label">Contact Name</label>
-              <input type="text" class="form-control" id="w_contact_name">
-            </div>
-            <div class="col-md-4 mb-3">
-              <label class="form-label">Contact Email</label>
-              <input type="email" class="form-control" id="w_contact_email">
-            </div>
-            <div class="col-md-4 mb-3">
-              <label class="form-label">Contact Phone</label>
-              <input type="text" class="form-control" id="w_contact_phone">
-            </div>
-          </div>
-          <div class="row">
-            <div class="col-md-6 mb-3">
-              <label class="form-label fw-semibold">Retail Price (ZAR) <span class="text-danger">*</span></label>
-              <input type="number" class="form-control" id="w_retail_price" required min="0" step="0.01" oninput="calcWifiMargin()">
-            </div>
-            <div class="col-md-6 mb-3">
-              <label class="form-label fw-semibold">Axxess Wholesale Cost (ZAR) <span class="text-danger">*</span></label>
-              <input type="number" class="form-control" id="w_wholesale_cost" required min="0" step="0.01" oninput="calcWifiMargin()">
-            </div>
-          </div>
-          <div class="alert alert-light border py-2 mb-3" id="marginPreview" style="display:none">
-            <strong>Gross Margin: </strong><span id="marginAmt">R 0</span>
-            (<span id="marginPct">0%</span>)
-            <span id="marginWarn" class="text-danger ms-2 small" style="display:none">⚠ Loss-making line</span>
-          </div>
-          <div class="row">
-            <div class="col-md-6 mb-3">
-              <label class="form-label">Linked Company (optional)</label>
-              <select class="form-select" id="w_company"><option value="">No linked company</option></select>
-            </div>
-            <div class="col-md-3 mb-3">
-              <label class="form-label">Billing Day</label>
-              <input type="number" class="form-control" id="w_billing_day" value="1" min="1" max="28">
-            </div>
-            <div class="col-md-3 mb-3">
-              <label class="form-label">Status</label>
-              <select class="form-select" id="w_status">
-                <option value="active" selected>Active</option>
-                <option value="suspended">Suspended</option>
-                <option value="cancelled">Cancelled</option>
-              </select>
-            </div>
-          </div>
-          <div class="mb-3">
-            <label class="form-label">Notes</label>
-            <textarea class="form-control" id="w_notes" rows="2" placeholder="Location, package details, special notes…"></textarea>
-          </div>
-        </form>
+      <div class="row">
+        <div class="col-md-4 mb-3">
+          <label class="form-label">Contact Name</label>
+          <input type="text" class="form-control" id="w_contact_name">
+        </div>
+        <div class="col-md-4 mb-3">
+          <label class="form-label">Contact Email</label>
+          <input type="email" class="form-control" id="w_contact_email">
+        </div>
+        <div class="col-md-4 mb-3">
+          <label class="form-label">Contact Phone</label>
+          <input type="text" class="form-control" id="w_contact_phone">
+        </div>
       </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-        <button type="button" class="btn btn-danger" id="saveWifiBtn">Save Subscriber</button>
+      <div class="row">
+        <div class="col-md-6 mb-3">
+          <label class="form-label fw-semibold">Retail Price (ZAR) <span class="text-danger">*</span></label>
+          <input type="number" class="form-control" id="w_retail_price" required min="0" step="0.01" oninput="calcWifiMargin()">
+        </div>
+        <div class="col-md-6 mb-3">
+          <label class="form-label fw-semibold">Axxess Wholesale Cost (ZAR) <span class="text-danger">*</span></label>
+          <input type="number" class="form-control" id="w_wholesale_cost" required min="0" step="0.01" oninput="calcWifiMargin()">
+        </div>
       </div>
-    </div>
+      <div class="alert alert-light border py-2 mb-3" id="marginPreview" style="display:none">
+        <strong>Gross Margin: </strong><span id="marginAmt">R 0</span>
+        (<span id="marginPct">0%</span>)
+        <span id="marginWarn" class="text-danger ms-2 small" style="display:none">⚠ Loss-making line</span>
+      </div>
+      <div class="row">
+        <div class="col-md-6 mb-3">
+          <label class="form-label">Linked Company (optional)</label>
+          <select class="form-select" id="w_company"><option value="">No linked company</option></select>
+        </div>
+        <div class="col-md-3 mb-3">
+          <label class="form-label">Billing Day</label>
+          <input type="number" class="form-control" id="w_billing_day" value="1" min="1" max="28">
+        </div>
+        <div class="col-md-3 mb-3">
+          <label class="form-label">Status</label>
+          <select class="form-select" id="w_status">
+            <option value="active" selected>Active</option>
+            <option value="suspended">Suspended</option>
+            <option value="cancelled">Cancelled</option>
+          </select>
+        </div>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Notes</label>
+        <textarea class="form-control" id="w_notes" rows="2" placeholder="Location, package details, special notes…"></textarea>
+      </div>
+    </form>
+  </div>
+  <div class="p-3 border-top bg-white d-flex justify-content-end gap-2">
+    <button type="button" class="btn btn-secondary" data-bs-dismiss="offcanvas">Cancel</button>
+    <button type="button" class="btn btn-danger" id="saveWifiBtn">Save Subscriber</button>
   </div>
 </div>
 
-<!-- SLA Contract Modal -->
-<div class="modal fade" id="slaModal" tabindex="-1">
-  <div class="modal-dialog modal-lg">
-    <div class="modal-content">
-      <div class="modal-header" style="background:#50181E;color:white">
-        <h5 class="modal-title" id="slaModalTitle">Add SLA Contract</h5>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+<!-- SLA Contract Offcanvas -->
+<div class="offcanvas offcanvas-end" tabindex="-1" id="slaModal" style="width:720px">
+  <div class="offcanvas-header" style="background:#50181E;color:white">
+    <h5 class="offcanvas-title" id="slaModalTitle">Add SLA Contract</h5>
+    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas"></button>
+  </div>
+  <div class="offcanvas-body" style="overflow-y:auto">
+    <div id="slaModalAlert"></div>
+    <form id="slaForm">
+      <input type="hidden" id="s_id">
+      <div class="row">
+        <div class="col-md-6 mb-3">
+          <label class="form-label fw-semibold">Client Name <span class="text-danger">*</span></label>
+          <input type="text" class="form-control" id="s_client_name" required>
+        </div>
+        <div class="col-md-6 mb-3">
+          <label class="form-label fw-semibold">Monthly Retainer (ZAR) <span class="text-danger">*</span></label>
+          <input type="number" class="form-control" id="s_retainer" required min="0" step="0.01">
+        </div>
       </div>
-      <div class="modal-body">
-        <div id="slaModalAlert"></div>
-        <form id="slaForm">
-          <input type="hidden" id="s_id">
-          <div class="row">
-            <div class="col-md-6 mb-3">
-              <label class="form-label fw-semibold">Client Name <span class="text-danger">*</span></label>
-              <input type="text" class="form-control" id="s_client_name" required>
-            </div>
-            <div class="col-md-6 mb-3">
-              <label class="form-label fw-semibold">Monthly Retainer (ZAR) <span class="text-danger">*</span></label>
-              <input type="number" class="form-control" id="s_retainer" required min="0" step="0.01">
-            </div>
-          </div>
-          <div class="row">
-            <div class="col-md-4 mb-3">
-              <label class="form-label">Contact Name</label>
-              <input type="text" class="form-control" id="s_contact_name">
-            </div>
-            <div class="col-md-4 mb-3">
-              <label class="form-label">Contact Email</label>
-              <input type="email" class="form-control" id="s_contact_email">
-            </div>
-            <div class="col-md-4 mb-3">
-              <label class="form-label">Contact Phone</label>
-              <input type="text" class="form-control" id="s_contact_phone">
-            </div>
-          </div>
-          <div class="row">
-            <div class="col-md-4 mb-3">
-              <label class="form-label">Contract Start <span class="text-danger">*</span></label>
-              <input type="date" class="form-control" id="s_contract_start" required>
-            </div>
-            <div class="col-md-4 mb-3">
-              <label class="form-label">Contract End <span class="text-muted small">(leave blank = open-ended)</span></label>
-              <input type="date" class="form-control" id="s_contract_end">
-            </div>
-            <div class="col-md-4 mb-3">
-              <label class="form-label">Billing Day</label>
-              <input type="number" class="form-control" id="s_billing_day" value="1" min="1" max="28">
-            </div>
-          </div>
-          <div class="row">
-            <div class="col-md-6 mb-3">
-              <label class="form-label">Linked Company (optional)</label>
-              <select class="form-select" id="s_company"><option value="">No linked company</option></select>
-            </div>
-            <div class="col-md-6 mb-3">
-              <label class="form-label">Status</label>
-              <select class="form-select" id="s_status">
-                <option value="active" selected>Active</option>
-                <option value="suspended">Suspended</option>
-                <option value="cancelled">Cancelled</option>
-              </select>
-            </div>
-          </div>
-          <div class="mb-3">
-            <label class="form-label">Contract Description / Scope</label>
-            <textarea class="form-control" id="s_description" rows="3" placeholder="What services are covered under this retainer…"></textarea>
-          </div>
-          <div class="mb-3">
-            <label class="form-label">Notes</label>
-            <textarea class="form-control" id="s_notes" rows="2"></textarea>
-          </div>
-        </form>
+      <div class="row">
+        <div class="col-md-4 mb-3">
+          <label class="form-label">Contact Name</label>
+          <input type="text" class="form-control" id="s_contact_name">
+        </div>
+        <div class="col-md-4 mb-3">
+          <label class="form-label">Contact Email</label>
+          <input type="email" class="form-control" id="s_contact_email">
+        </div>
+        <div class="col-md-4 mb-3">
+          <label class="form-label">Contact Phone</label>
+          <input type="text" class="form-control" id="s_contact_phone">
+        </div>
       </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-        <button type="button" class="btn btn-danger" id="saveSlaBtn">Save Contract</button>
+      <div class="row">
+        <div class="col-md-4 mb-3">
+          <label class="form-label">Contract Start <span class="text-danger">*</span></label>
+          <input type="date" class="form-control" id="s_contract_start" required>
+        </div>
+        <div class="col-md-4 mb-3">
+          <label class="form-label">Contract End <span class="text-muted small">(leave blank = open-ended)</span></label>
+          <input type="date" class="form-control" id="s_contract_end">
+        </div>
+        <div class="col-md-4 mb-3">
+          <label class="form-label">Billing Day</label>
+          <input type="number" class="form-control" id="s_billing_day" value="1" min="1" max="28">
+        </div>
       </div>
-    </div>
+      <div class="row">
+        <div class="col-md-6 mb-3">
+          <label class="form-label">Linked Company (optional)</label>
+          <select class="form-select" id="s_company"><option value="">No linked company</option></select>
+        </div>
+        <div class="col-md-6 mb-3">
+          <label class="form-label">Status</label>
+          <select class="form-select" id="s_status">
+            <option value="active" selected>Active</option>
+            <option value="suspended">Suspended</option>
+            <option value="cancelled">Cancelled</option>
+          </select>
+        </div>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Contract Description / Scope</label>
+        <textarea class="form-control" id="s_description" rows="3" placeholder="What services are covered under this retainer…"></textarea>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Notes</label>
+        <textarea class="form-control" id="s_notes" rows="2"></textarea>
+      </div>
+    </form>
+  </div>
+  <div class="p-3 border-top bg-white d-flex justify-content-end gap-2">
+    <button type="button" class="btn btn-secondary" data-bs-dismiss="offcanvas">Cancel</button>
+    <button type="button" class="btn btn-danger" id="saveSlaBtn">Save Contract</button>
   </div>
 </div>
 
-<!-- Import Spreadsheet Modal -->
-<div class="modal fade" id="importModal" tabindex="-1">
-  <div class="modal-dialog modal-xl">
-    <div class="modal-content">
-      <div class="modal-header" style="background:#2c5282;color:white">
-        <h5 class="modal-title"><i data-feather="upload" style="width:18px;height:18px;margin-right:8px;vertical-align:middle"></i> Import Subscribers from Spreadsheet</h5>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+<!-- Import Spreadsheet Offcanvas -->
+<div class="offcanvas offcanvas-end" tabindex="-1" id="importModal" style="width:720px">
+  <div class="offcanvas-header" style="background:#2c5282;color:white">
+    <h5 class="offcanvas-title"><i data-feather="upload" style="width:18px;height:18px;margin-right:8px;vertical-align:middle"></i> Import Subscribers from Spreadsheet</h5>
+    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas"></button>
+  </div>
+  <div class="offcanvas-body" style="overflow-y:auto">
+    <div id="importAlert"></div>
+
+    <!-- Step 1: Upload -->
+    <div id="importStep1">
+      <p class="text-muted small mb-3">
+        Upload a <strong>.xlsx</strong>, <strong>.xls</strong>, or <strong>.csv</strong> file.
+        Required columns: <code>client_name</code>, <code>retail_price</code>, <code>wholesale_cost</code>.
+        Optional: <code>axxess_id</code>, <code>contact_name</code>, <code>contact_email</code>, <code>contact_phone</code>, <code>status</code>, <code>notes</code>.
+      </p>
+      <div class="mb-3">
+        <a href="#" id="downloadTemplateBtn" class="btn btn-sm btn-outline-secondary me-2">
+          <i data-feather="download" style="width:13px;height:13px"></i> Download Template
+        </a>
+        <small class="text-muted">Not sure about the format? Download the template first.</small>
       </div>
-      <div class="modal-body">
-        <div id="importAlert"></div>
-
-        <!-- Step 1: Upload -->
-        <div id="importStep1">
-          <p class="text-muted small mb-3">
-            Upload a <strong>.xlsx</strong>, <strong>.xls</strong>, or <strong>.csv</strong> file.
-            Required columns: <code>client_name</code>, <code>retail_price</code>, <code>wholesale_cost</code>.
-            Optional: <code>axxess_id</code>, <code>contact_name</code>, <code>contact_email</code>, <code>contact_phone</code>, <code>status</code>, <code>notes</code>.
-          </p>
-          <div class="mb-3">
-            <a href="#" id="downloadTemplateBtn" class="btn btn-sm btn-outline-secondary me-2">
-              <i data-feather="download" style="width:13px;height:13px"></i> Download Template
-            </a>
-            <small class="text-muted">Not sure about the format? Download the template first.</small>
-          </div>
-          <div class="border rounded p-4 text-center" style="border-style:dashed!important;background:#f8f9fa;cursor:pointer" id="dropZone">
-            <i data-feather="file-text" style="width:40px;height:40px;opacity:.3"></i>
-            <p class="mt-2 mb-1 fw-semibold">Drop your file here or click to browse</p>
-            <small class="text-muted">Supports .xlsx, .xls, .csv — max 5MB</small>
-            <input type="file" id="importFile" accept=".xlsx,.xls,.csv" style="display:none">
-          </div>
-        </div>
-
-        <!-- Step 2: Preview -->
-        <div id="importStep2" style="display:none">
-          <div class="d-flex align-items-center justify-content-between mb-2">
-            <h6 class="mb-0">Preview — <span id="previewCount">0</span> rows found</h6>
-            <button class="btn btn-sm btn-outline-secondary" id="importBack">← Choose different file</button>
-          </div>
-          <div class="alert alert-warning small py-2" id="importWarnings" style="display:none"></div>
-          <div class="table-responsive" style="max-height:350px;overflow-y:auto">
-            <table class="table table-sm table-bordered table-hover small" id="previewTable">
-              <thead id="previewHead"></thead>
-              <tbody id="previewBody"></tbody>
-            </table>
-          </div>
-          <p class="text-muted small mt-2 mb-0">Rows with missing <code>client_name</code>, <code>retail_price</code>, or <code>wholesale_cost</code> will be skipped.</p>
-        </div>
-
-        <div id="importProgress" style="display:none">
-          <div class="text-center py-4">
-            <div class="spinner-border text-primary mb-3"></div>
-            <p id="importProgressText" class="text-muted">Importing… <span id="importProgressCount">0</span> / <span id="importProgressTotal">0</span></p>
-          </div>
-        </div>
-
-        <div id="importDone" style="display:none">
-          <div class="alert alert-success">
-            <strong>Import complete!</strong><br>
-            <span id="importSummary"></span>
-          </div>
-        </div>
+      <div class="border rounded p-4 text-center" style="border-style:dashed!important;background:#f8f9fa;cursor:pointer" id="dropZone">
+        <i data-feather="file-text" style="width:40px;height:40px;opacity:.3"></i>
+        <p class="mt-2 mb-1 fw-semibold">Drop your file here or click to browse</p>
+        <small class="text-muted">Supports .xlsx, .xls, .csv — max 5MB</small>
+        <input type="file" id="importFile" accept=".xlsx,.xls,.csv" style="display:none">
       </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-        <button type="button" class="btn btn-primary" id="runImportBtn" style="display:none">
-          <i data-feather="upload" style="width:14px;height:14px"></i> Import <span id="importBtnCount">0</span> Subscribers
-        </button>
+    </div>
+
+    <!-- Step 2: Preview -->
+    <div id="importStep2" style="display:none">
+      <div class="d-flex align-items-center justify-content-between mb-2">
+        <h6 class="mb-0">Preview — <span id="previewCount">0</span> rows found</h6>
+        <button class="btn btn-sm btn-outline-secondary" id="importBack">← Choose different file</button>
+      </div>
+      <div class="alert alert-warning small py-2" id="importWarnings" style="display:none"></div>
+      <div class="table-responsive" style="max-height:350px;overflow-y:auto">
+        <table class="table table-sm table-bordered table-hover small" id="previewTable">
+          <thead id="previewHead"></thead>
+          <tbody id="previewBody"></tbody>
+        </table>
+      </div>
+      <p class="text-muted small mt-2 mb-0">Rows with missing <code>client_name</code>, <code>retail_price</code>, or <code>wholesale_cost</code> will be skipped.</p>
+    </div>
+
+    <div id="importProgress" style="display:none">
+      <div class="text-center py-4">
+        <div class="spinner-border text-primary mb-3"></div>
+        <p id="importProgressText" class="text-muted">Importing… <span id="importProgressCount">0</span> / <span id="importProgressTotal">0</span></p>
+      </div>
+    </div>
+
+    <div id="importDone" style="display:none">
+      <div class="alert alert-success">
+        <strong>Import complete!</strong><br>
+        <span id="importSummary"></span>
       </div>
     </div>
   </div>
-</div>
-
-<!-- Generate Monthly Invoices Modal -->
-<div class="modal fade" id="genModal" tabindex="-1">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header" style="background:#1a7a4a;color:white">
-        <h5 class="modal-title"><i data-feather="zap" style="width:18px;height:18px;margin-right:8px;vertical-align:middle"></i> Generate Monthly Invoices</h5>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body">
-        <div class="alert alert-info small">
-          This will auto-create invoices for all <strong>active WiFi subscribers</strong> and <strong>active SLA contracts</strong>
-          for the selected month. Already-invoiced clients are skipped (idempotent).
-        </div>
-        <div class="row">
-          <div class="col-6 mb-3">
-            <label class="form-label fw-semibold">Year</label>
-            <input type="number" class="form-control" id="gen_year" min="2020" max="2030">
-          </div>
-          <div class="col-6 mb-3">
-            <label class="form-label fw-semibold">Month</label>
-            <select class="form-select" id="gen_month">
-              <option value="1">January</option><option value="2">February</option>
-              <option value="3">March</option><option value="4">April</option>
-              <option value="5">May</option><option value="6">June</option>
-              <option value="7">July</option><option value="8">August</option>
-              <option value="9">September</option><option value="10">October</option>
-              <option value="11">November</option><option value="12">December</option>
-            </select>
-          </div>
-        </div>
-        <div class="form-check mb-3">
-          <input type="checkbox" class="form-check-input" id="gen_send_email" checked>
-          <label class="form-check-label" for="gen_send_email">Send invoice email to each client</label>
-        </div>
-        <div id="genResult"></div>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-        <button type="button" class="btn btn-success" id="runGenBtn">
-          <i data-feather="zap" style="width:14px;height:14px"></i> Run Generation
-        </button>
-      </div>
-    </div>
+  <div class="p-3 border-top bg-white d-flex justify-content-end gap-2">
+    <button type="button" class="btn btn-secondary" data-bs-dismiss="offcanvas">Close</button>
+    <button type="button" class="btn btn-primary" id="runImportBtn" style="display:none">
+      <i data-feather="upload" style="width:14px;height:14px"></i> Import <span id="importBtnCount">0</span> Subscribers
+    </button>
   </div>
 </div>
 
-<!-- Raise SLA Call-Out Modal -->
-<div class="modal fade" id="calloutModal" tabindex="-1">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header" style="background:#2c5282;color:white">
-        <h5 class="modal-title">Raise SLA Call-Out Invoice</h5>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+<!-- Generate Monthly Invoices Offcanvas -->
+<div class="offcanvas offcanvas-end" tabindex="-1" id="genModal" style="width:560px">
+  <div class="offcanvas-header" style="background:#1a7a4a;color:white">
+    <h5 class="offcanvas-title"><i data-feather="zap" style="width:18px;height:18px;margin-right:8px;vertical-align:middle"></i> Generate Monthly Invoices</h5>
+    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas"></button>
+  </div>
+  <div class="offcanvas-body" style="overflow-y:auto">
+    <div class="alert alert-info small">
+      This will auto-create invoices for all <strong>active WiFi subscribers</strong> and <strong>active SLA contracts</strong>
+      for the selected month. Already-invoiced clients are skipped (idempotent).
+    </div>
+    <div class="row">
+      <div class="col-6 mb-3">
+        <label class="form-label fw-semibold">Year</label>
+        <input type="number" class="form-control" id="gen_year" min="2020" max="2030">
       </div>
-      <div class="modal-body">
-        <div id="calloutAlert"></div>
-        <p class="text-muted small mb-3">This raises a once-off call-out invoice on top of the monthly retainer for <strong id="calloutClientName"></strong>.</p>
-        <input type="hidden" id="co_sla_id">
-        <div class="mb-3">
-          <label class="form-label fw-semibold">Call-Out Amount (ZAR) <span class="text-danger">*</span></label>
-          <input type="number" class="form-control" id="co_amount" min="0" step="0.01" placeholder="0.00">
-        </div>
-        <div class="mb-3">
-          <label class="form-label fw-semibold">Description <span class="text-danger">*</span></label>
-          <input type="text" class="form-control" id="co_description" placeholder="e.g. Emergency call-out — server failure 24 Jun">
-        </div>
-        <div class="mb-3">
-          <label class="form-label">Tax Rate (%)</label>
-          <input type="number" class="form-control" id="co_tax" value="15" min="0" max="100">
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-        <button type="button" class="btn btn-primary" id="saveCalloutBtn">Create Call-Out Invoice</button>
+      <div class="col-6 mb-3">
+        <label class="form-label fw-semibold">Month</label>
+        <select class="form-select" id="gen_month">
+          <option value="1">January</option><option value="2">February</option>
+          <option value="3">March</option><option value="4">April</option>
+          <option value="5">May</option><option value="6">June</option>
+          <option value="7">July</option><option value="8">August</option>
+          <option value="9">September</option><option value="10">October</option>
+          <option value="11">November</option><option value="12">December</option>
+        </select>
       </div>
     </div>
+    <div class="form-check mb-3">
+      <input type="checkbox" class="form-check-input" id="gen_send_email" checked>
+      <label class="form-check-label" for="gen_send_email">Send invoice email to each client</label>
+    </div>
+    <div id="genResult"></div>
+  </div>
+  <div class="p-3 border-top bg-white d-flex justify-content-end gap-2">
+    <button type="button" class="btn btn-secondary" data-bs-dismiss="offcanvas">Cancel</button>
+    <button type="button" class="btn btn-success" id="runGenBtn">
+      <i data-feather="zap" style="width:14px;height:14px"></i> Run Generation
+    </button>
+  </div>
+</div>
+
+<!-- Raise SLA Call-Out Offcanvas -->
+<div class="offcanvas offcanvas-end" tabindex="-1" id="calloutModal" style="width:560px">
+  <div class="offcanvas-header" style="background:#2c5282;color:white">
+    <h5 class="offcanvas-title">Raise SLA Call-Out Invoice</h5>
+    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas"></button>
+  </div>
+  <div class="offcanvas-body" style="overflow-y:auto">
+    <div id="calloutAlert"></div>
+    <p class="text-muted small mb-3">This raises a once-off call-out invoice on top of the monthly retainer for <strong id="calloutClientName"></strong>.</p>
+    <input type="hidden" id="co_sla_id">
+    <div class="mb-3">
+      <label class="form-label fw-semibold">Call-Out Amount (ZAR) <span class="text-danger">*</span></label>
+      <input type="number" class="form-control" id="co_amount" min="0" step="0.01" placeholder="0.00">
+    </div>
+    <div class="mb-3">
+      <label class="form-label fw-semibold">Description <span class="text-danger">*</span></label>
+      <input type="text" class="form-control" id="co_description" placeholder="e.g. Emergency call-out — server failure 24 Jun">
+    </div>
+    <div class="mb-3">
+      <label class="form-label">Tax Rate (%)</label>
+      <input type="number" class="form-control" id="co_tax" value="15" min="0" max="100">
+    </div>
+  </div>
+  <div class="p-3 border-top bg-white d-flex justify-content-end gap-2">
+    <button type="button" class="btn btn-secondary" data-bs-dismiss="offcanvas">Cancel</button>
+    <button type="button" class="btn btn-primary" id="saveCalloutBtn">Create Call-Out Invoice</button>
   </div>
 </div>
 
@@ -543,7 +523,7 @@
     }catch(e){ if(e.message!=='Unauth') document.getElementById('wifiLoading').textContent='Failed to load subscribers.'; }
   }
 
-  // ── New/Edit WiFi Modal ───────────────────────────────────────────────────────
+  // ── New/Edit WiFi Offcanvas ───────────────────────────────────────────────────
   document.getElementById('newRecordBtn').onclick=async()=>{
     if(currentTab==='wifi') openWifiModal();
     else openSlaModal();
@@ -571,7 +551,7 @@
       document.getElementById('w_notes').value=data.notes||'';
       calcWifiMargin();
     }
-    bootstrap.Modal.getOrCreateInstance(document.getElementById('wifiModal')).show();
+    bootstrap.Offcanvas.getOrCreateInstance(document.getElementById('wifiModal')).show();
   }
 
   window.editWifi=function(data){ openWifiModal(data); };
@@ -613,7 +593,7 @@
         : await api('/portal/api/wifi-subscribers/',{method:'POST',body:JSON.stringify(body)});
       const d=await r.json();
       if(r.ok){
-        bootstrap.Modal.getInstance(document.getElementById('wifiModal')).hide();
+        bootstrap.Offcanvas.getInstance(document.getElementById('wifiModal')).hide();
         showAlert('pageAlert',id?'Subscriber updated successfully.':'Subscriber added successfully.','success');
         loadWifi();
       } else { showAlert('wifiModalAlert',d.detail||JSON.stringify(d)); }
@@ -685,7 +665,7 @@
       document.getElementById('s_description').value=data.contract_description||'';
       document.getElementById('s_notes').value=data.notes||'';
     }
-    bootstrap.Modal.getOrCreateInstance(document.getElementById('slaModal')).show();
+    bootstrap.Offcanvas.getOrCreateInstance(document.getElementById('slaModal')).show();
   }
 
   window.editSla=function(data){ openSlaModal(data); };
@@ -717,7 +697,7 @@
         : await api('/portal/api/sla-contracts/',{method:'POST',body:JSON.stringify(body)});
       const d=await r.json();
       if(r.ok){
-        bootstrap.Modal.getInstance(document.getElementById('slaModal')).hide();
+        bootstrap.Offcanvas.getInstance(document.getElementById('slaModal')).hide();
         showAlert('pageAlert',id?'Contract updated successfully.':'Contract saved successfully.','success');
         loadSla();
       } else { showAlert('slaModalAlert',d.detail||JSON.stringify(d)); }
@@ -743,7 +723,7 @@
     document.getElementById('co_description').value='';
     document.getElementById('co_tax').value='15';
     document.getElementById('calloutAlert').innerHTML='';
-    bootstrap.Modal.getOrCreateInstance(document.getElementById('calloutModal')).show();
+    bootstrap.Offcanvas.getOrCreateInstance(document.getElementById('calloutModal')).show();
   };
 
   document.getElementById('saveCalloutBtn').onclick=async()=>{
@@ -777,7 +757,7 @@
       const r=await api('/portal/api/invoices/',{method:'POST',body:JSON.stringify(body)});
       const d=await r.json();
       if(r.ok){
-        bootstrap.Modal.getInstance(document.getElementById('calloutModal')).hide();
+        bootstrap.Offcanvas.getInstance(document.getElementById('calloutModal')).hide();
         showAlert('pageAlert',`Call-out invoice ${d.invoice_number} created as draft. Go to Invoices to send it.`,'success');
       } else { showAlert('calloutAlert',d.detail||JSON.stringify(d)); }
     }catch(e){ if(e.message!=='Unauth') showAlert('calloutAlert','Failed to create invoice.'); }
@@ -791,7 +771,7 @@
     document.getElementById('gen_year').value=now.getFullYear();
     document.getElementById('gen_month').value=now.getMonth()+1;
     document.getElementById('genResult').innerHTML='';
-    bootstrap.Modal.getOrCreateInstance(document.getElementById('genModal')).show();
+    bootstrap.Offcanvas.getOrCreateInstance(document.getElementById('genModal')).show();
   };
 
   document.getElementById('runGenBtn').onclick=async()=>{
@@ -833,7 +813,7 @@
     document.getElementById('runImportBtn').style.display = 'none';
     document.getElementById('importAlert').innerHTML = '';
     document.getElementById('importFile').value = '';
-    bootstrap.Modal.getOrCreateInstance(document.getElementById('importModal')).show();
+    bootstrap.Offcanvas.getOrCreateInstance(document.getElementById('importModal')).show();
   };
 
   // Drop zone click → file picker

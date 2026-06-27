@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="utf-8"><meta http-equiv="X-UA-Compatible" content="IE=edge">
@@ -119,44 +119,36 @@
   </div>
 </div>
 
-<!-- Open Shift Modal -->
-<div class="modal fade" id="openShiftModal" tabindex="-1">
-  <div class="modal-dialog modal-sm">
-    <div class="modal-content">
-      <div class="modal-header"><h5 class="modal-title">Open Morning Shift</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
-      <div class="modal-body">
-        <div id="openShiftAlert" class="alert d-none" role="alert"></div>
-        <label class="form-label">Opening Cash Float (R) *</label>
-        <input class="form-control" id="openFloat" type="number" step="0.01" min="0" placeholder="e.g. 500.00">
-      </div>
-      <div class="modal-footer">
-        <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-        <button class="btn btn-success" id="openShiftSubmit">Open Shift</button>
-      </div>
-    </div>
+<!-- Open Shift Offcanvas -->
+<div class="offcanvas offcanvas-end" tabindex="-1" id="openShiftModal" style="width:560px">
+  <div class="offcanvas-header"><h5 class="offcanvas-title">Open Morning Shift</h5><button type="button" class="btn-close" data-bs-dismiss="offcanvas"></button></div>
+  <div class="offcanvas-body" style="overflow-y:auto">
+    <div id="openShiftAlert" class="alert d-none" role="alert"></div>
+    <label class="form-label">Opening Cash Float (R) *</label>
+    <input class="form-control" id="openFloat" type="number" step="0.01" min="0" placeholder="e.g. 500.00">
+  </div>
+  <div class="p-3 border-top bg-white d-flex justify-content-end gap-2">
+    <button class="btn btn-secondary" data-bs-dismiss="offcanvas">Cancel</button>
+    <button class="btn btn-success" id="openShiftSubmit">Open Shift</button>
   </div>
 </div>
 
-<!-- Close Shift Modal -->
-<div class="modal fade" id="closeShiftModal" tabindex="-1">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header"><h5 class="modal-title">Close Evening Shift</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
-      <div class="modal-body">
-        <div id="closeShiftAlert" class="alert d-none" role="alert"></div>
-        <p class="text-muted small">Count your physical totals and enter them below for reconciliation.</p>
-        <div class="row g-2 mb-2">
-          <div class="col"><label class="form-label">Physical Cash (R)</label><input class="form-control" id="closeCash" type="number" step="0.01" min="0" value="0"></div>
-          <div class="col"><label class="form-label">Card Slips (R)</label><input class="form-control" id="closeCard" type="number" step="0.01" min="0" value="0"></div>
-        </div>
-        <div class="mb-2"><label class="form-label">EFT / Transfers (R)</label><input class="form-control" id="closeEft" type="number" step="0.01" min="0" value="0"></div>
-        <div class="mb-2"><label class="form-label">Notes</label><textarea class="form-control" id="closeNotes" rows="2"></textarea></div>
-      </div>
-      <div class="modal-footer">
-        <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-        <button class="btn btn-danger" id="closeShiftSubmit">Close &amp; Reconcile</button>
-      </div>
+<!-- Close Shift Offcanvas -->
+<div class="offcanvas offcanvas-end" tabindex="-1" id="closeShiftModal" style="width:560px">
+  <div class="offcanvas-header"><h5 class="offcanvas-title">Close Evening Shift</h5><button type="button" class="btn-close" data-bs-dismiss="offcanvas"></button></div>
+  <div class="offcanvas-body" style="overflow-y:auto">
+    <div id="closeShiftAlert" class="alert d-none" role="alert"></div>
+    <p class="text-muted small">Count your physical totals and enter them below for reconciliation.</p>
+    <div class="row g-2 mb-2">
+      <div class="col"><label class="form-label">Physical Cash (R)</label><input class="form-control" id="closeCash" type="number" step="0.01" min="0" value="0"></div>
+      <div class="col"><label class="form-label">Card Slips (R)</label><input class="form-control" id="closeCard" type="number" step="0.01" min="0" value="0"></div>
     </div>
+    <div class="mb-2"><label class="form-label">EFT / Transfers (R)</label><input class="form-control" id="closeEft" type="number" step="0.01" min="0" value="0"></div>
+    <div class="mb-2"><label class="form-label">Notes</label><textarea class="form-control" id="closeNotes" rows="2"></textarea></div>
+  </div>
+  <div class="p-3 border-top bg-white d-flex justify-content-end gap-2">
+    <button class="btn btn-secondary" data-bs-dismiss="offcanvas">Cancel</button>
+    <button class="btn btn-danger" id="closeShiftSubmit">Close &amp; Reconcile</button>
   </div>
 </div>
 
@@ -238,11 +230,11 @@
 
   document.getElementById('openShiftBtn').addEventListener('click',()=>{
     document.getElementById('openShiftAlert').className='alert d-none';
-    new bootstrap.Modal(document.getElementById('openShiftModal')).show();
+    new bootstrap.Offcanvas(document.getElementById('openShiftModal')).show();
   });
   document.getElementById('closeShiftBtn').addEventListener('click',()=>{
     document.getElementById('closeShiftAlert').className='alert d-none';
-    new bootstrap.Modal(document.getElementById('closeShiftModal')).show();
+    new bootstrap.Offcanvas(document.getElementById('closeShiftModal')).show();
   });
 
   function showAlert(id,msg,type='danger'){
@@ -264,7 +256,7 @@
       const r=await api('/portal/api/shifts/',{method:'POST',body:JSON.stringify({action,...data})});
       const res=await r.json();
       if(r.ok){
-        bootstrap.Modal.getInstance(document.getElementById(modalId))?.hide();
+        bootstrap.Offcanvas.getInstance(document.getElementById(modalId))?.hide();
         const msg=res.detail||(action==='open'?'Shift opened successfully.':'Shift closed. Variance: '+res.variance);
         showAlert('pageAlert',msg,'success');
         loadShifts();loadTxns();

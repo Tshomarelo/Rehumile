@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="utf-8"><meta http-equiv="X-UA-Compatible" content="IE=edge">
@@ -71,82 +71,74 @@
   </div>
 </div>
 
-<!-- Create User Modal -->
-<div class="modal fade" id="userModal" tabindex="-1">
-  <div class="modal-dialog modal-lg">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title">Add User</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+<!-- Create User Offcanvas -->
+<div class="offcanvas offcanvas-end" tabindex="-1" id="userModal" style="width:720px">
+  <div class="offcanvas-header">
+    <h5 class="offcanvas-title">Add User</h5>
+    <button type="button" class="btn-close" data-bs-dismiss="offcanvas"></button>
+  </div>
+  <div class="offcanvas-body" style="overflow-y:auto">
+    <div id="modalAlert"></div>
+    <form id="userForm">
+      <div class="row">
+        <div class="col-md-6 mb-3">
+          <label class="form-label">First Name <span class="text-danger">*</span></label>
+          <input type="text" class="form-control" id="f_first_name" required>
+        </div>
+        <div class="col-md-6 mb-3">
+          <label class="form-label">Last Name <span class="text-danger">*</span></label>
+          <input type="text" class="form-control" id="f_last_name" required>
+        </div>
       </div>
-      <div class="modal-body">
-        <div id="modalAlert"></div>
-        <form id="userForm">
-          <div class="row">
-            <div class="col-md-6 mb-3">
-              <label class="form-label">First Name <span class="text-danger">*</span></label>
-              <input type="text" class="form-control" id="f_first_name" required>
-            </div>
-            <div class="col-md-6 mb-3">
-              <label class="form-label">Last Name <span class="text-danger">*</span></label>
-              <input type="text" class="form-control" id="f_last_name" required>
-            </div>
-          </div>
-          <div class="mb-3">
-            <label class="form-label">Email Address <span class="text-danger">*</span></label>
-            <input type="email" class="form-control" id="f_email" required>
-          </div>
-          <div class="row">
-            <div class="col-md-6 mb-3">
-              <label class="form-label">Role <span class="text-danger">*</span></label>
-              <select class="form-select" id="f_role" required>
-                <option value="">Select role…</option>
-                <option value="admin">Admin (HQ)</option>
-                <option value="agent">Agent (HQ Support)</option>
-                <option value="finance">Finance (HQ)</option>
-                <option value="client">Client</option>
-                <option value="viewer">Viewer</option>
-              </select>
-            </div>
-            <div class="col-md-6 mb-3">
-              <label class="form-label">Company</label>
-              <select class="form-select" id="f_company">
-                <option value="">No company (HQ staff)</option>
-              </select>
-            </div>
-          </div>
-          <div class="mb-3">
-            <label class="form-label">Password <span class="text-danger">*</span></label>
-            <input type="password" class="form-control" id="f_password" required minlength="8" placeholder="Minimum 8 characters">
-          </div>
-          <div class="mb-3">
-            <label class="form-label">Confirm Password <span class="text-danger">*</span></label>
-            <input type="password" class="form-control" id="f_password2" required minlength="8">
-          </div>
-        </form>
+      <div class="mb-3">
+        <label class="form-label">Email Address <span class="text-danger">*</span></label>
+        <input type="email" class="form-control" id="f_email" required>
       </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-        <button type="button" class="btn btn-primary" id="saveUserBtn">Create User</button>
+      <div class="row">
+        <div class="col-md-6 mb-3">
+          <label class="form-label">Role <span class="text-danger">*</span></label>
+          <select class="form-select" id="f_role" required>
+            <option value="">Select role…</option>
+            <option value="admin">Admin (HQ)</option>
+            <option value="agent">Agent (HQ Support)</option>
+            <option value="finance">Finance (HQ)</option>
+            <option value="client">Client</option>
+            <option value="viewer">Viewer</option>
+          </select>
+        </div>
+        <div class="col-md-6 mb-3">
+          <label class="form-label">Company</label>
+          <select class="form-select" id="f_company">
+            <option value="">No company (HQ staff)</option>
+          </select>
+        </div>
       </div>
-    </div>
+      <div class="mb-3">
+        <label class="form-label">Password <span class="text-danger">*</span></label>
+        <input type="password" class="form-control" id="f_password" required minlength="8" placeholder="Minimum 8 characters">
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Confirm Password <span class="text-danger">*</span></label>
+        <input type="password" class="form-control" id="f_password2" required minlength="8">
+      </div>
+    </form>
+  </div>
+  <div class="p-3 border-top bg-white d-flex justify-content-end gap-2">
+    <button type="button" class="btn btn-secondary" data-bs-dismiss="offcanvas">Cancel</button>
+    <button type="button" class="btn btn-primary" id="saveUserBtn">Create User</button>
   </div>
 </div>
 
-<!-- Status Update Modal -->
-<div class="modal fade" id="statusModal" tabindex="-1">
-  <div class="modal-dialog modal-sm">
-    <div class="modal-content">
-      <div class="modal-header"><h5 class="modal-title">Update User Status</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
-      <div class="modal-body">
-        <p>Change status for <strong id="statusUserName"></strong>:</p>
-        <input type="hidden" id="statusUserId">
-        <div class="d-grid gap-2">
-          <button class="btn btn-success" onclick="setStatus('active',this)">Activate</button>
-          <button class="btn btn-warning" onclick="setStatus('suspended',this)">Suspend</button>
-          <button class="btn btn-secondary" onclick="setStatus('inactive',this)">Deactivate</button>
-        </div>
-      </div>
+<!-- Status Update Offcanvas -->
+<div class="offcanvas offcanvas-end" tabindex="-1" id="statusModal" style="width:560px">
+  <div class="offcanvas-header"><h5 class="offcanvas-title">Update User Status</h5><button type="button" class="btn-close" data-bs-dismiss="offcanvas"></button></div>
+  <div class="offcanvas-body" style="overflow-y:auto">
+    <p>Change status for <strong id="statusUserName"></strong>:</p>
+    <input type="hidden" id="statusUserId">
+    <div class="d-grid gap-2">
+      <button class="btn btn-success" onclick="setStatus('active',this)">Activate</button>
+      <button class="btn btn-warning" onclick="setStatus('suspended',this)">Suspend</button>
+      <button class="btn btn-secondary" onclick="setStatus('inactive',this)">Deactivate</button>
     </div>
   </div>
 </div>
@@ -212,7 +204,7 @@
     document.getElementById('userForm').reset();
     document.getElementById('modalAlert').innerHTML='';
     loadCompaniesIntoSelect();
-    bootstrap.Modal.getOrCreateInstance(document.getElementById('userModal')).show();
+    bootstrap.Offcanvas.getOrCreateInstance(document.getElementById('userModal')).show();
   };
 
   document.getElementById('saveUserBtn').onclick=async()=>{
@@ -236,7 +228,7 @@
       const r=await api('/portal/api/users/',{method:'POST',body:JSON.stringify(body)});
       const data=await r.json();
       if(r.ok){
-        bootstrap.Modal.getInstance(document.getElementById('userModal')).hide();
+        bootstrap.Offcanvas.getInstance(document.getElementById('userModal')).hide();
         showAlert('pageAlert','User created successfully.','success');
         loadUsers();
       } else { showAlert('modalAlert',data.email?data.email[0]:data.detail||JSON.stringify(data)); }
@@ -248,7 +240,7 @@
   window.openStatus=function(id, name){
     document.getElementById('statusUserId').value=id;
     document.getElementById('statusUserName').textContent=name;
-    bootstrap.Modal.getOrCreateInstance(document.getElementById('statusModal')).show();
+    bootstrap.Offcanvas.getOrCreateInstance(document.getElementById('statusModal')).show();
   };
 
   window.setStatus=async function(newStatus, btnEl){
@@ -261,7 +253,7 @@
     try{
       const r=await api(`/portal/api/users/${id}/status/`,{method:'PATCH',body:JSON.stringify({status:newStatus})});
       if(r.ok){
-        bootstrap.Modal.getInstance(document.getElementById('statusModal')).hide();
+        bootstrap.Offcanvas.getInstance(document.getElementById('statusModal')).hide();
         showAlert('pageAlert','User status updated.','success');
         loadUsers();
       } else { const d=await r.json(); showAlert('pageAlert',d.detail||'Failed to update status.'); }
@@ -275,4 +267,3 @@
 </script>
 </body>
 </html>
-
