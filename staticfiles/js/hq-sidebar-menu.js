@@ -3,6 +3,36 @@
    with a full menu definition that auto-expands the current section.
 */
 (function () {
+
+  // ── 1. Inject shared CSS ────────────────────────────────────────────────────
+  // On desktop, confine Bootstrap modals to the content area so the navbar
+  // hamburger toggle and sidebar remain accessible while any form is open.
+  // Targets div.modal.fade (Bootstrap-specific) — does NOT affect custom modal
+  // overlays used by some pages (e.g. hq-website.html uses .modal-overlay).
+  // body.hq-sidebar-collapsed is toggled below to follow the collapsed state.
+  var _st = document.createElement('style');
+  _st.textContent = (
+    '@media(min-width:992px){' +
+      'body:not(.hq-sidebar-collapsed) .modal-backdrop{left:260px!important;top:56px!important}' +
+      'body:not(.hq-sidebar-collapsed) div.modal.fade{left:260px!important;top:56px!important;' +
+        'width:calc(100% - 260px)!important;height:calc(100% - 56px)!important}' +
+      'body.hq-sidebar-collapsed .modal-backdrop{top:56px!important}' +
+      'body.hq-sidebar-collapsed div.modal.fade{top:56px!important;height:calc(100% - 56px)!important}' +
+    '}'
+  );
+  document.head.appendChild(_st);
+
+  // ── 2. Track sidebar collapsed state ───────────────────────────────────────
+  var _sidebar = document.getElementById('sidebar');
+  if (_sidebar) {
+    function _syncCollapsed() {
+      document.body.classList.toggle('hq-sidebar-collapsed', _sidebar.classList.contains('collapsed'));
+    }
+    _syncCollapsed();
+    new MutationObserver(_syncCollapsed).observe(_sidebar, { attributes: true, attributeFilter: ['class'] });
+  }
+
+  // ── 3. Build sidebar nav ────────────────────────────────────────────────────
   var nav = document.querySelector('.sidebar .sidebar-nav');
   if (!nav) return;
 
