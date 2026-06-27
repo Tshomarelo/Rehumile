@@ -6,7 +6,13 @@
   <link rel="shortcut icon" href="/portal/static/img/icons/icon-48x48.png"/>
   <title>Business Intelligence | Rehumile IMS</title>
   <link href="/portal/static/css/app.css" rel="stylesheet">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;606&display=swap" rel="stylesheet">
+  <style>
+    /* Keep navbar above modal backdrop so hamburger toggle is always accessible */
+    .navbar.navbar-bg { position: relative; z-index: 1060 !important; }
+    .modal-backdrop { top: 56px !important; }
+    div.modal.fade { top: 56px !important; height: calc(100% - 56px) !important; }
+  </style>
 </head>
 <body>
 <div class="wrapper">
