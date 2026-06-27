@@ -5,19 +5,22 @@
 (function () {
 
   // ── 1. Inject shared CSS ────────────────────────────────────────────────────
-  // On desktop, confine Bootstrap modals to the content area so the navbar
-  // hamburger toggle and sidebar remain accessible while any form is open.
+  // Keep the navbar hamburger ALWAYS accessible (top:56px at every viewport).
+  // On desktop (≥992px) with the sidebar visible, also offset the modal left of
+  // the sidebar so the sidebar itself stays reachable.
   // Targets div.modal.fade (Bootstrap-specific) — does NOT affect custom modal
-  // overlays used by some pages (e.g. hq-website.html uses .modal-overlay).
-  // body.hq-sidebar-collapsed is toggled below to follow the collapsed state.
+  // overlays (e.g. hq-website.html uses .modal-overlay, not div.modal.fade).
+  // body.hq-sidebar-collapsed is toggled below to track the sidebar state.
   var _st = document.createElement('style');
   _st.textContent = (
+    // Always: push modal below the sticky navbar so the hamburger toggle is
+    // visible and clickable regardless of viewport width.
+    '.modal-backdrop{top:56px!important}' +
+    'div.modal.fade{top:56px!important;height:calc(100% - 56px)!important}' +
+    // Desktop only: when sidebar is visible, also push modal right of sidebar.
     '@media(min-width:992px){' +
-      'body:not(.hq-sidebar-collapsed) .modal-backdrop{left:260px!important;top:56px!important}' +
-      'body:not(.hq-sidebar-collapsed) div.modal.fade{left:260px!important;top:56px!important;' +
-        'width:calc(100% - 260px)!important;height:calc(100% - 56px)!important}' +
-      'body.hq-sidebar-collapsed .modal-backdrop{top:56px!important}' +
-      'body.hq-sidebar-collapsed div.modal.fade{top:56px!important;height:calc(100% - 56px)!important}' +
+      'body:not(.hq-sidebar-collapsed) .modal-backdrop{left:260px!important}' +
+      'body:not(.hq-sidebar-collapsed) div.modal.fade{left:260px!important;width:calc(100% - 260px)!important}' +
     '}'
   );
   document.head.appendChild(_st);
