@@ -45,6 +45,7 @@
             <i class="align-middle me-1" data-feather="plus"></i> Generate Vouchers
           </button>
         </div>
+        <div id="pageAlert" class="alert d-none" role="alert"></div>
 
         <!-- KPI row -->
         <div class="row mb-3">
@@ -215,11 +216,21 @@
     new bootstrap.Modal(document.getElementById('generateModal')).show();
   });
 
+  function showAlert(id,msg,type='danger'){
+    const el=document.getElementById(id);
+    if(!el)return;
+    el.className='alert alert-'+type;
+    el.textContent=msg;
+    if(type==='success'){setTimeout(()=>{el.className='alert d-none';},4000);}
+  }
+
   document.getElementById('genSubmit').addEventListener('click',async()=>{
     const btn=document.getElementById('genSubmit');
+    const orig=btn.innerHTML;
     const spin=document.getElementById('genSpinner');
-    const alert=document.getElementById('genAlert');
-    btn.disabled=true;spin.classList.remove('d-none');alert.className='alert d-none';
+    document.getElementById('genAlert').className='alert d-none';
+    btn.disabled=true;
+    btn.innerHTML='<span class="spinner-border spinner-border-sm me-1"></span>Generating…';
     const qty=parseInt(document.getElementById('genQty').value)||1;
     let created=0;
     try{
@@ -231,15 +242,21 @@
         })});
         if(r.ok)created++;
       }
-      alert.className='alert alert-success';alert.textContent=created+' voucher(s) generated.';load();
-    }catch(e){if(e.message!=='Unauth'){alert.className='alert alert-danger';alert.textContent='Error generating vouchers.';}}
-    finally{btn.disabled=false;spin.classList.add('d-none');}
+      bootstrap.Modal.getInstance(document.getElementById('generateModal')).hide();
+      showAlert('pageAlert',created+' voucher(s) generated successfully.','success');
+      load();
+    }catch(e){
+      if(e.message!=='Unauth'){showAlert('genAlert','Error generating vouchers.');}
+    }
+    btn.disabled=false;btn.innerHTML=orig;
   });
 
   document.getElementById('sellSubmit').addEventListener('click',async()=>{
     const btn=document.getElementById('sellSubmit');
-    const alert=document.getElementById('sellAlert');
-    btn.disabled=true;alert.className='alert d-none';
+    const orig=btn.innerHTML;
+    document.getElementById('sellAlert').className='alert d-none';
+    btn.disabled=true;
+    btn.innerHTML='<span class="spinner-border spinner-border-sm me-1"></span>Processing…';
     try{
       const r=await api('/portal/api/vouchers/',{method:'POST',body:JSON.stringify({
         action:'sell',
@@ -248,11 +265,14 @@
       })});
       const res=await r.json();
       if(r.ok){
-        alert.className='alert alert-success';alert.textContent='Sold! Code: '+res.voucher_code;
+        bootstrap.Modal.getInstance(document.getElementById('sellModal')).hide();
+        showAlert('pageAlert','Voucher sold successfully. Code: '+res.voucher_code,'success');
         load();
-      }else{alert.className='alert alert-danger';alert.textContent=res.detail||'Error.';}
-    }catch(e){if(e.message!=='Unauth'){alert.className='alert alert-danger';alert.textContent='Network error.';}}
-    finally{btn.disabled=false;}
+      }else{showAlert('sellAlert',res.detail||'Error.');}
+    }catch(e){
+      if(e.message!=='Unauth'){showAlert('sellAlert','Network error.');}
+    }
+    btn.disabled=false;btn.innerHTML=orig;
   });
 
   load();

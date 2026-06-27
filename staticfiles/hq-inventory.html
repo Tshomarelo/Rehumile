@@ -45,6 +45,7 @@
             <i class="align-middle me-1" data-feather="plus"></i> Add Item
           </button>
         </div>
+        <div id="pageAlert" class="alert d-none" role="alert"></div>
 
         <!-- KPI cards -->
         <div class="row mb-3" id="invKpis">
@@ -171,6 +172,8 @@
   document.getElementById('logoutBtn').onclick=e=>{e.preventDefault();localStorage.clear();window.location.href='/portal/login/';};
   if(!['admin','agent','finance','technician'].includes(u.role)){window.location.href='/portal/dashboard/';return;}
 
+  function showAlert(id,msg,type='danger'){const el=document.getElementById(id);if(!el)return;el.className='alert alert-'+type;el.textContent=msg;if(type==='success')setTimeout(()=>{el.className='alert d-none';},4000);}
+
   const fmtR=n=>'R '+parseFloat(n||0).toFixed(2);
   let currentType='';let lowOnly=false;
 
@@ -234,8 +237,9 @@
   document.getElementById('itemSubmitBtn').addEventListener('click',async()=>{
     const btn=document.getElementById('itemSubmitBtn');
     const spin=document.getElementById('itemSpinner');
-    const alert=document.getElementById('itemAlert');
-    btn.disabled=true;spin.classList.remove('d-none');alert.className='alert d-none';
+    const orig=btn.innerHTML;
+    btn.disabled=true;spin.classList.remove('d-none');
+    document.getElementById('itemAlert').className='alert d-none';
     try{
       const r=await api('/portal/api/inventory/',{method:'POST',body:JSON.stringify({
         item_type:document.getElementById('iType').value,
@@ -247,17 +251,21 @@
         unit_cost:document.getElementById('iCost').value,
         selling_price:document.getElementById('iSell').value,
       })});
-      if(r.ok){alert.className='alert alert-success';alert.textContent='Item added.';load();}
-      else{const err=await r.json().catch(()=>({}));alert.className='alert alert-danger';alert.textContent=err.detail||JSON.stringify(err);}
-    }catch(e){if(e.message!=='Unauth'){alert.className='alert alert-danger';alert.textContent='Network error.';}}
-    finally{btn.disabled=false;spin.classList.add('d-none');}
+      if(r.ok){
+        bootstrap.Modal.getInstance(document.getElementById('newItemModal')).hide();
+        showAlert('pageAlert','Item added successfully.','success');
+        load();
+      }else{const err=await r.json().catch(()=>({}));showAlert('itemAlert',err.detail||JSON.stringify(err));}
+    }catch(e){if(e.message!=='Unauth')showAlert('itemAlert','Network error.');}
+    btn.disabled=false;btn.innerHTML=orig;
   });
 
   document.getElementById('stockSubmitBtn').addEventListener('click',async()=>{
     const btn=document.getElementById('stockSubmitBtn');
     const spin=document.getElementById('stockSpinner');
-    const alert=document.getElementById('stockAlert');
-    btn.disabled=true;spin.classList.remove('d-none');alert.className='alert d-none';
+    const orig=btn.innerHTML;
+    btn.disabled=true;spin.classList.remove('d-none');
+    document.getElementById('stockAlert').className='alert d-none';
     try{
       const r=await api('/portal/api/inventory/transactions/',{method:'POST',body:JSON.stringify({
         item_id:document.getElementById('stockItemId').value,
@@ -268,11 +276,12 @@
       })});
       if(r.ok){
         const d=await r.json();
-        alert.className='alert alert-success';alert.textContent='Stock updated. New qty: '+d.quantity_on_hand;
+        bootstrap.Modal.getInstance(document.getElementById('stockModal')).hide();
+        showAlert('pageAlert','Stock updated. New qty: '+d.quantity_on_hand,'success');
         load();
-      }else{const err=await r.json().catch(()=>({}));alert.className='alert alert-danger';alert.textContent=err.detail||JSON.stringify(err);}
-    }catch(e){if(e.message!=='Unauth'){alert.className='alert alert-danger';alert.textContent='Network error.';}}
-    finally{btn.disabled=false;spin.classList.add('d-none');}
+      }else{const err=await r.json().catch(()=>({}));showAlert('stockAlert',err.detail||JSON.stringify(err));}
+    }catch(e){if(e.message!=='Unauth')showAlert('stockAlert','Network error.');}
+    btn.disabled=false;btn.innerHTML=orig;
   });
 
   load();

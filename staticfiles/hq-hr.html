@@ -249,7 +249,20 @@ async function reviewLeave(id, action) {
   loadLeave();
 }
 
+function showAlert(targetId, message, type='danger') {
+  const el = document.getElementById(targetId);
+  if (!el) return;
+  el.innerHTML = `<div class="alert alert-${type} alert-dismissible fade show" role="alert">
+    ${message}
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+  </div>`;
+}
+
 document.getElementById('btnSaveEmp').addEventListener('click', async () => {
+  const btn = document.getElementById('btnSaveEmp');
+  const orig = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Saving…';
   const body = {
     first_name: document.getElementById('empFirst').value,
     last_name: document.getElementById('empLast').value,
@@ -265,12 +278,22 @@ document.getElementById('btnSaveEmp').addEventListener('click', async () => {
     contact_number: document.getElementById('empContact').value,
     next_of_kin_name: document.getElementById('empKinName').value,
   };
-  const r = await apiFetch(API+'/employees/', {method:'POST', body:JSON.stringify(body)});
-  if (!r) return;
-  const d = await r.json();
-  if (d.error) { alert(d.error); return; }
-  bootstrap.Modal.getInstance(document.getElementById('addEmpModal')).hide();
-  loadEmployees();
+  try {
+    const r = await apiFetch(API+'/employees/', {method:'POST', body:JSON.stringify(body)});
+    if (!r) { btn.disabled = false; btn.innerHTML = orig; return; }
+    const d = await r.json();
+    if (r.ok) {
+      bootstrap.Modal.getInstance(document.getElementById('addEmpModal')).hide();
+      showAlert('pageAlert', 'Employee profile saved successfully.', 'success');
+      loadEmployees();
+    } else {
+      showAlert('modalAlert', d.error || d.detail || JSON.stringify(d));
+    }
+  } catch(e) {
+    showAlert('modalAlert', 'Failed to save employee profile.');
+  }
+  btn.disabled = false;
+  btn.innerHTML = orig;
 });
 
 document.getElementById('logoutBtn').addEventListener('click', e => {

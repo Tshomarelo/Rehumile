@@ -277,6 +277,10 @@
     const company=document.getElementById('c_company').value;
     const billable=document.getElementById('c_billable').checked;
     if(!title||!desc||!cat||!company){ showAlert('createAlert','Please fill in all required fields.'); return; }
+    const btn=document.getElementById('createSubmit');
+    const orig=btn.innerHTML;
+    btn.disabled=true;
+    btn.innerHTML='<span class="spinner-border spinner-border-sm me-1"></span>Creating…';
     try{
       const r = await api('/portal/api/incidents/',{method:'POST',body:JSON.stringify({title,description:desc,category:cat,priority,is_billable:billable,company})});
       const data = await r.json();
@@ -287,6 +291,8 @@
         loadIncidents();
       } else { showAlert('createAlert',JSON.stringify(data)); }
     }catch(e){ if(e.message!=='Unauth') showAlert('createAlert','Failed to create incident.'); }
+    btn.disabled=false;
+    btn.innerHTML=orig;
   };
 
   document.getElementById('applyFilter').onclick=()=>{
@@ -367,35 +373,54 @@
   document.getElementById('updateStatus').onclick=async()=>{
     if(!currentId) return;
     const s=document.getElementById('d_status').value;
+    const btn=document.getElementById('updateStatus');
+    const orig=btn.innerHTML;
+    btn.disabled=true;
+    btn.innerHTML='<span class="spinner-border spinner-border-sm me-1"></span>Updating…';
     try{
       const r=await api(`/portal/api/incidents/${currentId}/status/`,{method:'PATCH',body:JSON.stringify({status:s})});
-      if(r.ok){ showAlert('detailAlert','Status updated.','success'); loadIncidents(); }
+      if(r.ok){ showAlert('detailAlert','Status updated successfully.','success'); loadIncidents(); }
       else{ const d=await r.json(); showAlert('detailAlert',d.detail||'Failed to update status.'); }
     }catch(e){ if(e.message!=='Unauth') showAlert('detailAlert','Error updating status.'); }
+    btn.disabled=false;
+    btn.innerHTML=orig;
   };
 
   document.getElementById('assignAgent').onclick=async()=>{
     const agentId=document.getElementById('d_agent').value;
     if(!agentId||!currentId) return;
+    const btn=document.getElementById('assignAgent');
+    const orig=btn.innerHTML;
+    btn.disabled=true;
+    btn.innerHTML='<span class="spinner-border spinner-border-sm me-1"></span>Assigning…';
     try{
       const r=await api(`/portal/api/incidents/${currentId}/assign/`,{method:'PATCH',body:JSON.stringify({agent_id:agentId})});
-      if(r.ok){ showAlert('detailAlert','Agent assigned.','success'); loadIncidents(); }
+      if(r.ok){ showAlert('detailAlert','Agent assigned successfully.','success'); loadIncidents(); }
       else{ const d=await r.json(); showAlert('detailAlert',d.detail||'Failed to assign agent.'); }
     }catch(e){ if(e.message!=='Unauth') showAlert('detailAlert','Error assigning agent.'); }
+    btn.disabled=false;
+    btn.innerHTML=orig;
   };
 
   document.getElementById('addComment').onclick=async()=>{
     const text=document.getElementById('commentText').value.trim();
     const internal=document.getElementById('commentInternal').checked;
     if(!text||!currentId) return;
+    const btn=document.getElementById('addComment');
+    const orig=btn.innerHTML;
+    btn.disabled=true;
+    btn.innerHTML='<span class="spinner-border spinner-border-sm me-1"></span>Posting…';
     try{
       const r=await api(`/portal/api/incidents/${currentId}/comments/`,{method:'POST',body:JSON.stringify({comment_text:text,is_internal:internal})});
       if(r.ok){
         document.getElementById('commentText').value='';
         document.getElementById('commentInternal').checked=false;
+        showAlert('detailAlert','Comment posted successfully.','success');
         window.openDetail(currentId);
       } else{ const d=await r.json(); showAlert('detailAlert',d.detail||'Failed to post comment.'); }
     }catch(e){ if(e.message!=='Unauth') showAlert('detailAlert','Error posting comment.'); }
+    btn.disabled=false;
+    btn.innerHTML=orig;
   };
 
   // ── SLA Call-Out Invoice from ticket ────────────────────────────────────

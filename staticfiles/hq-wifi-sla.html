@@ -603,6 +603,10 @@
       company:document.getElementById('w_company').value||null,
     };
     if(!body.client_name){ showAlert('wifiModalAlert','Client name is required.'); return; }
+    const btn=document.getElementById('saveWifiBtn');
+    const orig=btn.innerHTML;
+    btn.disabled=true;
+    btn.innerHTML='<span class="spinner-border spinner-border-sm me-1"></span>Saving…';
     try{
       const r=id
         ? await api(`/portal/api/wifi-subscribers/${id}/`,{method:'PATCH',body:JSON.stringify(body)})
@@ -610,10 +614,12 @@
       const d=await r.json();
       if(r.ok){
         bootstrap.Modal.getInstance(document.getElementById('wifiModal')).hide();
-        showAlert('pageAlert',id?'Subscriber updated.':'Subscriber added.','success');
+        showAlert('pageAlert',id?'Subscriber updated successfully.':'Subscriber added successfully.','success');
         loadWifi();
       } else { showAlert('wifiModalAlert',d.detail||JSON.stringify(d)); }
     }catch(e){ if(e.message!=='Unauth') showAlert('wifiModalAlert','Failed to save.'); }
+    btn.disabled=false;
+    btn.innerHTML=orig;
   };
 
   window.deleteWifi=async function(id,name){
@@ -701,6 +707,10 @@
       company:document.getElementById('s_company').value||null,
     };
     if(!body.client_name||!body.contract_start){ showAlert('slaModalAlert','Client name and contract start date are required.'); return; }
+    const btn=document.getElementById('saveSlaBtn');
+    const orig=btn.innerHTML;
+    btn.disabled=true;
+    btn.innerHTML='<span class="spinner-border spinner-border-sm me-1"></span>Saving…';
     try{
       const r=id
         ? await api(`/portal/api/sla-contracts/${id}/`,{method:'PATCH',body:JSON.stringify(body)})
@@ -708,10 +718,12 @@
       const d=await r.json();
       if(r.ok){
         bootstrap.Modal.getInstance(document.getElementById('slaModal')).hide();
-        showAlert('pageAlert',id?'Contract updated.':'Contract saved.','success');
+        showAlert('pageAlert',id?'Contract updated successfully.':'Contract saved successfully.','success');
         loadSla();
       } else { showAlert('slaModalAlert',d.detail||JSON.stringify(d)); }
     }catch(e){ if(e.message!=='Unauth') showAlert('slaModalAlert','Failed to save.'); }
+    btn.disabled=false;
+    btn.innerHTML=orig;
   };
 
   window.deleteSla=async function(id,name){
@@ -757,6 +769,10 @@
       status:'draft',
       invoice_number:'CALLOUT-'+Date.now().toString().slice(-6),
     };
+    const btn=document.getElementById('saveCalloutBtn');
+    const orig=btn.innerHTML;
+    btn.disabled=true;
+    btn.innerHTML='<span class="spinner-border spinner-border-sm me-1"></span>Creating…';
     try{
       const r=await api('/portal/api/invoices/',{method:'POST',body:JSON.stringify(body)});
       const d=await r.json();
@@ -765,6 +781,8 @@
         showAlert('pageAlert',`Call-out invoice ${d.invoice_number} created as draft. Go to Invoices to send it.`,'success');
       } else { showAlert('calloutAlert',d.detail||JSON.stringify(d)); }
     }catch(e){ if(e.message!=='Unauth') showAlert('calloutAlert','Failed to create invoice.'); }
+    btn.disabled=false;
+    btn.innerHTML=orig;
   };
 
   // ── Generate Monthly Invoices ────────────────────────────────────────────────
@@ -778,7 +796,9 @@
 
   document.getElementById('runGenBtn').onclick=async()=>{
     const btn=document.getElementById('runGenBtn');
-    btn.disabled=true; btn.innerHTML='<span class="spinner-border spinner-border-sm me-1"></span>Generating…';
+    const orig=btn.innerHTML;
+    btn.disabled=true;
+    btn.innerHTML='<span class="spinner-border spinner-border-sm me-1"></span>Generating…';
     const year=parseInt(document.getElementById('gen_year').value);
     const month=parseInt(document.getElementById('gen_month').value);
     const sendEmail=document.getElementById('gen_send_email').checked;
@@ -796,7 +816,8 @@
         loadWifi();
       } else { document.getElementById('genResult').innerHTML=`<div class="alert alert-danger">${d.detail||JSON.stringify(d)}</div>`; }
     }catch(e){ document.getElementById('genResult').innerHTML=`<div class="alert alert-danger">${e.message}</div>`; }
-    btn.disabled=false; btn.innerHTML='<i data-feather="zap" style="width:14px;height:14px"></i> Run Generation';
+    btn.disabled=false;
+    btn.innerHTML=orig;
     if(window.feather)feather.replace();
   };
 

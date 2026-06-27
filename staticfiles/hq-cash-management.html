@@ -38,6 +38,7 @@
     </nav>
     <main class="content">
       <div class="container-fluid p-0">
+        <div id="pageAlert" class="alert d-none" role="alert"></div>
         <div class="d-flex align-items-center justify-content-between mb-3">
           <h1 class="h3 mb-0"><strong>Cash Management</strong></h1>
           <div>
@@ -244,24 +245,34 @@
     new bootstrap.Modal(document.getElementById('closeShiftModal')).show();
   });
 
+  function showAlert(id,msg,type='danger'){
+    const el=document.getElementById(id);if(!el)return;
+    el.className='alert alert-'+type;el.textContent=msg;
+    if(type==='success'){setTimeout(()=>{el.className='alert d-none';},4000);}
+  }
+
   async function shiftAction(action,data){
     const alertId=action==='open'?'openShiftAlert':'closeShiftAlert';
+    const modalId=action==='open'?'openShiftModal':'closeShiftModal';
     const submitId=action==='open'?'openShiftSubmit':'closeShiftSubmit';
+    const verb=action==='open'?'Opening…':'Closing…';
     const btn=document.getElementById(submitId);
+    const orig=btn.innerHTML;
     btn.disabled=true;
+    btn.innerHTML='<span class="spinner-border spinner-border-sm me-1"></span>'+verb;
     try{
       const r=await api('/portal/api/shifts/',{method:'POST',body:JSON.stringify({action,...data})});
       const res=await r.json();
       if(r.ok){
-        document.getElementById(alertId).className='alert alert-success';
-        document.getElementById(alertId).textContent=res.detail||(action==='open'?'Shift opened.':'Shift closed. Variance: '+res.variance);
+        bootstrap.Modal.getInstance(document.getElementById(modalId))?.hide();
+        const msg=res.detail||(action==='open'?'Shift opened successfully.':'Shift closed. Variance: '+res.variance);
+        showAlert('pageAlert',msg,'success');
         loadShifts();loadTxns();
       }else{
-        document.getElementById(alertId).className='alert alert-danger';
-        document.getElementById(alertId).textContent=res.detail||'Error.';
+        showAlert(alertId,res.detail||'Error.','danger');
       }
-    }catch(e){if(e.message!=='Unauth'){document.getElementById(alertId).className='alert alert-danger';document.getElementById(alertId).textContent='Network error.';}}
-    finally{btn.disabled=false;}
+    }catch(e){if(e.message!=='Unauth'){showAlert(alertId,'Network error.','danger');}}
+    finally{btn.disabled=false;btn.innerHTML=orig;}
   }
 
   document.getElementById('openShiftSubmit').addEventListener('click',()=>{

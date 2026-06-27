@@ -216,38 +216,59 @@ async function markComplete(taskId, checkbox) {
   loadTasks();
 }
 
+function showAlert(id, msg, type='danger') {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.innerHTML = `<div class="alert alert-${type} py-2 alert-dismissible">${msg}<button class="btn-close float-end" onclick="this.closest('.alert').remove()"></button></div>`;
+}
+
 async function seedDefaultTasks() {
-  const defaults = [
-    // Technician morning
-    {role:'technician',frequency:'daily_morning',title:'Tool Registry Ingestion',description:'Inspect workshop tools (bench supplies, multimeters) for operational safety.',link_url:'/portal/dashboard/job-cards/',sort_order:1},
-    {role:'technician',frequency:'daily_morning',title:'Backlog Prioritization Check',description:'Query job queue for devices marked Awaiting Parts or In-Progress.',link_url:'/portal/dashboard/job-cards/',sort_order:2},
-    // Technician evening
-    {role:'technician',frequency:'daily_evening',title:'Active Status Update',description:'Ensure every device worked on has its job card updated to the correct status.',link_url:'/portal/dashboard/job-cards/',sort_order:1},
-    {role:'technician',frequency:'daily_evening',title:'Micro-Stock Isolation',description:'Secure high-value micro-components and log any consumables used today.',link_url:'/portal/dashboard/inventory/',sort_order:2},
-    // Cashier morning
-    {role:'cashier',frequency:'daily_morning',title:'Float Vault Count',description:'Count the cash float manually and enter the value to unlock the POS system.',link_url:'/portal/dashboard/cash-management/',sort_order:1,is_blocking:true},
-    {role:'cashier',frequency:'daily_morning',title:'Link Verification',description:'Confirm speed-point terminal and network connection are online.',link_url:'/portal/dashboard/pos/',sort_order:2},
-    // Cashier evening
-    {role:'cashier',frequency:'daily_evening',title:'Daily Invoicing Matching',description:'Count cash drawer and card receipts, submit against system-generated log.',link_url:'/portal/dashboard/cash-management/',sort_order:1},
-    {role:'cashier',frequency:'daily_evening',title:'Safe Deposit Log',description:'Move verified earnings to on-site safe and mark as Deposited.',link_url:'/portal/dashboard/cash-management/',sort_order:2},
-    // Cashier weekly
-    {role:'cashier',frequency:'weekly',title:'Procurement OCR Intake',description:'Scan and upload all supplier slips from Pinnacle, Mustek, Communica.',link_url:'/portal/dashboard/vat201/',sort_order:1},
-    {role:'cashier',frequency:'weekly',title:'Debtors Follow-Up Run',description:'Access outstanding invoices and trigger email reminders to overdue clients.',link_url:'/portal/invoices/',sort_order:2},
-    // Admin weekly
-    {role:'admin',frequency:'weekly',title:'Bank Statement Ledger Sync',description:'Import weekly banking statement and reconcile against cash flow streams.',link_url:'/portal/dashboard/financial-analytics/',sort_order:1},
-    // Joint monthly
-    {role:'technician',frequency:'monthly',title:'Physical Stocktake Cycle',description:'Count all physical inventory items and log figures into the stock audit portal.',link_url:'/portal/dashboard/inventory/',sort_order:1},
-    {role:'cashier',frequency:'monthly',title:'Physical Stocktake Cycle',description:'Count all physical inventory items and log figures into the stock audit portal.',link_url:'/portal/dashboard/inventory/',sort_order:1},
-    // Admin monthly
-    {role:'admin',frequency:'monthly',title:'UIF & PAYE Verification',description:'Review timesheets, verify leave, run payroll calculations, distribute payslips.',link_url:'/portal/dashboard/emp201/',sort_order:1},
-    {role:'admin',frequency:'monthly',title:'SARS Filing Review',description:'Verify OCR vendor receipts match input tax figures, lock period, copy to eFiling.',link_url:'/portal/dashboard/compliance/',sort_order:2},
-  ];
-  for (const task of defaults) {
-    await apiFetch(API+'/playbook/tasks/', {method:'POST', body:JSON.stringify(task)});
+  const btn = document.getElementById('btnSeedTasks');
+  const orig = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Seeding…';
+  try {
+    const defaults = [
+      // Technician morning
+      {role:'technician',frequency:'daily_morning',title:'Tool Registry Ingestion',description:'Inspect workshop tools (bench supplies, multimeters) for operational safety.',link_url:'/portal/dashboard/job-cards/',sort_order:1},
+      {role:'technician',frequency:'daily_morning',title:'Backlog Prioritization Check',description:'Query job queue for devices marked Awaiting Parts or In-Progress.',link_url:'/portal/dashboard/job-cards/',sort_order:2},
+      // Technician evening
+      {role:'technician',frequency:'daily_evening',title:'Active Status Update',description:'Ensure every device worked on has its job card updated to the correct status.',link_url:'/portal/dashboard/job-cards/',sort_order:1},
+      {role:'technician',frequency:'daily_evening',title:'Micro-Stock Isolation',description:'Secure high-value micro-components and log any consumables used today.',link_url:'/portal/dashboard/inventory/',sort_order:2},
+      // Cashier morning
+      {role:'cashier',frequency:'daily_morning',title:'Float Vault Count',description:'Count the cash float manually and enter the value to unlock the POS system.',link_url:'/portal/dashboard/cash-management/',sort_order:1,is_blocking:true},
+      {role:'cashier',frequency:'daily_morning',title:'Link Verification',description:'Confirm speed-point terminal and network connection are online.',link_url:'/portal/dashboard/pos/',sort_order:2},
+      // Cashier evening
+      {role:'cashier',frequency:'daily_evening',title:'Daily Invoicing Matching',description:'Count cash drawer and card receipts, submit against system-generated log.',link_url:'/portal/dashboard/cash-management/',sort_order:1},
+      {role:'cashier',frequency:'daily_evening',title:'Safe Deposit Log',description:'Move verified earnings to on-site safe and mark as Deposited.',link_url:'/portal/dashboard/cash-management/',sort_order:2},
+      // Cashier weekly
+      {role:'cashier',frequency:'weekly',title:'Procurement OCR Intake',description:'Scan and upload all supplier slips from Pinnacle, Mustek, Communica.',link_url:'/portal/dashboard/vat201/',sort_order:1},
+      {role:'cashier',frequency:'weekly',title:'Debtors Follow-Up Run',description:'Access outstanding invoices and trigger email reminders to overdue clients.',link_url:'/portal/invoices/',sort_order:2},
+      // Admin weekly
+      {role:'admin',frequency:'weekly',title:'Bank Statement Ledger Sync',description:'Import weekly banking statement and reconcile against cash flow streams.',link_url:'/portal/dashboard/financial-analytics/',sort_order:1},
+      // Joint monthly
+      {role:'technician',frequency:'monthly',title:'Physical Stocktake Cycle',description:'Count all physical inventory items and log figures into the stock audit portal.',link_url:'/portal/dashboard/inventory/',sort_order:1},
+      {role:'cashier',frequency:'monthly',title:'Physical Stocktake Cycle',description:'Count all physical inventory items and log figures into the stock audit portal.',link_url:'/portal/dashboard/inventory/',sort_order:1},
+      // Admin monthly
+      {role:'admin',frequency:'monthly',title:'UIF & PAYE Verification',description:'Review timesheets, verify leave, run payroll calculations, distribute payslips.',link_url:'/portal/dashboard/emp201/',sort_order:1},
+      {role:'admin',frequency:'monthly',title:'SARS Filing Review',description:'Verify OCR vendor receipts match input tax figures, lock period, copy to eFiling.',link_url:'/portal/dashboard/compliance/',sort_order:2},
+    ];
+    let failed = 0;
+    for (const task of defaults) {
+      const r = await apiFetch(API+'/playbook/tasks/', {method:'POST', body:JSON.stringify(task)});
+      if (!r || !r.ok) failed++;
+    }
+    if (failed === 0) {
+      showAlert('pageAlert', 'Default tasks seeded successfully.', 'success');
+    } else {
+      showAlert('pageAlert', `Seeding completed with ${failed} error(s). Some tasks may already exist.`, 'warning');
+    }
+    await loadTasks();
+  } catch(e) {
+    showAlert('pageAlert', 'Failed to seed default tasks.');
   }
-  const el = document.getElementById('pageAlert');
-  el.innerHTML = '<div class="alert alert-success py-2">Default tasks seeded. <button class="btn-close float-end" onclick="this.closest(\'.alert\').remove()"></button></div>';
-  await loadTasks();
+  btn.disabled = false;
+  btn.innerHTML = orig;
 }
 
 document.getElementById('roleFilter').addEventListener('change', loadTasks);

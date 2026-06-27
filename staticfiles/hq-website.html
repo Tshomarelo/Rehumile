@@ -202,7 +202,7 @@
           </div>
         </div>
         <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:4px">
-          <button class="btn btn-primary" onclick="seedDefaultContent()">
+          <button class="btn btn-primary" id="seedBtn" onclick="seedDefaultContent()">
             <i data-feather="database" style="width:15px;height:15px"></i> Seed Default Content
           </button>
         </div>
@@ -272,7 +272,7 @@
     </div>
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="closePriceModal()">Cancel</button>
-      <button class="btn btn-primary" onclick="savePrice()">Save Service</button>
+      <button class="btn btn-primary" id="savePriceBtn" onclick="savePrice()">Save Service</button>
     </div>
   </div>
 </div>
@@ -403,15 +403,26 @@ async function savePrice() {
     is_active: document.getElementById('pActive').checked,
   };
   if (!payload.name || !payload.price) { toast('Service name and price are required.', '#dc2626'); return; }
-  const url = id ? `${API}/website/prices/${id}/` : `${API}/website/prices/`;
-  const method = id ? 'PATCH' : 'POST';
-  const res = await fetch(url, { method, headers: authHeaders(), body: JSON.stringify(payload) });
-  if (res.ok) {
-    toast(id ? 'Price updated.' : 'Service added.', '#16a34a');
-    closePriceModal(); loadPrices(); loadKPIs();
-  } else {
-    toast('Save failed — check all fields.', '#dc2626');
+  const btn = document.getElementById('savePriceBtn');
+  const orig = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Saving…';
+  try {
+    const url = id ? `${API}/website/prices/${id}/` : `${API}/website/prices/`;
+    const method = id ? 'PATCH' : 'POST';
+    const res = await fetch(url, { method, headers: authHeaders(), body: JSON.stringify(payload) });
+    if (res.ok) {
+      closePriceModal();
+      toast(id ? 'Price updated.' : 'Service added.', '#16a34a');
+      loadPrices(); loadKPIs();
+    } else {
+      toast('Save failed — check all fields.', '#dc2626');
+    }
+  } catch(e) {
+    toast('Save failed — network error.', '#dc2626');
   }
+  btn.disabled = false;
+  btn.innerHTML = orig;
 }
 
 async function deletePrice(id) {
@@ -502,15 +513,25 @@ const DEFAULT_CONTENT = [
 
 async function seedDefaultContent() {
   if (!confirm('This will create missing default content blocks (existing blocks are not overwritten). Continue?')) return;
-  let created = 0;
-  for (const item of DEFAULT_CONTENT) {
-    const res = await fetch(`${API}/website/content/`, {
-      method: 'POST', headers: authHeaders(), body: JSON.stringify(item),
-    });
-    if (res.ok) { const d = await res.json(); if (d.created) created++; }
+  const btn = document.getElementById('seedBtn');
+  const orig = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Seeding…';
+  try {
+    let created = 0;
+    for (const item of DEFAULT_CONTENT) {
+      const res = await fetch(`${API}/website/content/`, {
+        method: 'POST', headers: authHeaders(), body: JSON.stringify(item),
+      });
+      if (res.ok) { const d = await res.json(); if (d.created) created++; }
+    }
+    toast(`Seeded ${created} new content blocks.`, '#16a34a');
+    loadContent(); loadKPIs();
+  } catch(e) {
+    toast('Seed failed — network error.', '#dc2626');
   }
-  toast(`Seeded ${created} new content blocks.`, '#16a34a');
-  loadContent(); loadKPIs();
+  btn.disabled = false;
+  btn.innerHTML = orig;
 }
 
 // ── Close modal on overlay click ──────────────────────────────────────────────

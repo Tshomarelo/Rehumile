@@ -416,6 +416,10 @@ window.calcTotal = function(){
       showAlert('modalAlert','Company, invoice number, and billing period are required.'); return;
     }
     const body={company,invoice_number,billing_period_start,billing_period_end,ticket_count,hours_worked,subtotal,tax_rate,due_date,status,notes,incident,invoice_type,description};
+    const btn=document.getElementById('saveInvoiceBtn');
+    const orig=btn.innerHTML;
+    btn.disabled=true;
+    btn.innerHTML='<span class="spinner-border spinner-border-sm me-1"></span>Saving…';
     try{
       const r=id
         ? await api(`/portal/api/invoices/${id}/`,{method:'PATCH',body:JSON.stringify(body)})
@@ -423,10 +427,12 @@ window.calcTotal = function(){
       const data=await r.json();
       if(r.ok){
         bootstrap.Modal.getInstance(document.getElementById('invoiceModal')).hide();
-        showAlert('pageAlert',id?'Invoice updated.':'Invoice created.','success');
+        showAlert('pageAlert',id?'Invoice updated successfully.':'Invoice created successfully.','success');
         loadInvoices();
       } else { showAlert('modalAlert',data.detail||data.invoice_number?.[0]||JSON.stringify(data)); }
     }catch(e){ if(e.message!=='Unauth') showAlert('modalAlert','Failed to save invoice.'); }
+    btn.disabled=false;
+    btn.innerHTML=orig;
   };
 
   loadInvoices();
@@ -444,8 +450,15 @@ window.calcTotal = function(){
         body: JSON.stringify({ email }),
       });
       const d = await r.json();
-      resultEl.textContent = r.ok ? ('✅ ' + d.detail) : ('❌ ' + (d.detail || 'Failed'));
-      resultEl.className = r.ok ? 'text-success mt-2 small' : 'text-danger mt-2 small';
+      if (r.ok) {
+        resultEl.textContent = '✅ ' + d.detail;
+        resultEl.className = 'text-success mt-2 small';
+        bootstrap.Modal.getInstance(document.getElementById('remindModal')).hide();
+        showAlert('pageAlert', 'Payment reminder sent successfully.', 'success');
+      } else {
+        resultEl.textContent = '❌ ' + (d.detail || 'Failed');
+        resultEl.className = 'text-danger mt-2 small';
+      }
     } catch(e) {
       resultEl.textContent = '❌ ' + (e.message || 'Network error');
       resultEl.className = 'text-danger mt-2 small';

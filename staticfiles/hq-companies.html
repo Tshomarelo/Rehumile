@@ -242,6 +242,10 @@
       description:document.getElementById('f_description').value.trim(),
     };
     if(!body.name||!body.contact_person||!body.contact_email){ showAlert('modalAlert','Name, contact person and contact email are required.'); return; }
+    const btn=document.getElementById('saveBtn');
+    const orig=btn.innerHTML;
+    btn.disabled=true;
+    btn.innerHTML='<span class="spinner-border spinner-border-sm me-1"></span>'+(id?'Updating…':'Saving…');
     try{
       const r=id
         ? await api(`/portal/api/companies/${id}/`,{method:'PATCH',body:JSON.stringify(body)})
@@ -249,10 +253,12 @@
       const data=await r.json();
       if(r.ok){
         bootstrap.Modal.getInstance(document.getElementById('companyModal')).hide();
-        showAlert('pageAlert',id?'Company updated.':'Company created.','success');
+        showAlert('pageAlert',id?'Company updated successfully.':'Company created successfully.','success');
         loadCompanies();
       } else { showAlert('modalAlert',data.detail||JSON.stringify(data)); }
     }catch(e){ if(e.message!=='Unauth') showAlert('modalAlert','Failed to save company.'); }
+    btn.disabled=false;
+    btn.innerHTML=orig;
   };
 
   window.openDelete=function(id, name){
@@ -263,14 +269,20 @@
 
   document.getElementById('confirmDelete').onclick=async()=>{
     if(!deleteTargetId) return;
+    const btn=document.getElementById('confirmDelete');
+    const orig=btn.innerHTML;
+    btn.disabled=true;
+    btn.innerHTML='<span class="spinner-border spinner-border-sm me-1"></span>Deleting…';
     try{
       const r=await api(`/portal/api/companies/${deleteTargetId}/`,{method:'DELETE'});
       if(r.ok||r.status===204){
         bootstrap.Modal.getInstance(document.getElementById('deleteModal')).hide();
-        showAlert('pageAlert','Company deleted.','success');
+        showAlert('pageAlert','Company deleted successfully.','success');
         loadCompanies();
       } else { showAlert('pageAlert','Failed to delete company.'); }
     }catch(e){ if(e.message!=='Unauth') showAlert('pageAlert','Error deleting company.'); }
+    btn.disabled=false;
+    btn.innerHTML=orig;
     deleteTargetId=null;
   };
 

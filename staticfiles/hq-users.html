@@ -142,9 +142,9 @@
         <p>Change status for <strong id="statusUserName"></strong>:</p>
         <input type="hidden" id="statusUserId">
         <div class="d-grid gap-2">
-          <button class="btn btn-success" onclick="setStatus('active')">Activate</button>
-          <button class="btn btn-warning" onclick="setStatus('suspended')">Suspend</button>
-          <button class="btn btn-secondary" onclick="setStatus('inactive')">Deactivate</button>
+          <button class="btn btn-success" onclick="setStatus('active',this)">Activate</button>
+          <button class="btn btn-warning" onclick="setStatus('suspended',this)">Suspend</button>
+          <button class="btn btn-secondary" onclick="setStatus('inactive',this)">Deactivate</button>
         </div>
       </div>
     </div>
@@ -228,6 +228,10 @@
     if(pass.length<8){ showAlert('modalAlert','Password must be at least 8 characters.'); return; }
     const body={first_name:first,last_name:last,email,role,password:pass};
     if(company) body.company=company;
+    const btn=document.getElementById('saveUserBtn');
+    const orig=btn.innerHTML;
+    btn.disabled=true;
+    btn.innerHTML='<span class="spinner-border spinner-border-sm me-1"></span>Creating…';
     try{
       const r=await api('/portal/api/users/',{method:'POST',body:JSON.stringify(body)});
       const data=await r.json();
@@ -237,6 +241,8 @@
         loadUsers();
       } else { showAlert('modalAlert',data.email?data.email[0]:data.detail||JSON.stringify(data)); }
     }catch(e){ if(e.message!=='Unauth') showAlert('modalAlert','Failed to create user.'); }
+    btn.disabled=false;
+    btn.innerHTML=orig;
   };
 
   window.openStatus=function(id, name){
@@ -245,9 +251,13 @@
     bootstrap.Modal.getOrCreateInstance(document.getElementById('statusModal')).show();
   };
 
-  window.setStatus=async function(newStatus){
+  window.setStatus=async function(newStatus, btnEl){
     const id=document.getElementById('statusUserId').value;
     if(!id) return;
+    const btn=btnEl||event.currentTarget;
+    const orig=btn.innerHTML;
+    btn.disabled=true;
+    btn.innerHTML='<span class="spinner-border spinner-border-sm me-1"></span>Updating…';
     try{
       const r=await api(`/portal/api/users/${id}/status/`,{method:'PATCH',body:JSON.stringify({status:newStatus})});
       if(r.ok){
@@ -256,6 +266,8 @@
         loadUsers();
       } else { const d=await r.json(); showAlert('pageAlert',d.detail||'Failed to update status.'); }
     }catch(e){ if(e.message!=='Unauth') showAlert('pageAlert','Error updating status.'); }
+    btn.disabled=false;
+    btn.innerHTML=orig;
   };
 
   loadUsers();

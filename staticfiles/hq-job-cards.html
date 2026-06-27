@@ -183,9 +183,11 @@
 
   document.getElementById('jcSubmitBtn').addEventListener('click',async()=>{
     const btn=document.getElementById('jcSubmitBtn');
-    const spin=document.getElementById('jcSpinner');
-    const alert=document.getElementById('jcFormAlert');
-    btn.disabled=true;spin.classList.remove('d-none');alert.className='alert d-none';
+    const orig=btn.innerHTML;
+    const modalAlert=document.getElementById('jcFormAlert');
+    btn.disabled=true;
+    btn.innerHTML='<span class="spinner-border spinner-border-sm me-1"></span>Creating…';
+    modalAlert.className='alert d-none';
     try{
       const r=await api('/portal/api/job-cards/',{
         method:'POST',
@@ -203,15 +205,29 @@
       });
       if(r.ok){
         const data=await r.json();
-        alert.className='alert alert-success';alert.textContent='Job Card '+data.job_number+' created.';
+        bootstrap.Modal.getInstance(document.getElementById('newJobModal')).hide();
         document.getElementById('jcForm').reset();
+        // show page-level success alert
+        let pageAlert=document.getElementById('pageAlert');
+        if(!pageAlert){
+          pageAlert=document.createElement('div');
+          pageAlert.id='pageAlert';
+          pageAlert.className='alert alert-success alert-dismissible fade show';
+          pageAlert.role='alert';
+          const main=document.querySelector('.container-fluid.p-0');
+          main.insertBefore(pageAlert,main.firstChild);
+        } else {
+          pageAlert.className='alert alert-success alert-dismissible fade show';
+        }
+        pageAlert.innerHTML='Job Card <strong>'+data.job_number+'</strong> created successfully. <button type="button" class="btn-close" data-bs-dismiss="alert"></button>';
         load();
       }else{
         const err=await r.json().catch(()=>({}));
-        alert.className='alert alert-danger';alert.textContent=err.detail||JSON.stringify(err);
+        modalAlert.className='alert alert-danger';modalAlert.textContent=err.detail||JSON.stringify(err);
       }
-    }catch(e){if(e.message!=='Unauth'){alert.className='alert alert-danger';alert.textContent='Network error.';}}
-    finally{btn.disabled=false;spin.classList.add('d-none');}
+    }catch(e){if(e.message!=='Unauth'){modalAlert.className='alert alert-danger';modalAlert.textContent='Network error.';}}
+    btn.disabled=false;
+    btn.innerHTML=orig;
   });
 
   load();

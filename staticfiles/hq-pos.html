@@ -216,9 +216,11 @@
   document.getElementById('payBtn').addEventListener('click',async()=>{
     if(!cart.length)return;
     const btn=document.getElementById('payBtn');
-    const spin=document.getElementById('paySpinner');
-    const alert=document.getElementById('payAlert');
-    btn.disabled=true;spin.classList.remove('d-none');alert.className='alert d-none';
+    const alertEl=document.getElementById('payAlert');
+    const orig=btn.innerHTML;
+    btn.disabled=true;
+    btn.innerHTML='<span class="spinner-border spinner-border-sm me-1"></span>Processing…';
+    alertEl.className='alert d-none';
     const sub=cart.reduce((s,c)=>s+c.price*c.qty,0);
     const total=sub*1.15;
     const desc=document.getElementById('payDesc').value.trim()||'POS Sale — '+cart.map(c=>c.name).join(', ');
@@ -250,16 +252,16 @@ ${cart.map(c=>`${c.name.padEnd(20,' ')} x${c.qty}   R${(c.price*c.qty).toFixed(2
 <div><strong>TOTAL: R${total.toFixed(2)}</strong></div>
 <hr style="border-top:1px dashed #ccc">
 <div style="text-align:center;font-size:11px">Thank you for your business!</div>`;
-        alert.className='alert alert-success';alert.textContent='Payment processed. R '+total.toFixed(2);
+        alertEl.className='alert alert-success';alertEl.textContent='Payment processed successfully. R '+total.toFixed(2);
         cart=[];renderCart();
         if(window.feather)feather.replace();
         loadCatalog();
       }else{
         const err=await r.json().catch(()=>({}));
-        alert.className='alert alert-danger';alert.textContent=err.detail||'Payment failed.';
+        alertEl.className='alert alert-danger';alertEl.textContent=err.detail||'Payment failed.';
       }
-    }catch(e){if(e.message!=='Unauth'){alert.className='alert alert-danger';alert.textContent='Network error.';}}
-    finally{btn.disabled=false;spin.classList.add('d-none');}
+    }catch(e){if(e.message!=='Unauth'){alertEl.className='alert alert-danger';alertEl.textContent='Network error.';}}
+    finally{btn.disabled=false;btn.innerHTML=orig;}
   });
 
   document.getElementById('printReceiptBtn').addEventListener('click',()=>{

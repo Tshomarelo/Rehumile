@@ -402,6 +402,10 @@
     const o_pct=parseFloat(document.getElementById('a_opex').value)||0;
     const ow_pct=parseFloat(document.getElementById('a_owner').value)||0;
     if(Math.abs(r_pct+o_pct+ow_pct-100)>0.01){ showAlert('allocModalAlert','Percentages must sum to 100%.'); return; }
+    const btn=document.getElementById('saveAllocBtn');
+    const orig=btn.innerHTML;
+    btn.disabled=true;
+    btn.innerHTML='<span class="spinner-border spinner-border-sm me-1"></span>Saving…';
     try{
       const r=await api('/portal/api/revenue-allocation/',{method:'PATCH',body:JSON.stringify({
         reinvestment_pct:(r_pct/100).toFixed(4),
@@ -411,10 +415,12 @@
       const d=await r.json();
       if(r.ok){
         bootstrap.Modal.getInstance(document.getElementById('allocModal')).hide();
-        showAlert('pageAlert','Profit allocation updated.','success');
+        showAlert('pageAlert','Profit allocation updated successfully.','success');
         loadIntelligence();
       } else { showAlert('allocModalAlert',d.detail||JSON.stringify(d)); }
     }catch(e){ if(e.message!=='Unauth') showAlert('allocModalAlert','Failed to save.'); }
+    btn.disabled=false;
+    btn.innerHTML=orig;
   };
 
   // ── Refresh ──────────────────────────────────────────────────────────────────
