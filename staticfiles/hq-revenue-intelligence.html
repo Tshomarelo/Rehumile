@@ -256,13 +256,14 @@
 
       // Live cards
       const s=d.streams||{};
-      document.getElementById('live-wifi').textContent=R(s.wifi?.revenue);
-      document.getElementById('live-wifi-sub').textContent=`${s.wifi?.invoice_count||0} invoices`;
-      document.getElementById('live-sla').textContent=R(s.sla?.revenue);
-      document.getElementById('live-sla-sub').textContent=`${s.sla?.invoice_count||0} invoices`;
-      document.getElementById('live-adhoc').textContent=R(s.adhoc?.revenue);
-      const netProfit=parseFloat(d.net_profit||0);
-      const totalRev=parseFloat(d.total_revenue||0);
+      const totals=d.totals||{};
+      document.getElementById('live-wifi').textContent=R(s.wifi?.paid);
+      document.getElementById('live-wifi-sub').textContent=`Expected: ${R(s.wifi?.expected)}`;
+      document.getElementById('live-sla').textContent=R(s.sla?.paid);
+      document.getElementById('live-sla-sub').textContent=`Expected: ${R(s.sla?.expected)}`;
+      document.getElementById('live-adhoc').textContent=R(s.adhoc?.paid);
+      const netProfit=parseFloat(totals.net_profit||0);
+      const totalRev=parseFloat(totals.revenue||0);
       document.getElementById('live-profit').textContent=R(netProfit);
       document.getElementById('live-margin-pct').textContent=totalRev>0?((netProfit/totalRev)*100).toFixed(1)+'% margin':'';
       document.getElementById('liveCards').style.display='';
