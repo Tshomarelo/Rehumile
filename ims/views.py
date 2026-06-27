@@ -2996,7 +2996,6 @@ class RevenueIntelligenceView(APIView):
                 'is_loss_making': False,
             })
         client_prof.sort(key=lambda x: x['gross_margin'], reverse=True)
-        client_prof.sort(key=lambda x: x['total_gross_profit'], reverse=True)
 
         return Response({
             'period': {'start': m_start, 'end': m_end, 'label': m_start.strftime('%B %Y')},
