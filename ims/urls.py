@@ -15,6 +15,7 @@ urlpatterns = [
     path('auth/me/', views.MeView.as_view(), name='me'),
     path('auth/password-reset/', views.PasswordResetRequestView.as_view(), name='password-reset-request'),
     path('auth/password-reset/confirm/', views.PasswordResetConfirmView.as_view(), name='password-reset-confirm'),
+    path('auth/impersonate/<uuid:user_id>/', views.ImpersonateView.as_view(), name='impersonate'),
     path('dashboard/metrics/', views.DashboardMetricsView.as_view(), name='dashboard-metrics'),
     path('notifications/', views.NotificationsView.as_view(), name='notifications'),
     path('audit-log/', views.AuditLogView.as_view(), name='audit-log'),

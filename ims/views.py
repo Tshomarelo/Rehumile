@@ -309,6 +309,55 @@ class LoginView(APIView):
         })
 
 
+class ImpersonateView(APIView):
+    """
+    Admin-only: issue a short-lived access token for a client user so HQ can
+    QA-check what that client sees (e.g. their invoices), without knowing or
+    resetting the client's real password. Every use is written to AuditLog.
+    """
+    permission_classes = [IsHQAdmin]
+
+    def post(self, request, user_id):
+        from .models import AuditLog
+        try:
+            target = User.objects.select_related('company').get(pk=user_id)
+        except User.DoesNotExist:
+            return Response({'detail': 'User not found.'}, status=404)
+
+        if target.role != 'client':
+            return Response({'detail': 'Can only view as a client user.'}, status=400)
+        if not target.is_active:
+            return Response({'detail': 'This client account is inactive.'}, status=400)
+
+        AuditLog.objects.create(
+            user=request.user,
+            action='impersonate',
+            model_name='User',
+            object_id=str(target.id),
+            new_values={
+                'impersonated_email': target.email,
+                'impersonated_name': f'{target.first_name} {target.last_name}'.strip(),
+                'company': target.company.name if target.company else None,
+            },
+            ip_address=request.META.get('REMOTE_ADDR'),
+            user_agent=request.META.get('HTTP_USER_AGENT', ''),
+        )
+
+        refresh = RefreshToken.for_user(target)
+        return Response({
+            'access': str(refresh.access_token),
+            'user': {
+                'id': str(target.id),
+                'email': target.email,
+                'first_name': target.first_name,
+                'last_name': target.last_name,
+                'role': target.role,
+                'company_id': str(target.company.id) if target.company else None,
+                'company_name': target.company.name if target.company else None,
+            }
+        })
+
+
 class RegisterView(APIView):
     """Public self-registration — creates a client account and returns JWT tokens."""
     permission_classes = [AllowAny]
