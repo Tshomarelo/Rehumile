@@ -241,74 +241,81 @@
     return r.json();
   }
 
-  /* ── Chart defaults ─────────────────────────── */
-  Chart.defaults.font.family = "'Inter',system-ui,sans-serif";
-  Chart.defaults.font.size = 12;
-  Chart.defaults.color = '#6b7280';
-  const gridColor = '#f3f4f6';
+  /* ── Charts (defensive: if Chart.js fails to load/init, KPI numbers below must still load) ── */
+  let revenueChart, priorityChart, jcChart, slaChart;
+  try{
+    if(typeof Chart === 'undefined') throw new Error('Chart.js did not load');
 
-  /* ── Colour palettes ────────────────────────── */
-  const PALETTE = ['#3b82f6','#10b981','#f59e0b','#ef4444','#8b5cf6','#06b6d4'];
-  const PRIORITY_COLORS = {critical:'#ef4444',high:'#f97316',medium:'#3b82f6',low:'#6b7280'};
-  const JC_COLORS = {logged:'#6b7280',in_progress:'#3b82f6',awaiting_parts:'#f59e0b',ready:'#10b981',paid_released:'#8b5cf6',cancelled:'#ef4444'};
+    /* ── Chart defaults ─────────────────────────── */
+    Chart.defaults.font = Chart.defaults.font || {};
+    Chart.defaults.font.family = "'Inter',system-ui,sans-serif";
+    Chart.defaults.font.size = 12;
+    Chart.defaults.color = '#6b7280';
+    const gridColor = '#f3f4f6';
 
-  /* ── Build revenue line chart (placeholder data until API loads) ── */
-  const months = ['Jan','Feb','Mar','Apr','May','Jun'].map((_,i,a)=>{
-    const d=new Date(); d.setMonth(d.getMonth()-(a.length-1-i)); return d.toLocaleString('default',{month:'short'});
-  });
-  const revenueCtx = document.getElementById('revenueChart').getContext('2d');
-  const revenueChart = new Chart(revenueCtx,{
-    type:'line',
-    data:{
-      labels:months,
-      datasets:[
-        {label:'Invoiced',data:[0,0,0,0,0,0],borderColor:'#3b82f6',backgroundColor:'rgba(59,130,246,.08)',fill:true,tension:.4,pointBackgroundColor:'#3b82f6',pointRadius:4},
-        {label:'Paid',data:[0,0,0,0,0,0],borderColor:'#10b981',backgroundColor:'rgba(16,185,129,.06)',fill:true,tension:.4,pointBackgroundColor:'#10b981',pointRadius:4}
-      ]
-    },
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{usePointStyle:true,padding:16}}},scales:{x:{grid:{display:false}},y:{grid:{color:gridColor},ticks:{callback:v=>'R'+v.toLocaleString()}}}}
-  });
+    /* ── Colour palettes ────────────────────────── */
+    const PRIORITY_COLORS = {critical:'#ef4444',high:'#f97316',medium:'#3b82f6',low:'#6b7280'};
 
-  /* ── Incidents by priority doughnut ── */
-  const priorityCtx = document.getElementById('priorityChart').getContext('2d');
-  const priorityChart = new Chart(priorityCtx,{
-    type:'doughnut',
-    data:{labels:['Critical','High','Medium','Low'],datasets:[{data:[0,0,0,0],backgroundColor:Object.values(PRIORITY_COLORS),borderWidth:0,hoverOffset:4}]},
-    options:{responsive:true,maintainAspectRatio:false,cutout:'70%',plugins:{legend:{position:'right',labels:{usePointStyle:true,padding:12}}}}
-  });
+    /* ── Build revenue line chart (placeholder data until API loads) ── */
+    const months = ['Jan','Feb','Mar','Apr','May','Jun'].map((_,i,a)=>{
+      const d=new Date(); d.setMonth(d.getMonth()-(a.length-1-i)); return d.toLocaleString('default',{month:'short'});
+    });
+    const revenueCtx = document.getElementById('revenueChart').getContext('2d');
+    revenueChart = new Chart(revenueCtx,{
+      type:'line',
+      data:{
+        labels:months,
+        datasets:[
+          {label:'Invoiced',data:[0,0,0,0,0,0],borderColor:'#3b82f6',backgroundColor:'rgba(59,130,246,.08)',fill:true,tension:.4,pointBackgroundColor:'#3b82f6',pointRadius:4},
+          {label:'Paid',data:[0,0,0,0,0,0],borderColor:'#10b981',backgroundColor:'rgba(16,185,129,.06)',fill:true,tension:.4,pointBackgroundColor:'#10b981',pointRadius:4}
+        ]
+      },
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{usePointStyle:true,padding:16}}},scales:{x:{grid:{display:false}},y:{grid:{color:gridColor},ticks:{callback:v=>'R'+v.toLocaleString()}}}}
+    });
 
-  /* ── Job card pipeline bar ── */
-  const jcCtx = document.getElementById('jobCardChart').getContext('2d');
-  const jcChart = new Chart(jcCtx,{
-    type:'bar',
-    data:{labels:['Logged','In Progress','Awaiting','Ready','Released'],datasets:[{data:[0,0,0,0,0],backgroundColor:['#6b7280','#3b82f6','#f59e0b','#10b981','#8b5cf6'],borderRadius:6,borderSkipped:false}]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false}},y:{grid:{color:gridColor},ticks:{stepSize:1}}}}
-  });
+    /* ── Incidents by priority doughnut ── */
+    const priorityCtx = document.getElementById('priorityChart').getContext('2d');
+    priorityChart = new Chart(priorityCtx,{
+      type:'doughnut',
+      data:{labels:['Critical','High','Medium','Low'],datasets:[{data:[0,0,0,0],backgroundColor:Object.values(PRIORITY_COLORS),borderWidth:0,hoverOffset:4}]},
+      options:{responsive:true,maintainAspectRatio:false,cutout:'70%',plugins:{legend:{position:'right',labels:{usePointStyle:true,padding:12}}}}
+    });
 
-  /* ── SLA half-doughnut ── */
-  const slaCtx = document.getElementById('slaChart').getContext('2d');
-  const slaChart = new Chart(slaCtx,{
-    type:'doughnut',
-    data:{labels:['Within SLA','Breached'],datasets:[{data:[100,0],backgroundColor:['#10b981','#ef4444'],borderWidth:0,circumference:180,rotation:-90}]},
-    options:{responsive:true,maintainAspectRatio:false,cutout:'72%',plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.label}: ${c.raw}%`}}}}
-  });
-  // Centre text plugin
-  const slaPlugin = {id:'slaCenter',afterDraw(chart){
-    if(chart.canvas.id!=='slaChart')return;
-    const{width,height,ctx}=chart;
-    ctx.save();
-    const pct=chart.data.datasets[0].data[0];
-    ctx.font='bold 24px Inter,system-ui,sans-serif';
-    ctx.fillStyle='#111827';
-    ctx.textAlign='center';
-    ctx.textBaseline='middle';
-    ctx.fillText(pct+'%',width/2,height*.65);
-    ctx.font='12px Inter,system-ui,sans-serif';
-    ctx.fillStyle='#6b7280';
-    ctx.fillText('SLA Rate',width/2,height*.65+26);
-    ctx.restore();
-  }};
-  Chart.register(slaPlugin);
+    /* ── Job card pipeline bar ── */
+    const jcCtx = document.getElementById('jobCardChart').getContext('2d');
+    jcChart = new Chart(jcCtx,{
+      type:'bar',
+      data:{labels:['Logged','In Progress','Awaiting','Ready','Released'],datasets:[{data:[0,0,0,0,0],backgroundColor:['#6b7280','#3b82f6','#f59e0b','#10b981','#8b5cf6'],borderRadius:6,borderSkipped:false}]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false}},y:{grid:{color:gridColor},ticks:{stepSize:1}}}}
+    });
+
+    /* ── SLA half-doughnut ── */
+    const slaCtx = document.getElementById('slaChart').getContext('2d');
+    slaChart = new Chart(slaCtx,{
+      type:'doughnut',
+      data:{labels:['Within SLA','Breached'],datasets:[{data:[100,0],backgroundColor:['#10b981','#ef4444'],borderWidth:0,circumference:180,rotation:-90}]},
+      options:{responsive:true,maintainAspectRatio:false,cutout:'72%',plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.label}: ${c.raw}%`}}}}
+    });
+    // Centre text plugin
+    const slaPlugin = {id:'slaCenter',afterDraw(chart){
+      if(chart.canvas.id!=='slaChart')return;
+      const{width,height,ctx}=chart;
+      ctx.save();
+      const pct=chart.data.datasets[0].data[0];
+      ctx.font='bold 24px Inter,system-ui,sans-serif';
+      ctx.fillStyle='#111827';
+      ctx.textAlign='center';
+      ctx.textBaseline='middle';
+      ctx.fillText(pct+'%',width/2,height*.65);
+      ctx.font='12px Inter,system-ui,sans-serif';
+      ctx.fillStyle='#6b7280';
+      ctx.fillText('SLA Rate',width/2,height*.65+26);
+      ctx.restore();
+    }};
+    Chart.register(slaPlugin);
+  }catch(e){
+    console.error('Chart.js failed to initialize — KPI numbers will still load, but charts will be skipped.', e);
+  }
 
   /* ── Helper formatters ─────────────────────── */
   const fmtR = n => 'R '+parseFloat(n||0).toLocaleString('en-ZA',{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -336,14 +343,12 @@
       const resolved = incidents.filter(i=>i.status==='resolved'||i.status==='closed');
       const slaPct = resolved.length ? Math.round(resolved.filter(i=>!i.sla_breached).length/resolved.length*100) : 100;
       document.getElementById('kpiSla').textContent = slaPct+'%';
-      slaChart.data.datasets[0].data = [slaPct, 100-slaPct];
-      slaChart.update();
+      if(slaChart){ slaChart.data.datasets[0].data = [slaPct, 100-slaPct]; slaChart.update(); }
 
       /* Priority chart */
       const pMap={critical:0,high:0,medium:0,low:0};
       incidents.filter(i=>i.status==='open'||i.status==='in_progress').forEach(i=>{ pMap[i.priority]=(pMap[i.priority]||0)+1; });
-      priorityChart.data.datasets[0].data=[pMap.critical,pMap.high,pMap.medium,pMap.low];
-      priorityChart.update();
+      if(priorityChart){ priorityChart.data.datasets[0].data=[pMap.critical,pMap.high,pMap.medium,pMap.low]; priorityChart.update(); }
 
       /* Recent incidents table */
       const recent = incidents.slice(0,8);
@@ -392,9 +397,11 @@
           if(inv.status==='paid') paidByMonth[key]+=(parseFloat(inv.total_amount||inv.amount||0));
         }
       });
-      revenueChart.data.datasets[0].data=Object.values(revByMonth);
-      revenueChart.data.datasets[1].data=Object.values(paidByMonth);
-      revenueChart.update();
+      if(revenueChart){
+        revenueChart.data.datasets[0].data=Object.values(revByMonth);
+        revenueChart.data.datasets[1].data=Object.values(paidByMonth);
+        revenueChart.update();
+      }
     }catch(e){ if(e.message!=='401') console.error('invoices',e); }
 
     try{
@@ -406,8 +413,7 @@
 
       const statusMap={logged:0,in_progress:0,awaiting_parts:0,ready:0,paid_released:0,cancelled:0};
       cards.forEach(c=>{ statusMap[c.status]=(statusMap[c.status]||0)+1; });
-      jcChart.data.datasets[0].data=[statusMap.logged,statusMap.in_progress,statusMap.awaiting_parts,statusMap.ready,statusMap.paid_released];
-      jcChart.update();
+      if(jcChart){ jcChart.data.datasets[0].data=[statusMap.logged,statusMap.in_progress,statusMap.awaiting_parts,statusMap.ready,statusMap.paid_released]; jcChart.update(); }
 
       /* Job card summary side panel */
       const statuses=[{key:'logged',label:'Logged',color:'#6b7280'},{key:'in_progress',label:'In Progress',color:'#3b82f6'},{key:'awaiting_parts',label:'Awaiting Parts',color:'#f59e0b'},{key:'ready',label:'Ready',color:'#10b981'},{key:'paid_released',label:'Released',color:'#8b5cf6'}];
