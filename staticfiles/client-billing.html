@@ -50,6 +50,10 @@
     </nav>
     <main class="content">
       <div class="container-fluid p-0">
+        <div id="qaBanner" class="alert alert-warning py-2 mb-3" style="display:none">
+          <i data-feather="eye" style="width:14px;height:14px;vertical-align:middle"></i>
+          <strong>Admin QA View</strong> — viewing as <span id="qaWho"></span>. This is a read-only preview; close this tab when done.
+        </div>
         <h1 class="h3 mb-3"><strong>Billing &amp; Invoices</strong></h1>
 
         <!-- Summary Cards -->
@@ -131,16 +135,28 @@
 <script>(function(){function _i(){var s=document.querySelector('.js-sidebar'),t=document.querySelector('.js-sidebar-toggle');if(!s||!t)return;if(window.innerWidth<992&&localStorage.getItem('ims_sidebar')==='open')s.classList.add('collapsed');t.addEventListener('click',function(){setTimeout(function(){localStorage.setItem('ims_sidebar',s.classList.contains('collapsed')?'open':'closed');},50);});}document.readyState==='loading'?document.addEventListener('DOMContentLoaded',_i):_i();})();</script>
 <script>
 (function(){
-  const token=localStorage.getItem('ims_access');
+  // Admin QA "view as client" support: a one-time access token passed via URL,
+  // isolated from this browser's real localStorage session (never persisted).
+  const qaParams = new URLSearchParams(location.search);
+  const qaToken = qaParams.get('qa_token');
+
+  const token = qaToken || localStorage.getItem('ims_access');
   if(!token){ window.location.href='/portal/login/'; return; }
-  const userData=JSON.parse(localStorage.getItem('ims_user')||'{}');
-  document.getElementById('navUserName').textContent=((userData.first_name||'')+' '+(userData.last_name||'')).trim()||userData.email||'Client';
-  document.getElementById('navCompanyName').textContent=userData.company_name||'';
+  const userData = qaToken ? {} : JSON.parse(localStorage.getItem('ims_user')||'{}');
+  document.getElementById('navUserName').textContent = qaToken ? (qaParams.get('qa_name')||'Client') : (((userData.first_name||'')+' '+(userData.last_name||'')).trim()||userData.email||'Client');
+  document.getElementById('navCompanyName').textContent = qaToken ? (qaParams.get('qa_company')||'') : (userData.company_name||'');
   document.getElementById('logoutBtn').onclick=e=>{ e.preventDefault(); localStorage.clear(); window.location.href='/portal/login/'; };
+  if(qaToken){
+    document.getElementById('qaWho').textContent = (qaParams.get('qa_name')||'client') + (qaParams.get('qa_company') ? ' ('+qaParams.get('qa_company')+')' : '');
+    document.getElementById('qaBanner').style.display='';
+  }
 
   async function api(url,opts={}){
     const r=await fetch(url,{...opts,headers:{'Content-Type':'application/json','Authorization':'Bearer '+token,...(opts.headers||{})}});
-    if(r.status===401){ localStorage.clear(); window.location.href='/portal/login/'; throw new Error('Unauth'); }
+    if(r.status===401){
+      if(qaToken){ alert('This QA preview link has expired. Generate a new one from the Users page.'); throw new Error('Unauth'); }
+      localStorage.clear(); window.location.href='/portal/login/'; throw new Error('Unauth');
+    }
     return r;
   }
 
@@ -197,6 +213,7 @@
       // Pay Now buttons
       document.querySelectorAll('.pay-now-btn').forEach(btn => {
         btn.onclick = async () => {
+          if(qaToken){ alert('Payments are disabled in Admin QA View.'); return; }
           const invoiceId = btn.dataset.id;
           btn.disabled = true; btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Loading…';
           try {

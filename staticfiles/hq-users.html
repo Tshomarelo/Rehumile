@@ -157,6 +157,7 @@
   if(!token){ window.location.href='/portal/login/'; return; }
   const userData = JSON.parse(localStorage.getItem('ims_user')||'{}');
   if(!['admin','agent','finance'].includes(userData.role)){ window.location.href='/portal/client/'; return; }
+  const isAdmin = userData.role === 'admin';
   document.getElementById('navUserName').textContent=((userData.first_name||'')+' '+(userData.last_name||'')).trim()||userData.email||'User';
   document.getElementById('navUserRole').textContent=(userData.role||'').toUpperCase();
   document.getElementById('logoutBtn').onclick=e=>{ e.preventDefault(); localStorage.clear(); window.location.href='/portal/login/'; };
@@ -200,10 +201,22 @@
           <td class="d-none d-lg-table-cell">${fmtDate(u.created_at)}</td>
           <td>
             <button class="btn btn-sm btn-outline-secondary" onclick="openStatus('${u.id}','${((u.first_name||'')+' '+(u.last_name||'')).trim()||u.email}')">Status</button>
+            ${u.role==='client' && isAdmin ? `<button class="btn btn-sm btn-outline-primary" onclick="viewAsClient('${u.id}','${((u.first_name||'')+' '+(u.last_name||'')).trim().replace(/'/g,"&#39;")||u.email}','${(u.company_name||'').replace(/'/g,"&#39;")}')" title="View this client's dashboard read-only, for QA"><i data-feather="eye" style="width:13px;height:13px"></i> View as Client</button>` : ''}
           </td>
         </tr>`).join('');
+      if(window.feather) feather.replace();
     }catch(e){ if(e.message!=='Unauth') showAlert('pageAlert','Failed to load users.'); }
   }
+
+  window.viewAsClient = async function(userId, name, company){
+    try{
+      const r = await api('/portal/api/auth/impersonate/'+userId+'/', {method:'POST'});
+      const d = await r.json();
+      if(!r.ok){ alert(d.detail||'Could not open client view.'); return; }
+      const qs = new URLSearchParams({ qa_token: d.access, qa_name: name||'', qa_company: company||'' });
+      window.open('/portal/client/billing/?'+qs.toString(), '_blank');
+    }catch(e){ if(e.message!=='Unauth') alert('Could not open client view.'); }
+  };
 
   document.getElementById('newUserBtn').onclick=()=>{
     document.getElementById('userForm').reset();
