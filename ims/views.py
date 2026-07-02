@@ -3098,15 +3098,15 @@ def _company_settings():
 
 
 class CompanySettingsView(APIView):
-    """GET (all roles) / PATCH (admin only) company banking & contact settings."""
+    """GET (all roles) / PATCH (admin or finance) company banking & contact settings."""
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
         return Response(CompanySettingsSerializer(_company_settings()).data)
 
     def patch(self, request):
-        if request.user.role != 'admin':
-            return Response({'detail': 'Admin only.'}, status=403)
+        if request.user.role not in ('admin', 'finance'):
+            return Response({'detail': 'Admin or Finance only.'}, status=403)
         obj = _company_settings()
         ser = CompanySettingsSerializer(obj, data=request.data, partial=True)
         ser.is_valid(raise_exception=True)
@@ -3125,8 +3125,13 @@ class InvoicePrintView(APIView):
         except Invoice.DoesNotExist:
             return Response({'detail': 'Not found.'}, status=404)
 
+        user = request.user
+        if user.role not in ('admin', 'agent', 'finance'):
+            if not user.company or inv.company_id != user.company_id:
+                return Response({'detail': 'Not found.'}, status=404)
+
         items = list(InvoiceItem.objects.filter(invoice=inv).values(
-            'description', 'quantity', 'unit_price', 'total_price',
+            'description', 'quantity', 'unit_price', total_price=F('amount'),
         ))
 
         # Build a single line item from invoice fields if no items exist
