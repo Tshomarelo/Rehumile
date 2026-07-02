@@ -167,6 +167,7 @@ class InvoiceSerializer(serializers.ModelSerializer):
             'subtotal', 'tax_rate', 'tax_amount', 'total_amount',
             'ticket_count', 'hours_worked', 'status', 'notes',
             'due_date', 'payment_date', 'created_at', 'updated_at',
+            'invoice_type', 'description',
         ]
         read_only_fields = ['id', 'tax_amount', 'total_amount', 'created_at', 'updated_at',
                             'incident_ticket_id', 'incident_title']
@@ -182,8 +183,7 @@ class InvoiceSerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
-        data['invoice_type'] = instance.invoice_type
-        data['description'] = instance.description or ''
+        data['description'] = data.get('description') or ''
         data['wholesale_cost'] = float(instance.wholesale_cost) if instance.wholesale_cost is not None else None
         data['wifi_subscriber_name'] = instance.wifi_subscriber.client_name if instance.wifi_subscriber else None
         data['sla_contract_name'] = instance.sla_contract.client_name if instance.sla_contract else None
