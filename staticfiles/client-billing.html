@@ -90,15 +90,21 @@
 
         <!-- Invoice Table -->
         <div class="card">
-          <div class="card-header d-flex align-items-center justify-content-between">
-            <h5 class="card-title mb-0">Invoices</h5>
-            <span class="badge bg-secondary" id="invoiceCount"></span>
+          <div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
+            <div class="d-flex align-items-center gap-2">
+              <h5 class="card-title mb-0">Invoices</h5>
+              <span class="badge bg-secondary" id="invoiceCount"></span>
+            </div>
+            <button class="btn btn-sm btn-outline-primary" id="downloadCombinedBtn" title="Download a combined PDF of the selected invoices (or all invoices if none selected), including banking details">
+              <i class="align-middle me-1" data-feather="download"></i> Download Combined Invoice
+            </button>
           </div>
           <div class="card-body p-0">
             <div id="tableLoading" class="text-center py-4 text-muted">Loading invoices…</div>
             <div class="table-responsive" id="tableWrapper" style="display:none">
               <table class="table table-hover my-0">
                 <thead><tr>
+                  <th style="width:34px"><input type="checkbox" class="form-check-input" id="selectAllInv" title="Select all"></th>
                   <th>Invoice #</th>
                   <th class="d-none d-md-table-cell">Ticket Ref</th>
                   <th>Description</th>
@@ -141,11 +147,14 @@
   const isBadge=s=>({'draft':'<span class="badge bg-secondary">Draft</span>','sent':'<span class="badge bg-warning text-dark">Sent</span>','paid':'<span class="badge bg-success">Paid</span>','overdue':'<span class="badge bg-danger">Overdue</span>','cancelled':'<span class="badge bg-secondary">Cancelled</span>'}[s]||`<span class="badge bg-secondary">${s}</span>`);
   const fmtDate=d=>d?new Date(d).toLocaleDateString('en-ZA',{year:'numeric',month:'short',day:'numeric'}):'—';
   const fmtZAR=n=>'R '+parseFloat(n||0).toFixed(2);
+  let allInvoices=[];
+  const escHtml=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 
   async function load(){
     try{
       const r=await api('/portal/api/invoices/');
       const _j=await r.json(); const invoices=_j.results!==undefined?_j.results:_j;
+      allInvoices=invoices;
 
       const total=invoices.reduce((s,i)=>s+parseFloat(i.total_amount||0),0);
       const unpaid=invoices.filter(i=>i.status==='sent').reduce((s,i)=>s+parseFloat(i.total_amount||0),0);
@@ -169,6 +178,7 @@
       document.getElementById('tableWrapper').style.display='block';
       document.getElementById('invoiceTbody').innerHTML=invoices.map(inv=>`
         <tr>
+          <td><input type="checkbox" class="form-check-input inv-select" value="${inv.id}"></td>
           <td><strong>${inv.invoice_number||'INV-'+inv.id.slice(0,8)}</strong></td>
           <td class="d-none d-md-table-cell">${inv.incident_ticket_id?`<code class="text-danger">${inv.incident_ticket_id}</code>`:'<span class="text-muted">—</span>'}</td>
           <td>${inv.description||inv.notes||'IT Support Services'}</td>
@@ -176,77 +186,14 @@
           <td><strong>${fmtZAR(inv.total_amount)}</strong></td>
           <td>${isBadge(inv.status)}</td>
           <td class="d-flex gap-1 align-items-center">
-            <button class="btn btn-sm btn-outline-secondary print-inv-btn" data-inv='${JSON.stringify(inv).replace(/'/g,"&#39;")}' title="Print invoice"><i data-feather="printer" style="width:14px;height:14px"></i></button>
+            <a class="btn btn-sm btn-outline-secondary" href="/portal/invoices/print/${inv.id}/" target="_blank" title="Print / download invoice (includes banking details)"><i data-feather="printer" style="width:14px;height:14px"></i></a>
             ${['sent','overdue'].includes(inv.status)?`<button class="btn btn-sm pay-now-btn" data-id="${inv.id}" style="background:#B38F43;color:white;font-weight:600;white-space:nowrap"><i data-feather="credit-card" style="width:13px;height:13px"></i> Pay Now</button>`:''}
           </td>
         </tr>`).join('');
-      document.querySelectorAll('.print-inv-btn').forEach(btn=>{
-        btn.onclick=()=>{
-          const inv=JSON.parse(btn.dataset.inv);
-          const w=window.open('','_blank');
-          w.document.write(`<!DOCTYPE html><html><head><title>Invoice ${inv.invoice_number||inv.id}</title>
-          <style>
-            *{box-sizing:border-box}
-            body{font-family:'Segoe UI',Arial,sans-serif;padding:0;margin:0;color:#333;background:#fff}
-            .page{max-width:760px;margin:0 auto;padding:40px}
-            .header{background:#50181E;padding:24px 32px;display:flex;align-items:center;justify-content:space-between;border-radius:8px 8px 0 0}
-            .header img{height:60px;object-fit:contain}
-            .header-right{text-align:right;color:rgba(255,255,255,0.8);font-size:13px}
-            .header-right strong{display:block;color:#B38F43;font-size:18px;margin-bottom:2px}
-            .body{padding:32px 32px 24px;border:1px solid #e0e0e0;border-top:none;border-radius:0 0 8px 8px}
-            h2{color:#50181E;margin:0 0 20px;font-size:22px}
-            .meta{width:100%;border-collapse:collapse;margin-bottom:24px}
-            .meta td{padding:5px 0;border:none;font-size:14px;vertical-align:top}
-            .meta td:first-child{color:#888;width:140px;font-weight:600;text-transform:uppercase;font-size:11px;letter-spacing:.5px;padding-top:7px}
-            .meta td:last-child{font-size:15px;font-weight:600;color:#222}
-            .items{width:100%;border-collapse:collapse;margin-bottom:24px}
-            .items th{background:#50181E;color:#fff;padding:10px 14px;text-align:left;font-size:13px}
-            .items td{padding:10px 14px;border-bottom:1px solid #eee;font-size:14px}
-            .items tfoot td{font-weight:700;font-size:15px;background:#fafafa;border-top:2px solid #50181E}
-            .footer-bar{margin-top:28px;padding-top:16px;border-top:1px solid #eee;display:flex;justify-content:space-between;align-items:center;font-size:12px;color:#999}
-            .footer-bar a{color:#50181E;text-decoration:none;font-weight:600}
-            @media print{.page{padding:20px}.header{border-radius:0}}
-          </style>
-          </head><body>
-          <div class="page">
-            <div class="header">
-              <img src="https://www.rehumile.co.za/portal/static/img/rehumile-logo.jpeg" alt="Rehumile TMW" onerror="this.style.display='none';this.nextElementSibling.style.display='block'">
-              <span style="display:none;color:#B38F43;font-size:22px;font-weight:900">REHUMILE TMW</span>
-              <div class="header-right">
-                <strong>INVOICE</strong>
-                ${inv.invoice_number||'INV-'+inv.id.slice(0,8)}
-              </div>
-            </div>
-            <div class="body">
-              <h2>Invoice</h2>
-              <table class="meta">
-                <tr><td>Invoice #</td><td>${inv.invoice_number||'INV-'+inv.id.slice(0,8)}</td></tr>
-                <tr><td>Status</td><td><span style="background:${inv.status==='paid'?'#d4edda':inv.status==='overdue'?'#f8d7da':'#fff3cd'};color:${inv.status==='paid'?'#155724':inv.status==='overdue'?'#721c24':'#856404'};padding:2px 10px;border-radius:12px;font-size:12px;font-weight:700;text-transform:uppercase">${inv.status}</span></td></tr>
-                <tr><td>Due Date</td><td style="color:#c0392b">${fmtDate(inv.due_date)}</td></tr>
-                <tr><td>Period</td><td>${fmtDate(inv.billing_period_start)} – ${fmtDate(inv.billing_period_end)}</td></tr>
-                ${inv.incident_ticket_id?`<tr><td>Ticket Ref</td><td><span style="font-family:monospace;color:#c0392b;font-weight:700">${inv.incident_ticket_id}</span></td></tr>`:''}
-              </table>
-              <table class="items">
-                <thead><tr><th>Description</th><th style="text-align:right">Amount</th></tr></thead>
-                <tbody><tr>
-                  <td>${inv.description||inv.notes||'IT Support Services'}</td>
-                  <td style="text-align:right">${fmtZAR(inv.total_amount)}</td>
-                </tr></tbody>
-                <tfoot><tr>
-                  <td>Total</td>
-                  <td style="text-align:right;color:#50181E">${fmtZAR(inv.total_amount)}</td>
-                </tr></tfoot>
-              </table>
-              <div class="footer-bar">
-                <span>Rehumile TMW &bull; infor@rehumile.co.za &bull; 068 397 3484</span>
-                <a href="https://www.rehumile.co.za">www.rehumile.co.za</a>
-              </div>
-            </div>
-          </div>
-          <script>window.onload=()=>window.print();<\/script></body></html>`);
-          w.document.close();
-        };
-      });
+      document.getElementById('selectAllInv').checked=false;
+      document.getElementById('selectAllInv').onclick=e=>{
+        document.querySelectorAll('.inv-select').forEach(cb=>cb.checked=e.target.checked);
+      };
       // Pay Now buttons
       document.querySelectorAll('.pay-now-btn').forEach(btn => {
         btn.onclick = async () => {
@@ -299,6 +246,111 @@
     document.body.appendChild(banner);
     setTimeout(() => banner.remove(), 8000);
     history.replaceState({}, '', '/portal/client/billing/');
+  }
+
+  // ── Download Combined Invoice (selected, or all statuses if none selected) ──
+  document.getElementById('downloadCombinedBtn').onclick = async () => {
+    const btn = document.getElementById('downloadCombinedBtn');
+    const checked = Array.from(document.querySelectorAll('.inv-select:checked')).map(cb => cb.value);
+    const ids = checked.length ? checked : allInvoices.map(i => i.id);
+    if (!ids.length) { alert('There are no invoices to download.'); return; }
+    // Open the tab synchronously (within the click handler) so browsers don't treat it as a popup.
+    const w = window.open('', '_blank');
+    if (w) w.document.write('<!DOCTYPE html><title>Preparing…</title><body style="font-family:sans-serif;padding:40px;text-align:center;color:#888">Preparing combined invoice…</body>');
+    const orig = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Preparing…';
+    try {
+      const results = await Promise.all(ids.map(id => api('/portal/api/invoices/' + id + '/print/').then(r => r.json())));
+      renderCombinedInvoice(results, w);
+    } catch (e) {
+      if (w) w.close();
+      alert('Failed to prepare combined invoice. Please try again.');
+    }
+    btn.disabled = false;
+    btn.innerHTML = orig;
+  };
+
+  function renderCombinedInvoice(datas, w) {
+    const R = n => 'R ' + parseFloat(n || 0).toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const cs = (datas[0] && datas[0].company_settings) || {};
+    const grandTotal = datas.reduce((s, d) => s + parseFloat(d.invoice.total_amount || 0), 0);
+
+    const sections = datas.map((d, idx) => {
+      const inv = d.invoice, client = d.client, items = d.items || [];
+      const rows = (items.length ? items : [{ description: inv.description, quantity: 1, unit_price: inv.subtotal, total_price: inv.subtotal }])
+        .map(it => `<tr><td>${escHtml(it.description || 'Service')}</td><td style="text-align:center">${it.quantity || 1}</td><td style="text-align:right">${R(it.unit_price)}</td><td style="text-align:right">${R(it.total_price || it.unit_price)}</td></tr>`).join('');
+      return `<div class="inv-section${idx ? ' page-break' : ''}">
+        <div class="inv-section-head">
+          <div>
+            <div class="inv-number">Invoice ${escHtml(inv.invoice_number || '')}</div>
+            <div class="inv-sub">Bill To: ${escHtml(client.name || '')} &bull; Period: ${escHtml(inv.date || '')} – ${escHtml(inv.due_date || '')}</div>
+          </div>
+          <span class="inv-status status-${inv.status}">${escHtml((inv.status || '').toUpperCase())}</span>
+        </div>
+        <table class="inv-items">
+          <thead><tr><th>Description</th><th style="text-align:center">Qty</th><th style="text-align:right">Unit Price</th><th style="text-align:right">Line Total</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+        <div class="inv-section-total">Total: ${R(inv.total_amount)}</div>
+      </div>`;
+    }).join('');
+
+    if (!w) { alert('Please allow pop-ups for this site to download the combined invoice.'); return; }
+    w.document.write(`<!DOCTYPE html><html><head><title>Combined Invoice Statement</title>
+    <style>
+      *{box-sizing:border-box}
+      body{font-family:'Segoe UI',Arial,sans-serif;margin:0;padding:0;color:#222;background:#fff}
+      .page{max-width:820px;margin:0 auto;padding:32px}
+      .header{background:#50181E;padding:22px 28px;border-radius:8px;color:#fff;display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}
+      .header strong{color:#B38F43;font-size:20px}
+      .inv-section{border:1px solid #e0e0e0;border-radius:6px;padding:16px 18px;margin-bottom:16px}
+      .inv-section.page-break{page-break-before:always}
+      .inv-section-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px}
+      .inv-number{font-weight:700;font-size:15px;color:#50181E}
+      .inv-sub{font-size:12px;color:#666;margin-top:2px}
+      .inv-status{padding:2px 10px;border-radius:12px;font-size:11px;font-weight:700;text-transform:uppercase}
+      .status-paid{background:#d4edda;color:#155724}.status-sent{background:#cce5ff;color:#004085}
+      .status-draft{background:#e2e3e5;color:#383d41}.status-overdue{background:#f8d7da;color:#721c24}
+      .status-cancelled{background:#e2e3e5;color:#383d41}
+      .inv-items{width:100%;border-collapse:collapse;margin-bottom:8px}
+      .inv-items th{background:#f4f4f4;padding:6px 10px;font-size:12px;text-align:left}
+      .inv-items td{padding:6px 10px;font-size:13px;border-bottom:1px solid #eee}
+      .inv-section-total{text-align:right;font-weight:700;color:#50181E}
+      .grand-total{background:#50181E;color:#fff;padding:14px 20px;border-radius:6px;display:flex;justify-content:space-between;align-items:center;font-size:16px;font-weight:700;margin-bottom:20px}
+      .banking{background:#fdf5f5;border-left:4px solid #50181E;border-radius:4px;padding:14px 18px;margin-bottom:16px}
+      .banking-title{font-size:12px;text-transform:uppercase;letter-spacing:.5px;color:#50181E;font-weight:700;margin-bottom:8px}
+      .banking table td{padding:2px 12px 2px 0;font-size:13px}
+      .banking table td:first-child{color:#888;min-width:120px}
+      .banking table td:last-child{font-weight:600}
+      .footer-bar{text-align:center;font-size:11px;color:#999;margin-top:10px}
+      .print-controls{text-align:center;padding:16px;background:#f4f4f4}
+      .btn-print{background:#50181E;color:#fff;border:none;padding:10px 28px;font-size:14px;font-weight:600;border-radius:4px;cursor:pointer}
+      @media print{.print-controls{display:none!important}}
+    </style>
+    </head><body>
+    <div class="print-controls"><button class="btn-print" onclick="window.print()">🖨 Print / Save PDF</button></div>
+    <div class="page">
+      <div class="header">
+        <span><strong>${escHtml(cs.company_name || 'Rehumile TMW')}</strong><br><span style="font-size:12px;opacity:.85">Combined Invoice Statement — ${datas.length} invoice${datas.length !== 1 ? 's' : ''}</span></span>
+        <span style="font-size:12px;text-align:right">${escHtml(cs.phone || '')}<br>${escHtml(cs.email || '')}</span>
+      </div>
+      <div class="grand-total"><span>Grand Total</span><span>${R(grandTotal)}</span></div>
+      ${sections}
+      <div class="banking">
+        <div class="banking-title">Banking Details</div>
+        <table>
+          <tr><td>Account Name</td><td>${escHtml(cs.account_name || '—')}</td></tr>
+          <tr><td>Bank</td><td>${escHtml(cs.bank_name || '—')}</td></tr>
+          <tr><td>Account No.</td><td>${escHtml(cs.account_number || '—')}</td></tr>
+          <tr><td>Branch Code</td><td>${escHtml(cs.branch_code || '—')}</td></tr>
+          ${cs.swift_code ? `<tr><td>SWIFT Code</td><td>${escHtml(cs.swift_code)}</td></tr>` : ''}
+        </table>
+      </div>
+      <div class="footer-bar">${escHtml(cs.company_name || 'Rehumile TMW')} ${cs.vat_number ? '&bull; VAT Reg: ' + escHtml(cs.vat_number) : ''}</div>
+    </div>
+    </body></html>`);
+    w.document.close();
   }
 })();
 </script>

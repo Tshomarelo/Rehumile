@@ -188,9 +188,11 @@
             <option value="callout">SLA Call-Out</option>
           </select>
         </div>
-        <div class="col-md-6 mb-3" id="f_desc_row">
-          <label class="form-label">Description <span class="text-muted small">(optional)</span></label>
-          <input type="text" class="form-control" id="f_description" placeholder="e.g. June WiFi — Thebado Fuels">
+      </div>
+      <div class="row">
+        <div class="col-md-12 mb-3" id="f_desc_row">
+          <label class="form-label">Invoice Description <span class="text-danger">*</span> <span class="text-muted small">(shown to the client on their invoice — describe the work/service in plain terms)</span></label>
+          <textarea class="form-control" id="f_description" rows="2" required placeholder="e.g. On-site network troubleshooting and router replacement at Thebado Fuels — 3 June 2026"></textarea>
         </div>
       </div>
       <div class="row">
@@ -412,6 +414,9 @@ window.calcTotal = function(){
     const description=document.getElementById('f_description').value.trim();
     if(!company||!invoice_number||!billing_period_start||!billing_period_end){
       showAlert('modalAlert','Company, invoice number, and billing period are required.'); return;
+    }
+    if(!description){
+      showAlert('modalAlert','A description of the work/service is required so the client can see what the invoice is for.'); return;
     }
     const body={company,invoice_number,billing_period_start,billing_period_end,ticket_count,hours_worked,subtotal,tax_rate,due_date,status,notes,incident,invoice_type,description};
     const btn=document.getElementById('saveInvoiceBtn');

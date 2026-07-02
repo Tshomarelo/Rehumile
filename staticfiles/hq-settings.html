@@ -47,7 +47,7 @@
         <div id="pageAlert"></div>
         <div id="readonlyBanner" class="alert alert-info py-2 small mb-3" style="display:none">
           <i data-feather="info" style="width:14px;height:14px"></i>
-          You are viewing company settings in read-only mode. Only admins can edit these.
+          You are viewing company settings in read-only mode. Only Admin and Finance roles can edit these.
         </div>
 
         <form id="settingsForm">
@@ -88,7 +88,7 @@
             </div>
 
             <!-- Banking Details -->
-            <div class="col-lg-6 mb-4">
+            <div class="col-lg-6 mb-4" id="banking-details">
               <div class="card h-100">
                 <div class="card-header">
                   <h5 class="card-title mb-0"><i data-feather="credit-card" style="width:16px;height:16px;margin-right:6px;vertical-align:middle"></i> Banking Details</h5>
@@ -190,7 +190,7 @@
   document.getElementById('navUserRole').textContent=(userData.role||'').toUpperCase();
   document.getElementById('logoutBtn').onclick=e=>{ e.preventDefault(); localStorage.clear(); window.location.href='/portal/login/'; };
 
-  const isAdmin = userData.role === 'admin';
+  const isAdmin = userData.role === 'admin' || userData.role === 'finance';
 
   async function api(url, opts={}){
     const r = await fetch(url,{...opts,headers:{'Content-Type':'application/json','Authorization':'Bearer '+token,...(opts.headers||{})}});
@@ -287,6 +287,9 @@
 
   load();
   if(window.feather) feather.replace();
+  if(location.hash === '#banking-details'){
+    document.getElementById('banking-details').scrollIntoView({behavior:'smooth', block:'start'});
+  }
 })();
 </script>
 </body>

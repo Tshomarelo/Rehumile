@@ -138,6 +138,7 @@
     submenu('nav-hr','user-check','HR',[
       ['/portal/dashboard/hr/','Employee Profiles'],
       ['/portal/dashboard/playbook/','Operational Playbook'],
+      ['/portal/dashboard/settings/#banking-details','Company Banking Details'],
     ]),
     header('Revenue'),
     submenu('nav-revenue','trending-up','Revenue',[
