@@ -71,6 +71,21 @@
 
         <!-- Employees Tab -->
         <div id="tab-employees" class="tab-pane active">
+          <div class="row g-2 mb-3">
+            <div class="col-md-4">
+              <input type="text" class="form-control form-control-sm" id="fEmpSearch" placeholder="Search by name, employee #, or job title…">
+            </div>
+            <div class="col-md-3">
+              <select class="form-select form-select-sm" id="fEmpActive">
+                <option value="true" selected>Active</option>
+                <option value="false">Inactive</option>
+                <option value="all">All</option>
+              </select>
+            </div>
+            <div class="col-md-2">
+              <button class="btn btn-sm btn-outline-secondary w-100" id="fEmpClear">Clear</button>
+            </div>
+          </div>
           <div id="empCards" class="row g-3">
             <div class="col-12 text-center text-muted py-4">Loading employees…</div>
           </div>
@@ -142,6 +157,7 @@
 
 <script src="/portal/static/js/app.js"></script>
 <script src="/portal/static/js/hq-sidebar-menu.js"></script>
+<script src="/portal/static/js/hq-filters.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
 <script>
 const API = '/portal/api';
@@ -171,8 +187,16 @@ function switchTab(name) {
   if (name==='leave') loadLeave();
 }
 
+function currentEmployeeFilters() {
+  return {
+    search: document.getElementById('fEmpSearch').value.trim(),
+    is_active: document.getElementById('fEmpActive').value,
+  };
+}
+
 async function loadEmployees() {
-  const r = await apiFetch(API+'/employees/');
+  const params = HQFilters.qs(currentEmployeeFilters());
+  const r = await apiFetch(API+'/employees/'+(params?'?'+params:''));
   if (!r) return;
   const list = await r.json();
   const cont = document.getElementById('empCards');
@@ -222,7 +246,8 @@ async function viewEmployee(id) {
 }
 
 async function loadLeave() {
-  const r = await apiFetch(API+'/leave-requests/');
+  const status = document.getElementById('leaveFilter').value;
+  const r = await apiFetch(API+'/leave-requests/'+(status?'?status='+encodeURIComponent(status):''));
   if (!r) return;
   const list = await r.json();
   const tbody = document.getElementById('leaveTbody');
@@ -301,6 +326,16 @@ document.getElementById('btnSaveEmp').addEventListener('click', async () => {
 document.getElementById('logoutBtn').addEventListener('click', e => {
   e.preventDefault(); localStorage.removeItem('ims_access'); localStorage.removeItem('ims_refresh'); location.href='/portal/login/';
 });
+
+document.getElementById('fEmpSearch').addEventListener('input', HQFilters.debounce(loadEmployees, 350));
+document.getElementById('fEmpActive').addEventListener('change', loadEmployees);
+document.getElementById('fEmpClear').addEventListener('click', () => {
+  document.getElementById('fEmpSearch').value = '';
+  document.getElementById('fEmpActive').value = 'true';
+  loadEmployees();
+});
+
+document.getElementById('leaveFilter').addEventListener('change', loadLeave);
 
 // Handle #leave hash
 if (location.hash === '#leave') switchTab('leave');

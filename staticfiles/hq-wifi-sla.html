@@ -69,6 +69,22 @@
 
         <!-- WiFi Subscribers Panel -->
         <div id="panel-wifi">
+          <div class="row g-2 mb-3">
+            <div class="col-md-4">
+              <input type="text" class="form-control form-control-sm" id="fWifiSearch" placeholder="Search by client name or Axxess ID…">
+            </div>
+            <div class="col-md-3">
+              <select class="form-select form-select-sm" id="fWifiStatus">
+                <option value="">All Statuses</option>
+                <option value="active">Active</option>
+                <option value="suspended">Suspended</option>
+                <option value="cancelled">Cancelled</option>
+              </select>
+            </div>
+            <div class="col-md-2">
+              <button class="btn btn-sm btn-outline-secondary w-100" id="fWifiClear">Clear</button>
+            </div>
+          </div>
           <div class="row mb-3" id="wifiStats" style="display:none">
             <div class="col-sm-3"><div class="card text-center py-3"><h6 class="text-muted small mb-1">Active Subscribers</h6><h4 class="mb-0 text-success" id="stat-active">0</h4></div></div>
             <div class="col-sm-3"><div class="card text-center py-3"><h6 class="text-muted small mb-1">Monthly Revenue</h6><h4 class="mb-0 text-primary" id="stat-revenue">R 0</h4></div></div>
@@ -99,6 +115,22 @@
 
         <!-- SLA Contracts Panel -->
         <div id="panel-sla" style="display:none">
+          <div class="row g-2 mb-3">
+            <div class="col-md-4">
+              <input type="text" class="form-control form-control-sm" id="fSlaSearch" placeholder="Search by client name…">
+            </div>
+            <div class="col-md-3">
+              <select class="form-select form-select-sm" id="fSlaStatus">
+                <option value="">All Statuses</option>
+                <option value="active">Active</option>
+                <option value="suspended">Suspended</option>
+                <option value="cancelled">Cancelled</option>
+              </select>
+            </div>
+            <div class="col-md-2">
+              <button class="btn btn-sm btn-outline-secondary w-100" id="fSlaClear">Clear</button>
+            </div>
+          </div>
           <div class="card">
             <div class="card-header"><h5 class="card-title mb-0">SLA Monthly Retainer Contracts</h5></div>
             <div class="card-body p-0">
@@ -429,6 +461,7 @@
 
 <script src="/portal/static/js/app.js"></script>
 <script src="/portal/static/js/hq-sidebar-menu.js"></script>
+<script src="/portal/static/js/hq-filters.js"></script>
 <script>(function(){function _i(){var s=document.querySelector('.js-sidebar'),t=document.querySelector('.js-sidebar-toggle');if(!s||!t)return;if(window.innerWidth<992&&localStorage.getItem('ims_sidebar')==='open')s.classList.add('collapsed');t.addEventListener('click',function(){setTimeout(function(){localStorage.setItem('ims_sidebar',s.classList.contains('collapsed')?'open':'closed');},50);});}document.readyState==='loading'?document.addEventListener('DOMContentLoaded',_i):_i();})();</script>
 <script>
 (function(){
@@ -484,13 +517,21 @@
   }
 
   // ── WiFi Subscribers ─────────────────────────────────────────────────────────
+  function currentWifiFilters(){
+    return {
+      search: document.getElementById('fWifiSearch').value.trim(),
+      status: document.getElementById('fWifiStatus').value,
+    };
+  }
+
   let wifiData=[];
   async function loadWifi(){
     document.getElementById('wifiLoading').style.display='block';
     document.getElementById('wifiTable').style.display='none';
     document.getElementById('wifiEmpty').style.display='none';
     try{
-      const r=await api('/portal/api/wifi-subscribers/');
+      const params=HQFilters.qs(currentWifiFilters());
+      const r=await api('/portal/api/wifi-subscribers/'+(params?'?'+params:''));
       const _j=await r.json(); wifiData=Array.isArray(_j)?_j:(_j.results||[]);
       document.getElementById('wifiLoading').style.display='none';
       document.getElementById('wifiCount').textContent=wifiData.length;
@@ -617,6 +658,13 @@
   };
 
   // ── SLA Contracts ────────────────────────────────────────────────────────────
+  function currentSlaFilters(){
+    return {
+      search: document.getElementById('fSlaSearch').value.trim(),
+      status: document.getElementById('fSlaStatus').value,
+    };
+  }
+
   let slaData=[], slaLoaded=false;
   async function loadSla(){
     slaLoaded=true;
@@ -624,7 +672,8 @@
     document.getElementById('slaTable').style.display='none';
     document.getElementById('slaEmpty').style.display='none';
     try{
-      const r=await api('/portal/api/sla-contracts/');
+      const params=HQFilters.qs(currentSlaFilters());
+      const r=await api('/portal/api/sla-contracts/'+(params?'?'+params:''));
       const _j=await r.json(); slaData=Array.isArray(_j)?_j:(_j.results||[]);
       document.getElementById('slaLoading').style.display='none';
       document.getElementById('slaCount').textContent=slaData.length;
@@ -962,6 +1011,22 @@
     const a = document.createElement('a'); a.href=URL.createObjectURL(blob);
     a.download='wifi_subscribers_template.csv'; a.click();
   };
+
+  // ── Filter wiring ────────────────────────────────────────────────────────────
+  document.getElementById('fWifiSearch').addEventListener('input', HQFilters.debounce(loadWifi, 350));
+  document.getElementById('fWifiStatus').addEventListener('change', loadWifi);
+  document.getElementById('fWifiClear').addEventListener('click', ()=>{
+    document.getElementById('fWifiSearch').value='';
+    document.getElementById('fWifiStatus').value='';
+    loadWifi();
+  });
+  document.getElementById('fSlaSearch').addEventListener('input', HQFilters.debounce(loadSla, 350));
+  document.getElementById('fSlaStatus').addEventListener('change', loadSla);
+  document.getElementById('fSlaClear').addEventListener('click', ()=>{
+    document.getElementById('fSlaSearch').value='';
+    document.getElementById('fSlaStatus').value='';
+    loadSla();
+  });
 
   // ── Init ─────────────────────────────────────────────────────────────────────
   loadWifi();

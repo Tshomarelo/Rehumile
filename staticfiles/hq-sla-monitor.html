@@ -77,6 +77,36 @@
         </div>
 
         <!-- Breach history -->
+        <div class="row g-2 mb-3">
+          <div class="col-md-3">
+            <select class="form-select form-select-sm" id="fCompany">
+              <option value="">All Companies</option>
+            </select>
+          </div>
+          <div class="col-md-2">
+            <select class="form-select form-select-sm" id="fBreachType">
+              <option value="">All Breach Types</option>
+              <option value="response">Response Time</option>
+              <option value="resolution">Resolution Time</option>
+            </select>
+          </div>
+          <div class="col-md-2">
+            <select class="form-select form-select-sm" id="fResolved">
+              <option value="">All</option>
+              <option value="false">Active</option>
+              <option value="true">Resolved</option>
+            </select>
+          </div>
+          <div class="col-md-2">
+            <input type="date" class="form-control form-control-sm" id="fDateFrom" title="Breached from">
+          </div>
+          <div class="col-md-2">
+            <input type="date" class="form-control form-control-sm" id="fDateTo" title="Breached to">
+          </div>
+          <div class="col-md-1">
+            <button class="btn btn-sm btn-outline-secondary w-100" id="fClear">Clear</button>
+          </div>
+        </div>
         <div class="card">
           <div class="card-header"><h5 class="card-title mb-0 text-danger"><i data-feather="alert-triangle" style="width:16px;height:16px"></i> SLA Breach History</h5></div>
           <div class="card-body p-0">
@@ -95,6 +125,7 @@
 </div>
 <script src="/portal/static/js/app.js"></script>
 <script src="/portal/static/js/hq-sidebar-menu.js"></script>
+<script src="/portal/static/js/hq-filters.js"></script>
 <script>
 (function(){
   const token = localStorage.getItem('ims_access');
@@ -107,8 +138,28 @@
   const fmtDate = d => d ? new Date(d).toLocaleString('en-ZA',{dateStyle:'medium',timeStyle:'short'}) : '—';
   const pBadge = p => ({'critical':'<span class="badge bg-danger">Critical</span>','high':'<span class="badge bg-warning text-dark">High</span>','medium':'<span class="badge bg-info text-dark">Medium</span>','low':'<span class="badge bg-secondary">Low</span>'}[p]||`<span class="badge bg-secondary">${p}</span>`);
 
+  async function loadCompaniesIntoSelect(){
+    try{
+      const r=await fetch('/portal/api/companies/',{headers:{'Authorization':'Bearer '+token}});
+      const _cj=await r.json(); const companies=Array.isArray(_cj)?_cj:(_cj.results||[]);
+      const filterSel=document.getElementById('fCompany');
+      filterSel.innerHTML='<option value="">All Companies</option>'+companies.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
+    }catch(e){}
+  }
+
+  function currentFilters(){
+    return {
+      company: document.getElementById('fCompany').value,
+      breach_type: document.getElementById('fBreachType').value,
+      resolved: document.getElementById('fResolved').value,
+      date_from: document.getElementById('fDateFrom').value,
+      date_to: document.getElementById('fDateTo').value,
+    };
+  }
+
   async function load(){
-    const r = await fetch('/portal/api/sla-breaches/',{headers:{'Authorization':'Bearer '+token}});
+    const params = HQFilters.qs(currentFilters());
+    const r = await fetch('/portal/api/sla-breaches/'+(params?'?'+params:''),{headers:{'Authorization':'Bearer '+token}});
     if(r.status===401){localStorage.clear();window.location.href='/portal/login/';return;}
     const data = await r.json();
 
@@ -151,6 +202,21 @@
   }
 
   document.getElementById('refreshBtn').onclick=load;
+  document.getElementById('fCompany').addEventListener('change', load);
+  document.getElementById('fBreachType').addEventListener('change', load);
+  document.getElementById('fResolved').addEventListener('change', load);
+  document.getElementById('fDateFrom').addEventListener('change', load);
+  document.getElementById('fDateTo').addEventListener('change', load);
+  document.getElementById('fClear').addEventListener('click', ()=>{
+    document.getElementById('fCompany').value='';
+    document.getElementById('fBreachType').value='';
+    document.getElementById('fResolved').value='';
+    document.getElementById('fDateFrom').value='';
+    document.getElementById('fDateTo').value='';
+    load();
+  });
+
+  loadCompaniesIntoSelect();
   load();
 })();
 </script>

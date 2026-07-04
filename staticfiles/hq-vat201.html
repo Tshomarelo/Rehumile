@@ -103,11 +103,26 @@
           <!-- Supplier Slip OCR Table -->
           <div class="col-lg-7">
             <div class="card">
-              <div class="card-header d-flex justify-content-between align-items-center">
+              <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
                 <h6 class="mb-0">Supplier Slip OCR Intake</h6>
-                <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#addSlipModal">
-                  <i data-feather="upload" style="width:14px"></i> Add Slip
-                </button>
+                <div class="d-flex gap-2 align-items-center flex-wrap">
+                  <select class="form-select form-select-sm" id="fOcrStatus" style="width:auto">
+                    <option value="">All Statuses</option>
+                    <option value="pending">Pending Review</option>
+                    <option value="valid">Valid</option>
+                    <option value="invalid">Invalid</option>
+                    <option value="manual">Manual Override</option>
+                  </select>
+                  <select class="form-select form-select-sm" id="fCapitalGoods" style="width:auto">
+                    <option value="">All</option>
+                    <option value="true">Capital Goods</option>
+                    <option value="false">Non-Capital</option>
+                  </select>
+                  <button class="btn btn-sm btn-outline-secondary" id="fSlipClear">Clear</button>
+                  <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#addSlipModal">
+                    <i data-feather="upload" style="width:14px"></i> Add Slip
+                  </button>
+                </div>
               </div>
               <div class="card-body p-0" style="max-height:520px;overflow-y:auto">
                 <table class="table table-sm table-hover mb-0">
@@ -154,6 +169,7 @@
 
 <script src="/portal/static/js/app.js"></script>
 <script src="/portal/static/js/hq-sidebar-menu.js"></script>
+<script src="/portal/static/js/hq-filters.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
 <script>
 const API = '/portal/api';
@@ -214,8 +230,17 @@ async function loadVAT(id) {
   feather.replace();
 }
 
+function currentSlipFilters(periodId) {
+  return {
+    period_id: periodId,
+    ocr_status: document.getElementById('fOcrStatus').value,
+    is_capital_goods: document.getElementById('fCapitalGoods').value,
+  };
+}
+
 async function loadSlips(periodId) {
-  const r = await apiFetch(API+'/supplier-slips/?period_id='+periodId);
+  const params = HQFilters.qs(currentSlipFilters(periodId));
+  const r = await apiFetch(API+'/supplier-slips/?'+params);
   if (!r) return;
   const list = await r.json();
   const tbody = document.getElementById('slipsTbody');
@@ -243,6 +268,14 @@ async function manualVerify(id) {
 
 document.getElementById('periodSelect').addEventListener('change', function(){
   if (this.value) loadVAT(this.value);
+});
+
+document.getElementById('fOcrStatus').addEventListener('change', () => { if (currentPeriodId) loadSlips(currentPeriodId); });
+document.getElementById('fCapitalGoods').addEventListener('change', () => { if (currentPeriodId) loadSlips(currentPeriodId); });
+document.getElementById('fSlipClear').addEventListener('click', () => {
+  document.getElementById('fOcrStatus').value = '';
+  document.getElementById('fCapitalGoods').value = '';
+  if (currentPeriodId) loadSlips(currentPeriodId);
 });
 
 document.getElementById('btnSaveSlip').addEventListener('click', async () => {

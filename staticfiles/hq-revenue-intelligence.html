@@ -134,8 +134,13 @@
 
         <!-- ── Per-Client Profitability ───────────────────────────────────── -->
         <div class="card mb-3">
-          <div class="card-header">
+          <div class="card-header d-flex align-items-center justify-content-between">
             <h5 class="card-title mb-0">Per-Client Profitability (All Time)</h5>
+            <select class="form-select form-select-sm" id="fClientType" style="width:auto">
+              <option value="">All Types</option>
+              <option value="wifi">WiFi</option>
+              <option value="sla">SLA</option>
+            </select>
           </div>
           <div class="card-body p-0">
             <div class="text-center py-4 text-muted" id="clientLoading">Loading…</div>
@@ -242,6 +247,9 @@
   const R=n=>n!=null?'R '+parseFloat(n).toFixed(2):'R —';
   const pct=n=>n!=null?(parseFloat(n)*100).toFixed(1)+'%':'—';
 
+  // Full client_profitability array as fetched from the server — filtering below is purely client-side
+  let clientProfitability=[];
+
   // ── Revenue Intelligence ─────────────────────────────────────────────────────
   async function loadIntelligence(){
     try{
@@ -307,30 +315,39 @@
         document.getElementById('flagCount').className='badge bg-danger';
       }
 
-      // Per-client profitability
-      const clients=d.client_profitability||[];
-      document.getElementById('clientLoading').style.display='none';
-      if(clients.length){
-        document.getElementById('clientTable').style.display='block';
-        document.getElementById('clientTbody').innerHTML=clients.map((c,i)=>{
-          const marginPct=parseFloat(c.revenue||0)>0?((parseFloat(c.gross_margin||0)/parseFloat(c.revenue))*100).toFixed(1):0;
-          const cls=parseFloat(c.gross_margin||0)<0?'text-danger':parseFloat(c.gross_margin||0)===0?'text-muted':'text-success';
-          return `<tr>
-            <td class="text-muted">${i+1}</td>
-            <td><strong>${c.client_name}</strong></td>
-            <td><span class="badge bg-light text-dark border">${c.type||'adhoc'}</span></td>
-            <td>${R(c.revenue)}</td>
-            <td>${R(c.cost)}</td>
-            <td class="${cls} fw-semibold">${R(c.gross_margin)}</td>
-            <td class="${cls}">${marginPct}%</td>
-          </tr>`;
-        }).join('');
-      } else {
-        document.getElementById('clientLoading').textContent='No client data yet.';
-      }
+      // Per-client profitability — stash the full array, then render through the (filterable) renderer
+      clientProfitability=d.client_profitability||[];
+      renderClientTable();
 
       if(window.feather)feather.replace();
     }catch(e){ if(e.message!=='Unauth') showAlert('pageAlert','Failed to load intelligence data.'); }
+  }
+
+  // ── Per-Client Profitability table (client-side type filter over the already-fetched array) ──
+  function renderClientTable(){
+    const typeFilter=document.getElementById('fClientType').value;
+    const clients=typeFilter?clientProfitability.filter(c=>c.type===typeFilter):clientProfitability;
+    if(clients.length){
+      document.getElementById('clientLoading').style.display='none';
+      document.getElementById('clientTable').style.display='block';
+      document.getElementById('clientTbody').innerHTML=clients.map((c,i)=>{
+        const marginPct=parseFloat(c.revenue||0)>0?((parseFloat(c.gross_margin||0)/parseFloat(c.revenue))*100).toFixed(1):0;
+        const cls=parseFloat(c.gross_margin||0)<0?'text-danger':parseFloat(c.gross_margin||0)===0?'text-muted':'text-success';
+        return `<tr>
+          <td class="text-muted">${i+1}</td>
+          <td><strong>${c.client_name}</strong></td>
+          <td><span class="badge bg-light text-dark border">${c.type||'adhoc'}</span></td>
+          <td>${R(c.revenue)}</td>
+          <td>${R(c.cost)}</td>
+          <td class="${cls} fw-semibold">${R(c.gross_margin)}</td>
+          <td class="${cls}">${marginPct}%</td>
+        </tr>`;
+      }).join('');
+    } else {
+      document.getElementById('clientTable').style.display='none';
+      document.getElementById('clientLoading').style.display='block';
+      document.getElementById('clientLoading').textContent=clientProfitability.length?'No clients match this filter.':'No client data yet.';
+    }
   }
 
   // ── 12-Month Breakdown ───────────────────────────────────────────────────────
@@ -426,6 +443,8 @@
 
   // ── Refresh ──────────────────────────────────────────────────────────────────
   document.getElementById('refreshBtn').onclick=()=>{ loadIntelligence(); loadMonthly(); };
+
+  document.getElementById('fClientType').addEventListener('change', renderClientTable);
 
   // ── Init ─────────────────────────────────────────────────────────────────────
   loadIntelligence();

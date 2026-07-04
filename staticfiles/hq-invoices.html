@@ -56,6 +56,44 @@
 
         <!-- Invoices panel -->
         <div id="panel-invoices">
+        <div class="row g-2 mb-3">
+          <div class="col-md-3">
+            <input type="text" class="form-control form-control-sm" id="fSearch" placeholder="Search invoice #…">
+          </div>
+          <div class="col-md-2">
+            <select class="form-select form-select-sm" id="fCompany">
+              <option value="">All Companies</option>
+            </select>
+          </div>
+          <div class="col-md-2">
+            <select class="form-select form-select-sm" id="fStatus">
+              <option value="">All Statuses</option>
+              <option value="draft">Draft</option>
+              <option value="sent">Sent</option>
+              <option value="paid">Paid</option>
+              <option value="overdue">Overdue</option>
+              <option value="cancelled">Cancelled</option>
+            </select>
+          </div>
+          <div class="col-md-2">
+            <select class="form-select form-select-sm" id="fInvoiceType">
+              <option value="">All Types</option>
+              <option value="adhoc">Ad-Hoc / Project</option>
+              <option value="wifi">WiFi Subscription</option>
+              <option value="sla">SLA Monthly Retainer</option>
+              <option value="callout">SLA Call-Out</option>
+            </select>
+          </div>
+          <div class="col-md-1">
+            <input type="date" class="form-control form-control-sm" id="fDateFrom" title="Due date from">
+          </div>
+          <div class="col-md-1">
+            <input type="date" class="form-control form-control-sm" id="fDateTo" title="Due date to">
+          </div>
+          <div class="col-md-1">
+            <button class="btn btn-sm btn-outline-secondary w-100" id="fClear">Clear</button>
+          </div>
+        </div>
         <div class="card">
           <div class="card-header d-flex align-items-center justify-content-between">
             <h5 class="card-title mb-0">All Invoices</h5>
@@ -90,9 +128,18 @@
           <div class="col-sm-3"><div class="card text-center py-3"><h6 class="text-muted small mb-1">Failed/Cancelled</h6><h4 class="mb-0 text-danger" id="pmt-failed">0</h4></div></div>
         </div>
         <div class="card">
-          <div class="card-header d-flex align-items-center justify-content-between">
+          <div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
             <h5 class="card-title mb-0">PayFast Transaction Log</h5>
-            <button class="btn btn-sm btn-outline-secondary" onclick="loadPayments()"><i data-feather="refresh-cw" style="width:14px;height:14px"></i> Refresh</button>
+            <div class="d-flex align-items-center gap-2">
+              <select class="form-select form-select-sm" id="fPmtStatus" style="width:auto">
+                <option value="">All Statuses</option>
+                <option value="pending">Pending</option>
+                <option value="complete">Complete</option>
+                <option value="failed">Failed</option>
+                <option value="cancelled">Cancelled</option>
+              </select>
+              <button class="btn btn-sm btn-outline-secondary" onclick="loadPayments()"><i data-feather="refresh-cw" style="width:14px;height:14px"></i> Refresh</button>
+            </div>
           </div>
           <div class="card-body p-0">
             <div id="pmtLoading" class="text-center py-4 text-muted">Loading payments…</div>
@@ -266,6 +313,7 @@
 
 <script src="/portal/static/js/app.js"></script>
 <script src="/portal/static/js/hq-sidebar-menu.js"></script>
+<script src="/portal/static/js/hq-filters.js"></script>
 <script>(function(){function _i(){var s=document.querySelector('.js-sidebar'),t=document.querySelector('.js-sidebar-toggle');if(!s||!t)return;if(window.innerWidth<992&&localStorage.getItem('ims_sidebar')==='open')s.classList.add('collapsed');t.addEventListener('click',function(){setTimeout(function(){localStorage.setItem('ims_sidebar',s.classList.contains('collapsed')?'open':'closed');},50);});}document.readyState==='loading'?document.addEventListener('DOMContentLoaded',_i):_i();})();</script>
 <script>
 window.onInvoiceTypeChange = function(){
@@ -307,7 +355,20 @@ window.calcTotal = function(){
       const sel=document.getElementById('f_company');
       sel.innerHTML='<option value="">Select company…</option>'+data.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
       sel.onchange=()=>loadIncidentsForCompany(sel.value);
+      const filterSel=document.getElementById('fCompany');
+      filterSel.innerHTML='<option value="">All Companies</option>'+data.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
     }catch{}
+  }
+
+  function currentInvoiceFilters(){
+    return {
+      search: document.getElementById('fSearch').value.trim(),
+      company: document.getElementById('fCompany').value,
+      status: document.getElementById('fStatus').value,
+      invoice_type: document.getElementById('fInvoiceType').value,
+      date_from: document.getElementById('fDateFrom').value,
+      date_to: document.getElementById('fDateTo').value,
+    };
   }
 
   async function loadIncidentsForCompany(companyId){
@@ -324,7 +385,8 @@ window.calcTotal = function(){
 
   async function loadInvoices(){
     try{
-      const r=await api('/portal/api/invoices/');
+      const params = HQFilters.qs(currentInvoiceFilters());
+      const r=await api('/portal/api/invoices/'+(params?'?'+params:''));
       const _j=await r.json(); const data=Array.isArray(_j)?_j:(_j.results||[]);
       document.getElementById('tableLoading').style.display='none';
       document.getElementById('invoiceCount').textContent=data.length+' record'+(data.length!==1?'s':'');
@@ -438,6 +500,24 @@ window.calcTotal = function(){
     btn.innerHTML=orig;
   };
 
+  document.getElementById('fSearch').addEventListener('input', HQFilters.debounce(loadInvoices, 350));
+  document.getElementById('fCompany').addEventListener('change', loadInvoices);
+  document.getElementById('fStatus').addEventListener('change', loadInvoices);
+  document.getElementById('fInvoiceType').addEventListener('change', loadInvoices);
+  document.getElementById('fDateFrom').addEventListener('change', loadInvoices);
+  document.getElementById('fDateTo').addEventListener('change', loadInvoices);
+  document.getElementById('fClear').addEventListener('click', ()=>{
+    document.getElementById('fSearch').value='';
+    document.getElementById('fCompany').value='';
+    document.getElementById('fStatus').value='';
+    document.getElementById('fInvoiceType').value='';
+    document.getElementById('fDateFrom').value='';
+    document.getElementById('fDateTo').value='';
+    loadInvoices();
+  });
+  document.getElementById('fPmtStatus').addEventListener('change', loadPayments);
+
+  loadCompanies();
   loadInvoices();
 
   // ── Invoice Reminder ─────────────────────────────────────────
@@ -485,7 +565,8 @@ window.calcTotal = function(){
     document.getElementById('pmtWrapper').style.display = 'none';
     document.getElementById('pmtEmpty').style.display = 'none';
     try {
-      const r = await api('/portal/api/payments/');
+      const pmtStatus = document.getElementById('fPmtStatus').value;
+      const r = await api('/portal/api/payments/'+(pmtStatus?'?status='+encodeURIComponent(pmtStatus):''));
       const payments = await r.json();
 
       const badge = document.getElementById('payment-count-badge');

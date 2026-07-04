@@ -55,6 +55,29 @@
           <button class="btn btn-sm btn-outline-secondary" id="markAllBtn">Mark all as read</button>
         </div>
 
+        <div class="row g-2 mb-3">
+          <div class="col-md-3">
+            <select class="form-select form-select-sm" id="fType">
+              <option value="">All Types</option>
+              <option value="sla_breach">SLA Breach</option>
+              <option value="sla_warning">SLA Warning</option>
+              <option value="new_incident">Ticket Update</option>
+              <option value="assignment">Assignment</option>
+              <option value="invoice">Invoice</option>
+              <option value="general">General</option>
+            </select>
+          </div>
+          <div class="col-md-3 d-flex align-items-center">
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" id="fUnread">
+              <label class="form-check-label" for="fUnread">Unread only</label>
+            </div>
+          </div>
+          <div class="col-md-2">
+            <button class="btn btn-sm btn-outline-secondary w-100" id="fClear">Clear</button>
+          </div>
+        </div>
+
         <div class="card">
           <div class="card-body p-0" id="notifList">
             <div class="text-center text-muted py-5">Loading…</div>
@@ -66,6 +89,7 @@
   </div>
 </div>
 <script src="/portal/static/js/app.js"></script>
+<script src="/portal/static/js/hq-filters.js"></script>
 <script>
 (function(){
   const token = localStorage.getItem('ims_access');
@@ -86,8 +110,16 @@
   };
   const fmtDate = d => d ? new Date(d).toLocaleString('en-ZA',{dateStyle:'medium',timeStyle:'short'}) : '—';
 
+  function currentFilters(){
+    return {
+      type: document.getElementById('fType').value,
+      unread: document.getElementById('fUnread').checked ? '1' : '',
+    };
+  }
+
   async function load(){
-    const r = await fetch('/portal/api/notifications/',{headers:{'Authorization':'Bearer '+token}});
+    const params = HQFilters.qs(currentFilters());
+    const r = await fetch('/portal/api/notifications/'+(params?'?'+params:''),{headers:{'Authorization':'Bearer '+token}});
     if(r.status===401){localStorage.clear();window.location.href='/portal/login/';return;}
     const data = await r.json();
     const list = document.getElementById('notifList');
@@ -122,6 +154,14 @@
     await fetch('/portal/api/notifications/',{method:'PATCH',headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({all:true})});
     load();
   };
+
+  document.getElementById('fType').addEventListener('change', load);
+  document.getElementById('fUnread').addEventListener('change', load);
+  document.getElementById('fClear').addEventListener('click', ()=>{
+    document.getElementById('fType').value='';
+    document.getElementById('fUnread').checked=false;
+    load();
+  });
 
   load();
 })();

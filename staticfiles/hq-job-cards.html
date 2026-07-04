@@ -57,6 +57,20 @@
           </div>
         </div>
 
+        <div class="row g-2 mb-3">
+          <div class="col-md-5">
+            <input type="text" class="form-control form-control-sm" id="fSearch" placeholder="Search by customer, job #, or serial number…">
+          </div>
+          <div class="col-md-4">
+            <select class="form-select form-select-sm" id="fTechnician">
+              <option value="">All Technicians</option>
+            </select>
+          </div>
+          <div class="col-md-3">
+            <button class="btn btn-sm btn-outline-secondary w-100" id="fClear">Clear Filters</button>
+          </div>
+        </div>
+
         <div class="card">
           <div class="card-header d-flex align-items-center justify-content-between">
             <h5 class="card-title mb-0">Workshop Queue</h5>
@@ -120,6 +134,7 @@
 
 <script src="/portal/static/js/app.js"></script>
 <script src="/portal/static/js/hq-sidebar-menu.js"></script>
+<script src="/portal/static/js/hq-filters.js"></script>
 <script>(function(){function _i(){var s=document.querySelector('.js-sidebar'),t=document.querySelector('.js-sidebar-toggle');if(!s||!t)return;t.addEventListener('click',function(){setTimeout(function(){localStorage.setItem('ims_sidebar',s.classList.contains('collapsed')?'open':'closed');},50);});}document.readyState==='loading'?document.addEventListener('DOMContentLoaded',_i):_i();})();</script>
 <script>
 (function(){
@@ -142,12 +157,30 @@
     return r;
   }
 
+  async function loadTechnicians(){
+    try{
+      const r=await api('/portal/api/users/?role=technician');
+      const _j=await r.json(); const data=Array.isArray(_j)?_j:(_j.results||[]);
+      const sel=document.getElementById('fTechnician');
+      sel.innerHTML='<option value="">All Technicians</option>'+data.map(t=>`<option value="${t.id}">${((t.first_name||'')+' '+(t.last_name||'')).trim()||t.email}</option>`).join('');
+    }catch(e){}
+  }
+
+  function currentFilters(){
+    return {
+      status: currentStatus,
+      search: document.getElementById('fSearch').value.trim(),
+      technician: document.getElementById('fTechnician').value,
+    };
+  }
+
   async function load(){
     document.getElementById('jcLoading').style.display='block';
     document.getElementById('jcWrapper').style.display='none';
     document.getElementById('jcEmpty').style.display='none';
     try{
-      const url='/portal/api/job-cards/'+(currentStatus?'?status='+currentStatus:'');
+      const params = HQFilters.qs(currentFilters());
+      const url='/portal/api/job-cards/'+(params?'?'+params:'');
       const r=await api(url);const data=await r.json();
       const items=data.results||[];
       document.getElementById('jcCount').textContent=items.length+' job'+(items.length!==1?'s':'');
@@ -176,6 +209,17 @@
       currentStatus=btn.dataset.status;
       load();
     });
+  });
+
+  document.getElementById('fSearch').addEventListener('input', HQFilters.debounce(load, 350));
+  document.getElementById('fTechnician').addEventListener('change', load);
+  document.getElementById('fClear').addEventListener('click', ()=>{
+    document.getElementById('fSearch').value='';
+    document.getElementById('fTechnician').value='';
+    document.querySelectorAll('[data-status]').forEach(b=>b.classList.remove('active'));
+    document.querySelector('[data-status=""]').classList.add('active');
+    currentStatus='';
+    load();
   });
 
   document.getElementById('jcSubmitBtn').addEventListener('click',async()=>{
@@ -227,6 +271,7 @@
     btn.innerHTML=orig;
   });
 
+  loadTechnicians();
   load();
 })();
 </script>

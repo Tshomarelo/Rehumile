@@ -45,32 +45,41 @@
           </button>
         </div>
         <div id="pageAlert"></div>
-        <!-- Filters -->
-        <div class="card mb-3">
-          <div class="card-body py-2">
-            <div class="row g-2 align-items-center">
-              <div class="col-auto"><label class="col-form-label">Filter:</label></div>
-              <div class="col-auto">
-                <select class="form-select form-select-sm" id="filterStatus">
-                  <option value="">All Statuses</option>
-                  <option value="open">Open</option>
-                  <option value="in_progress">In Progress</option>
-                  <option value="resolved">Resolved</option>
-                  <option value="closed">Closed</option>
-                </select>
-              </div>
-              <div class="col-auto">
-                <select class="form-select form-select-sm" id="filterPriority">
-                  <option value="">All Priorities</option>
-                  <option value="critical">Critical</option>
-                  <option value="high">High</option>
-                  <option value="medium">Medium</option>
-                  <option value="low">Low</option>
-                </select>
-              </div>
-              <div class="col-auto"><button class="btn btn-sm btn-outline-secondary" id="applyFilter">Apply</button></div>
-              <div class="col-auto"><button class="btn btn-sm btn-outline-secondary" id="clearFilter">Clear</button></div>
-            </div>
+        <div class="row g-2 mb-3">
+          <div class="col-md-3">
+            <input type="text" class="form-control form-control-sm" id="fSearch" placeholder="Search by title or ticket ID…">
+          </div>
+          <div class="col-md-2">
+            <select class="form-select form-select-sm" id="filterStatus">
+              <option value="">All Statuses</option>
+              <option value="open">Open</option>
+              <option value="in_progress">In Progress</option>
+              <option value="resolved">Resolved</option>
+              <option value="closed">Closed</option>
+            </select>
+          </div>
+          <div class="col-md-2">
+            <select class="form-select form-select-sm" id="filterPriority">
+              <option value="">All Priorities</option>
+              <option value="critical">Critical</option>
+              <option value="high">High</option>
+              <option value="medium">Medium</option>
+              <option value="low">Low</option>
+            </select>
+          </div>
+          <div class="col-md-2">
+            <select class="form-select form-select-sm" id="fCompany">
+              <option value="">All Companies</option>
+            </select>
+          </div>
+          <div class="col-md-1">
+            <input type="date" class="form-control form-control-sm" id="fDateFrom" title="Created from">
+          </div>
+          <div class="col-md-1">
+            <input type="date" class="form-control form-control-sm" id="fDateTo" title="Created to">
+          </div>
+          <div class="col-md-1">
+            <button class="btn btn-sm btn-outline-secondary w-100" id="fClear">Clear</button>
           </div>
         </div>
         <div class="card">
@@ -199,6 +208,7 @@
 
 <script src="/portal/static/js/app.js"></script>
 <script src="/portal/static/js/hq-sidebar-menu.js"></script>
+<script src="/portal/static/js/hq-filters.js"></script>
 <script>(function(){function _i(){var s=document.querySelector('.js-sidebar'),t=document.querySelector('.js-sidebar-toggle');if(!s||!t)return;if(window.innerWidth<992&&localStorage.getItem('ims_sidebar')==='open')s.classList.add('collapsed');t.addEventListener('click',function(){setTimeout(function(){localStorage.setItem('ims_sidebar',s.classList.contains('collapsed')?'open':'closed');},50);});}document.readyState==='loading'?document.addEventListener('DOMContentLoaded',_i):_i();})();</script>
 <script>
 (function(){
@@ -224,9 +234,21 @@
 
   let allIncidents=[], currentId=null, currentInc=null;
 
+  function currentFilters(){
+    return {
+      search: document.getElementById('fSearch').value.trim(),
+      status: document.getElementById('filterStatus').value,
+      priority: document.getElementById('filterPriority').value,
+      company: document.getElementById('fCompany').value,
+      date_from: document.getElementById('fDateFrom').value,
+      date_to: document.getElementById('fDateTo').value,
+    };
+  }
+
   async function loadIncidents(){
     try{
-      const r = await api('/portal/api/incidents/');
+      const params = HQFilters.qs(currentFilters());
+      const r = await api('/portal/api/incidents/'+(params?'?'+params:''));
       const _ij=await r.json(); allIncidents=Array.isArray(_ij)?_ij:(_ij.results||[]);
       renderTable(allIncidents);
     }catch(e){ if(e.message!=='Unauth') showAlert('pageAlert','Failed to load incidents.'); }
@@ -251,13 +273,15 @@
       </tr>`).join('');
   }
 
-  // Load companies for create form
+  // Load companies for create form + filter dropdown
   async function loadCompanies(){
     try{
       const r = await api('/portal/api/companies/');
       const _cj=await r.json(); const companies=Array.isArray(_cj)?_cj:(_cj.results||[]);
       const sel = document.getElementById('c_company');
       sel.innerHTML='<option value="">Select company…</option>'+companies.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
+      const filterSel = document.getElementById('fCompany');
+      filterSel.innerHTML='<option value="">All Companies</option>'+companies.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
     }catch{}
   }
 
@@ -289,16 +313,21 @@
     btn.innerHTML=orig;
   };
 
-  document.getElementById('applyFilter').onclick=()=>{
-    const s=document.getElementById('filterStatus').value;
-    const p=document.getElementById('filterPriority').value;
-    renderTable(allIncidents.filter(i=>(s?i.status===s:true)&&(p?i.priority===p:true)));
-  };
-  document.getElementById('clearFilter').onclick=()=>{
+  document.getElementById('fSearch').addEventListener('input', HQFilters.debounce(loadIncidents, 350));
+  document.getElementById('filterStatus').addEventListener('change', loadIncidents);
+  document.getElementById('filterPriority').addEventListener('change', loadIncidents);
+  document.getElementById('fCompany').addEventListener('change', loadIncidents);
+  document.getElementById('fDateFrom').addEventListener('change', loadIncidents);
+  document.getElementById('fDateTo').addEventListener('change', loadIncidents);
+  document.getElementById('fClear').addEventListener('click', ()=>{
+    document.getElementById('fSearch').value='';
     document.getElementById('filterStatus').value='';
     document.getElementById('filterPriority').value='';
-    renderTable(allIncidents);
-  };
+    document.getElementById('fCompany').value='';
+    document.getElementById('fDateFrom').value='';
+    document.getElementById('fDateTo').value='';
+    loadIncidents();
+  });
 
   // Detail modal
   // ── No-invoice warning on status select change ───────────────────────────
@@ -448,6 +477,7 @@
     }catch(e){ if(e.message!=='Unauth') showAlert('detailAlert','Failed to create call-out invoice.'); }
   }
 
+  loadCompanies();
   loadIncidents();
 })();
 </script>

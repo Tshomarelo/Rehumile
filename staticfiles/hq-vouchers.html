@@ -70,6 +70,22 @@
           </div>
         </div>
 
+        <div class="row g-2 mb-3">
+          <div class="col-md-5">
+            <input type="text" class="form-control form-control-sm" id="fSearch" placeholder="Search by voucher code…">
+          </div>
+          <div class="col-md-4">
+            <select class="form-select form-select-sm" id="fDuration">
+              <option value="">All Durations</option>
+              <option value="1">1 hour</option><option value="2">2 hours</option><option value="6">6 hours</option>
+              <option value="12">12 hours</option><option value="24">24 hours</option><option value="72">3 days</option><option value="168">7 days</option>
+            </select>
+          </div>
+          <div class="col-md-3">
+            <button class="btn btn-sm btn-outline-secondary w-100" id="fClear">Clear Filters</button>
+          </div>
+        </div>
+
         <div class="card">
           <div class="card-body p-0">
             <div id="vLoading" class="text-center py-4 text-muted">Loading vouchers…</div>
@@ -137,6 +153,7 @@
 
 <script src="/portal/static/js/app.js"></script>
 <script src="/portal/static/js/hq-sidebar-menu.js"></script>
+<script src="/portal/static/js/hq-filters.js"></script>
 <script>(function(){function _i(){var s=document.querySelector('.js-sidebar'),t=document.querySelector('.js-sidebar-toggle');if(!s||!t)return;t.addEventListener('click',function(){setTimeout(function(){localStorage.setItem('ims_sidebar',s.classList.contains('collapsed')?'open':'closed');},50);});}document.readyState==='loading'?document.addEventListener('DOMContentLoaded',_i):_i();})();</script>
 <script>
 (function(){
@@ -158,12 +175,21 @@
     return r;
   }
 
+  function currentFilters(){
+    return {
+      status: currentStatus,
+      search: document.getElementById('fSearch').value.trim(),
+      duration_hours: document.getElementById('fDuration').value,
+    };
+  }
+
   async function load(){
     document.getElementById('vLoading').style.display='block';
     document.getElementById('vWrapper').style.display='none';
     document.getElementById('vEmpty').style.display='none';
     try{
-      const url='/portal/api/vouchers/'+(currentStatus?'?status='+currentStatus:'');
+      const params = HQFilters.qs(currentFilters());
+      const url='/portal/api/vouchers/'+(params?'?'+params:'');
       const r=await api(url);const data=await r.json();const vs=data.results||[];
       const avail=vs.filter(v=>v.status==='available').length;
       const sold=vs.filter(v=>v.status==='sold');
@@ -195,6 +221,17 @@
       if(window.feather)feather.replace();
     }catch(e){if(e.message!=='Unauth')document.getElementById('vLoading').textContent='Failed to load.';}
   }
+
+  document.getElementById('fSearch').addEventListener('input', HQFilters.debounce(load, 350));
+  document.getElementById('fDuration').addEventListener('change', load);
+  document.getElementById('fClear').addEventListener('click', ()=>{
+    document.getElementById('fSearch').value='';
+    document.getElementById('fDuration').value='';
+    document.querySelectorAll('[data-vstatus]').forEach(b=>b.classList.remove('active'));
+    document.querySelector('[data-vstatus=""]').classList.add('active');
+    currentStatus='';
+    load();
+  });
 
   document.querySelectorAll('[data-vstatus]').forEach(btn=>{
     btn.addEventListener('click',()=>{

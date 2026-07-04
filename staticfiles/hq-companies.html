@@ -45,6 +45,29 @@
           </button>
         </div>
         <div id="pageAlert"></div>
+        <div class="row g-2 mb-3">
+          <div class="col-md-4">
+            <input type="text" class="form-control form-control-sm" id="fSearch" placeholder="Search by name, contact person, or email…">
+          </div>
+          <div class="col-md-3">
+            <select class="form-select form-select-sm" id="fStatus">
+              <option value="">All Statuses</option>
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+            </select>
+          </div>
+          <div class="col-md-3">
+            <select class="form-select form-select-sm" id="fSlaType">
+              <option value="">All SLA Tiers</option>
+              <option value="gold">Gold</option>
+              <option value="silver">Silver</option>
+              <option value="bronze">Bronze</option>
+            </select>
+          </div>
+          <div class="col-md-2">
+            <button class="btn btn-sm btn-outline-secondary w-100" id="fClear">Clear Filters</button>
+          </div>
+        </div>
         <div class="card">
           <div class="card-header d-flex align-items-center justify-content-between">
             <h5 class="card-title mb-0">Client Companies</h5>
@@ -153,6 +176,7 @@
 
 <script src="/portal/static/js/app.js"></script>
 <script src="/portal/static/js/hq-sidebar-menu.js"></script>
+<script src="/portal/static/js/hq-filters.js"></script>
 <script>(function(){function _i(){var s=document.querySelector('.js-sidebar'),t=document.querySelector('.js-sidebar-toggle');if(!s||!t)return;if(window.innerWidth<992&&localStorage.getItem('ims_sidebar')==='open')s.classList.add('collapsed');t.addEventListener('click',function(){setTimeout(function(){localStorage.setItem('ims_sidebar',s.classList.contains('collapsed')?'open':'closed');},50);});}document.readyState==='loading'?document.addEventListener('DOMContentLoaded',_i):_i();})();</script>
 <script>
 (function(){
@@ -178,9 +202,18 @@
 
   let deleteTargetId=null;
 
+  function currentFilters(){
+    return {
+      search: document.getElementById('fSearch').value.trim(),
+      status: document.getElementById('fStatus').value,
+      sla_type: document.getElementById('fSlaType').value,
+    };
+  }
+
   async function loadCompanies(){
     try{
-      const r=await api('/portal/api/companies/');
+      const params = HQFilters.qs(currentFilters());
+      const r=await api('/portal/api/companies/'+(params?'?'+params:''));
       const _j=await r.json(); const data=Array.isArray(_j)?_j:(_j.results||[]);
       document.getElementById('tableLoading').style.display='none';
       document.getElementById('companyCount').textContent=data.length+' record'+(data.length!==1?'s':'');
@@ -284,6 +317,16 @@
     btn.innerHTML=orig;
     deleteTargetId=null;
   };
+
+  document.getElementById('fSearch').addEventListener('input', HQFilters.debounce(loadCompanies, 350));
+  document.getElementById('fStatus').addEventListener('change', loadCompanies);
+  document.getElementById('fSlaType').addEventListener('change', loadCompanies);
+  document.getElementById('fClear').addEventListener('click', ()=>{
+    document.getElementById('fSearch').value='';
+    document.getElementById('fStatus').value='';
+    document.getElementById('fSlaType').value='';
+    loadCompanies();
+  });
 
   loadCompanies();
 })();

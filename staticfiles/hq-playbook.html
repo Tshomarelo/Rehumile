@@ -64,6 +64,14 @@
             <p class="text-muted small mb-0">Role-based daily/weekly/monthly task checklists — every completion is audit-logged</p>
           </div>
           <div class="d-flex gap-2">
+            <input type="date" class="form-control form-control-sm" id="dateFilter" style="width:auto">
+            <select class="form-select form-select-sm" id="freqFilter">
+              <option value="">All Frequencies</option>
+              <option value="daily_morning">Daily — Morning Routine</option>
+              <option value="daily_evening">Daily — Evening Routine</option>
+              <option value="weekly">Weekly</option>
+              <option value="monthly">Monthly</option>
+            </select>
             <select class="form-select form-select-sm" id="roleFilter">
               <option value="">All Roles</option>
               <option value="technician">Technician</option>
@@ -95,11 +103,13 @@
 
 <script src="/portal/static/js/app.js"></script>
 <script src="/portal/static/js/hq-sidebar-menu.js"></script>
+<script src="/portal/static/js/hq-filters.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
 <script>
 const API = '/portal/api';
 const tok = () => localStorage.getItem('ims_access');
 const today = new Date().toISOString().split('T')[0];
+const selectedDate = () => document.getElementById('dateFilter').value || today;
 
 async function apiFetch(url, opts={}) {
   opts.headers = {...(opts.headers||{}), 'Authorization':'Bearer '+tok(), 'Content-Type':'application/json'};
@@ -118,11 +128,16 @@ async function loadUser() {
 
 async function loadTasks() {
   const role = document.getElementById('roleFilter').value;
-  let url = API+'/playbook/completions/?date='+today;
+  const freq = document.getElementById('freqFilter').value;
+  const date = selectedDate();
+  let url = API+'/playbook/completions/?date='+date;
   if (role) url += '&role='+role;
+  if (freq) url += '&frequency='+freq;
   const r = await apiFetch(url);
   if (!r) return;
-  const tasks = await r.json();
+  let tasks = await r.json();
+  // Defensive client-side filter in case the endpoint doesn't (yet) filter by frequency itself
+  if (freq) tasks = tasks.filter(t => t.frequency === freq);
 
   // Group by frequency + role
   const groups = {};
@@ -209,7 +224,7 @@ async function loadTasks() {
 async function markComplete(taskId, checkbox) {
   checkbox.disabled = true;
   const r = await apiFetch(API+'/playbook/completions/', {
-    method:'POST', body:JSON.stringify({task_id: taskId, date: today})
+    method:'POST', body:JSON.stringify({task_id: taskId, date: selectedDate()})
   });
   if (!r) { checkbox.disabled=false; return; }
   // Reload to reflect updated kpis and completed state
@@ -272,10 +287,14 @@ async function seedDefaultTasks() {
 }
 
 document.getElementById('roleFilter').addEventListener('change', loadTasks);
+document.getElementById('freqFilter').addEventListener('change', loadTasks);
+document.getElementById('dateFilter').addEventListener('change', loadTasks);
 document.getElementById('btnSeedTasks').addEventListener('click', seedDefaultTasks);
 document.getElementById('logoutBtn').addEventListener('click', e => {
   e.preventDefault(); localStorage.removeItem('ims_access'); localStorage.removeItem('ims_refresh'); location.href='/portal/login/';
 });
+
+document.getElementById('dateFilter').value = today;
 
 if (!tok()) location.href='/portal/login/';
 loadUser(); loadTasks();

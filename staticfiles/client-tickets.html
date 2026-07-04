@@ -56,33 +56,36 @@
             <i class="align-middle me-1" data-feather="plus"></i> New Ticket
           </a>
         </div>
-        <div class="card mb-3">
-          <div class="card-body py-2">
-            <div class="row g-2 align-items-center">
-              <div class="col-auto"><label class="col-form-label">Filter:</label></div>
-              <div class="col-auto">
-                <input type="text" class="form-control form-control-sm" id="searchInput" placeholder="Search…" style="width:160px">
-              </div>
-              <div class="col-auto">
-                <select class="form-select form-select-sm" id="filterStatus">
-                  <option value="">All Statuses</option>
-                  <option value="open">Open</option>
-                  <option value="in_progress">In Progress</option>
-                  <option value="resolved">Resolved</option>
-                  <option value="closed">Closed</option>
-                </select>
-              </div>
-              <div class="col-auto">
-                <select class="form-select form-select-sm" id="filterPriority">
-                  <option value="">All Priorities</option>
-                  <option value="critical">Critical</option>
-                  <option value="high">High</option>
-                  <option value="medium">Medium</option>
-                  <option value="low">Low</option>
-                </select>
-              </div>
-              <div class="col-auto"><button class="btn btn-sm btn-outline-secondary" id="clearFilter">Clear</button></div>
-            </div>
+        <div class="row g-2 mb-3">
+          <div class="col-md-3">
+            <input type="text" class="form-control form-control-sm" id="searchInput" placeholder="Search…">
+          </div>
+          <div class="col-md-2">
+            <select class="form-select form-select-sm" id="filterStatus">
+              <option value="">All Statuses</option>
+              <option value="open">Open</option>
+              <option value="in_progress">In Progress</option>
+              <option value="resolved">Resolved</option>
+              <option value="closed">Closed</option>
+            </select>
+          </div>
+          <div class="col-md-2">
+            <select class="form-select form-select-sm" id="filterPriority">
+              <option value="">All Priorities</option>
+              <option value="critical">Critical</option>
+              <option value="high">High</option>
+              <option value="medium">Medium</option>
+              <option value="low">Low</option>
+            </select>
+          </div>
+          <div class="col-md-2">
+            <input type="date" class="form-control form-control-sm" id="fDateFrom" title="Created from">
+          </div>
+          <div class="col-md-2">
+            <input type="date" class="form-control form-control-sm" id="fDateTo" title="Created to">
+          </div>
+          <div class="col-md-1">
+            <button class="btn btn-sm btn-outline-secondary w-100" id="clearFilter">Clear</button>
           </div>
         </div>
         <div class="card">
@@ -117,6 +120,7 @@
   </div>
 </div>
 <script src="/portal/static/js/app.js"></script>
+<script src="/portal/static/js/hq-filters.js"></script>
 <script>(function(){function _i(){var s=document.querySelector('.js-sidebar'),t=document.querySelector('.js-sidebar-toggle');if(!s||!t)return;if(window.innerWidth<992&&localStorage.getItem('ims_sidebar')==='open')s.classList.add('collapsed');t.addEventListener('click',function(){setTimeout(function(){localStorage.setItem('ims_sidebar',s.classList.contains('collapsed')?'open':'closed');},50);});}document.readyState==='loading'?document.addEventListener('DOMContentLoaded',_i):_i();})();</script>
 <script>
 (function(){
@@ -158,21 +162,34 @@
       </tr>`).join('');
   }
 
-  function applyFilters(){
-    const s=document.getElementById('filterStatus').value;
-    const p=document.getElementById('filterPriority').value;
-    const q=document.getElementById('searchInput').value.toLowerCase();
-    renderTable(all.filter(i=>(s?i.status===s:true)&&(p?i.priority===p:true)&&(q?i.title.toLowerCase().includes(q)||((i.ticket_id||'').toLowerCase().includes(q)):true)));
+  function currentFilters(){
+    return {
+      search: document.getElementById('searchInput').value.trim(),
+      status: document.getElementById('filterStatus').value,
+      priority: document.getElementById('filterPriority').value,
+      date_from: document.getElementById('fDateFrom').value,
+      date_to: document.getElementById('fDateTo').value,
+    };
   }
 
-  document.getElementById('filterStatus').addEventListener('change',applyFilters);
-  document.getElementById('filterPriority').addEventListener('change',applyFilters);
-  document.getElementById('searchInput').addEventListener('input',applyFilters);
-  document.getElementById('clearFilter').onclick=()=>{ document.getElementById('filterStatus').value=''; document.getElementById('filterPriority').value=''; document.getElementById('searchInput').value=''; renderTable(all); };
+  document.getElementById('filterStatus').addEventListener('change',load);
+  document.getElementById('filterPriority').addEventListener('change',load);
+  document.getElementById('searchInput').addEventListener('input',HQFilters.debounce(load,350));
+  document.getElementById('fDateFrom').addEventListener('change',load);
+  document.getElementById('fDateTo').addEventListener('change',load);
+  document.getElementById('clearFilter').onclick=()=>{
+    document.getElementById('filterStatus').value='';
+    document.getElementById('filterPriority').value='';
+    document.getElementById('searchInput').value='';
+    document.getElementById('fDateFrom').value='';
+    document.getElementById('fDateTo').value='';
+    load();
+  };
 
   async function load(){
     try{
-      const r=await api('/portal/api/incidents/');
+      const params = HQFilters.qs(currentFilters());
+      const r=await api('/portal/api/incidents/'+(params?'?'+params:''));
       const json=await r.json(); all=json.results!==undefined?json.results:json;
       renderTable(all);
     }catch(e){ if(e.message!=='Unauth') document.getElementById('tableLoading').textContent='Failed to load tickets. Please refresh.'; }
