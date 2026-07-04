@@ -10,6 +10,12 @@
   <style>
     .metric-card .card-body{text-align:center}
     .gpm-ring{width:120px;height:120px;border-radius:50%;background:conic-gradient(#198754 0%,#e9ecef 0%);margin:0 auto;display:flex;align-items:center;justify-content:center;font-size:1.5rem;font-weight:700;box-shadow:0 0 0 8px #fff,0 0 0 12px #e9ecef}
+    .tab-pane{display:none}.tab-pane.active{display:block}
+    .nav-tabs .nav-link{cursor:pointer}
+    .stmt-row td:first-child{color:#555}
+    .stmt-row td:last-child{text-align:right;font-weight:600}
+    .stmt-total{border-top:2px solid #333;font-weight:700}
+    .stmt-total td{padding-top:8px}
   </style>
 </head>
 <body>
@@ -44,6 +50,14 @@
     <main class="content">
       <div class="container-fluid p-0">
         <h1 class="h3 mb-3"><strong>Financial Analytics</strong></h1>
+
+        <ul class="nav nav-tabs mb-3" id="mainTabs">
+          <li class="nav-item"><a class="nav-link active" onclick="switchMainTab('overview')">Overview</a></li>
+          <li class="nav-item"><a class="nav-link" onclick="switchMainTab('statements')">Financial Statements</a></li>
+          <li class="nav-item"><a class="nav-link" onclick="switchMainTab('ledger')">Ledger</a></li>
+        </ul>
+
+        <div id="tab-overview" class="tab-pane active">
         <div id="analyticsLoading" class="text-center py-5 text-muted">Computing metrics…</div>
         <div id="analyticsContent" style="display:none">
 
@@ -155,6 +169,91 @@
           </div>
 
         </div>
+        </div><!-- /tab-overview -->
+
+        <!-- Financial Statements tab -->
+        <div id="tab-statements" class="tab-pane">
+          <div class="row g-2 mb-3 align-items-end">
+            <div class="col-md-3">
+              <label class="form-label small text-muted mb-1">From</label>
+              <input type="date" class="form-control form-control-sm" id="stmtDateFrom">
+            </div>
+            <div class="col-md-3">
+              <label class="form-label small text-muted mb-1">To</label>
+              <input type="date" class="form-control form-control-sm" id="stmtDateTo">
+            </div>
+            <div class="col-md-3">
+              <label class="form-label small text-muted mb-1">Balance Sheet As Of</label>
+              <input type="date" class="form-control form-control-sm" id="stmtAsOf">
+            </div>
+            <div class="col-md-3">
+              <button class="btn btn-sm btn-primary w-100" id="runStatementsBtn">Run Statements</button>
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="col-lg-4 mb-3">
+              <div class="card h-100">
+                <div class="card-header"><h5 class="card-title mb-0">Income Statement</h5></div>
+                <div class="card-body p-0">
+                  <table class="table table-sm mb-0"><tbody id="incomeStatementBody"></tbody></table>
+                </div>
+              </div>
+            </div>
+            <div class="col-lg-4 mb-3">
+              <div class="card h-100">
+                <div class="card-header d-flex align-items-center justify-content-between">
+                  <h5 class="card-title mb-0">Balance Sheet</h5>
+                  <span id="bsBalanceBadge"></span>
+                </div>
+                <div class="card-body p-0">
+                  <table class="table table-sm mb-0"><tbody id="balanceSheetBody"></tbody></table>
+                </div>
+              </div>
+            </div>
+            <div class="col-lg-4 mb-3">
+              <div class="card h-100">
+                <div class="card-header"><h5 class="card-title mb-0">Cash Flow Statement</h5></div>
+                <div class="card-body p-0">
+                  <table class="table table-sm mb-0"><tbody id="cashFlowBody"></tbody></table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div><!-- /tab-statements -->
+
+        <!-- Ledger tab -->
+        <div id="tab-ledger" class="tab-pane">
+          <div class="row g-2 mb-3">
+            <div class="col-md-4">
+              <select class="form-select form-select-sm" id="ledgerAccount"><option value="">All Accounts</option></select>
+            </div>
+            <div class="col-md-3">
+              <input type="date" class="form-control form-control-sm" id="ledgerDateFrom" title="From">
+            </div>
+            <div class="col-md-3">
+              <input type="date" class="form-control form-control-sm" id="ledgerDateTo" title="To">
+            </div>
+            <div class="col-md-2">
+              <button class="btn btn-sm btn-outline-secondary w-100" id="ledgerClearBtn">Clear</button>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-header d-flex align-items-center justify-content-between">
+              <h5 class="card-title mb-0">General Ledger</h5>
+              <span class="badge bg-secondary" id="ledgerCount"></span>
+            </div>
+            <div class="card-body p-0">
+              <div class="table-responsive">
+                <table class="table table-hover table-sm mb-0">
+                  <thead><tr><th>Date</th><th>Description</th><th>Account</th><th class="text-end">Debit</th><th class="text-end">Credit</th><th>Memo</th></tr></thead>
+                  <tbody id="ledgerTbody"><tr><td colspan="6" class="text-center text-muted py-3">Select a filter or view all recent entries.</td></tr></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div><!-- /tab-ledger -->
+
       </div>
     </main>
     <footer class="footer"><div class="container-fluid"><p class="mb-0 text-muted">Rehumile TMW IMS &copy; 2025</p></div></footer>
@@ -233,6 +332,121 @@
       if(window.feather)feather.replace();
     }catch(e){if(e.message!=='Unauth')document.getElementById('analyticsLoading').textContent='Failed to load analytics.';}
   }
+
+  window.switchMainTab = function(name){
+    document.querySelectorAll('.tab-pane').forEach(t=>t.classList.remove('active'));
+    document.querySelectorAll('#mainTabs .nav-link').forEach(a=>a.classList.remove('active'));
+    document.getElementById('tab-'+name).classList.add('active');
+    document.querySelector(`[onclick="switchMainTab('${name}')"]`).classList.add('active');
+    if(name==='statements') runStatements();
+    if(name==='ledger'){ loadLedgerAccounts(); loadLedger(); }
+  };
+
+  function today(){ return new Date().toISOString().slice(0,10); }
+  function monthStart(){ const d=new Date(); return new Date(d.getFullYear(),d.getMonth(),1).toISOString().slice(0,10); }
+
+  document.getElementById('stmtDateFrom').value = monthStart();
+  document.getElementById('stmtDateTo').value = today();
+  document.getElementById('stmtAsOf').value = today();
+
+  function stmtRow(label, amount, isTotal){
+    return `<tr class="stmt-row${isTotal?' stmt-total':''}"><td>${label}</td><td>${fmtR(amount)}</td></tr>`;
+  }
+
+  async function runStatements(){
+    const dateFrom = document.getElementById('stmtDateFrom').value;
+    const dateTo = document.getElementById('stmtDateTo').value;
+    const asOf = document.getElementById('stmtAsOf').value;
+    try{
+      const [incR, bsR, cfR] = await Promise.all([
+        api(`/portal/api/reports/income-statement/?date_from=${dateFrom}&date_to=${dateTo}`),
+        api(`/portal/api/reports/balance-sheet/?as_of=${asOf}`),
+        api(`/portal/api/reports/cash-flow/?date_from=${dateFrom}&date_to=${dateTo}`),
+      ]);
+      const inc = await incR.json(), bs = await bsR.json(), cf = await cfR.json();
+
+      let incHtml = inc.revenue.accounts.map(a=>stmtRow(a.name, a.amount)).join('');
+      incHtml += stmtRow('Total Revenue', inc.revenue.total, true);
+      incHtml += inc.cogs.accounts.map(a=>stmtRow(a.name, -a.amount)).join('');
+      incHtml += stmtRow('Gross Profit ('+inc.gross_profit_margin_pct+'% GPM)', inc.gross_profit, true);
+      incHtml += inc.operating_expenses.accounts.map(a=>stmtRow(a.name, -a.amount)).join('');
+      incHtml += stmtRow('Net Profit ('+inc.net_profit_margin_pct+'% NPM)', inc.net_profit, true);
+      document.getElementById('incomeStatementBody').innerHTML = incHtml;
+
+      let bsHtml = '<tr><td colspan="2" class="fw-bold text-muted small text-uppercase">Assets</td></tr>';
+      bsHtml += bs.assets.accounts.map(a=>stmtRow(a.name, a.amount)).join('');
+      bsHtml += stmtRow('Total Assets', bs.assets.total, true);
+      bsHtml += '<tr><td colspan="2" class="fw-bold text-muted small text-uppercase pt-3">Liabilities</td></tr>';
+      bsHtml += bs.liabilities.accounts.map(a=>stmtRow(a.name, a.amount)).join('');
+      bsHtml += stmtRow('Total Liabilities', bs.liabilities.total, true);
+      bsHtml += '<tr><td colspan="2" class="fw-bold text-muted small text-uppercase pt-3">Equity</td></tr>';
+      bsHtml += bs.equity.accounts.map(a=>stmtRow(a.name, a.amount)).join('');
+      bsHtml += stmtRow('Total Equity', bs.equity.total, true);
+      bsHtml += stmtRow('Liabilities + Equity', bs.liabilities_plus_equity, true);
+      document.getElementById('balanceSheetBody').innerHTML = bsHtml;
+      document.getElementById('bsBalanceBadge').innerHTML = bs.balances
+        ? '<span class="badge bg-success">Balances ✓</span>'
+        : '<span class="badge bg-danger">Out of Balance</span>';
+
+      let cfHtml = stmtRow('Operating (OCF) — Inflow', cf.operating.inflow);
+      cfHtml += stmtRow('Operating (OCF) — Outflow', -cf.operating.outflow);
+      cfHtml += stmtRow('Net Operating', cf.operating.net, true);
+      cfHtml += stmtRow('Investing (ICF) — Net', cf.investing.net, true);
+      cfHtml += stmtRow('Financing (FCF) — Net', cf.financing.net, true);
+      cfHtml += stmtRow('Net Change in Cash', cf.net_change_in_cash, true);
+      document.getElementById('cashFlowBody').innerHTML = cfHtml;
+    }catch(e){ if(e.message!=='Unauth') console.error('Failed to load statements', e); }
+  }
+  document.getElementById('runStatementsBtn').addEventListener('click', runStatements);
+
+  async function loadLedgerAccounts(){
+    if(document.getElementById('ledgerAccount').dataset.loaded) return;
+    try{
+      const r = await api('/portal/api/accounts/');
+      const accounts = await r.json();
+      document.getElementById('ledgerAccount').innerHTML = '<option value="">All Accounts</option>' +
+        accounts.map(a=>`<option value="${a.id}">${a.code} — ${a.name}</option>`).join('');
+      document.getElementById('ledgerAccount').dataset.loaded = '1';
+    }catch{}
+  }
+
+  async function loadLedger(){
+    const params = new URLSearchParams();
+    const account = document.getElementById('ledgerAccount').value;
+    const dateFrom = document.getElementById('ledgerDateFrom').value;
+    const dateTo = document.getElementById('ledgerDateTo').value;
+    if(account) params.set('account', account);
+    if(dateFrom) params.set('date_from', dateFrom);
+    if(dateTo) params.set('date_to', dateTo);
+    try{
+      const r = await api('/portal/api/ledger/?'+params.toString());
+      const d = await r.json();
+      document.getElementById('ledgerCount').textContent = d.count+' entries';
+      if(!d.results.length){
+        document.getElementById('ledgerTbody').innerHTML = '<tr><td colspan="6" class="text-center text-muted py-3">No ledger entries found.</td></tr>';
+        return;
+      }
+      document.getElementById('ledgerTbody').innerHTML = d.results.map(le => `
+        <tr>
+          <td>${le.transaction_date}</td>
+          <td>${le.description}</td>
+          <td><code>${le.account_code}</code> ${le.account_name}</td>
+          <td class="text-end">${parseFloat(le.debit)>0 ? fmtR(le.debit) : ''}</td>
+          <td class="text-end">${parseFloat(le.credit)>0 ? fmtR(le.credit) : ''}</td>
+          <td class="text-muted small">${le.memo}</td>
+        </tr>`).join('');
+    }catch(e){ if(e.message!=='Unauth') console.error('Failed to load ledger', e); }
+  }
+  document.getElementById('ledgerAccount').addEventListener('change', loadLedger);
+  document.getElementById('ledgerDateFrom').addEventListener('change', loadLedger);
+  document.getElementById('ledgerDateTo').addEventListener('change', loadLedger);
+  document.getElementById('ledgerClearBtn').addEventListener('click', ()=>{
+    document.getElementById('ledgerAccount').value='';
+    document.getElementById('ledgerDateFrom').value='';
+    document.getElementById('ledgerDateTo').value='';
+    loadLedger();
+  });
+
   load();
 })();
 </script>

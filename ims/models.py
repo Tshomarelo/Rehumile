@@ -1283,6 +1283,16 @@ class CashTransaction(models.Model):
         max_length=10, choices=CashFlowStreamChoices.choices,
         default=CashFlowStreamChoices.OCF, db_index=True,
     )
+    transaction_category = models.CharField(
+        max_length=20,
+        choices=[
+            ('sale', 'Sale'),
+            ('capital_injection', 'Owner Capital Injection'),
+            ('owner_drawing', "Owner's Drawing"),
+            ('other', 'Other'),
+        ],
+        default='sale',
+    )
     description = models.CharField(max_length=255)
     performed_by = models.ForeignKey(
         User, on_delete=models.SET_NULL, null=True, related_name='cash_transactions',
@@ -1351,6 +1361,154 @@ class PurchaseSlip(models.Model):
 
     def __str__(self):
         return f"{self.supplier_name} R{self.amount} ({self.purchase_date})"
+
+
+# ============================================================================
+# DOUBLE-ENTRY ACCOUNTING ENGINE — Chart of Accounts, General Ledger, Expenses
+# ============================================================================
+
+class AccountTypeChoices(models.TextChoices):
+    ASSET = 'asset', _('Asset')
+    LIABILITY = 'liability', _('Liability')
+    EQUITY = 'equity', _('Equity')
+    REVENUE = 'revenue', _('Revenue')
+    EXPENSE = 'expense', _('Expense')
+
+
+class Account(models.Model):
+    """
+    Chart of Accounts. `system_key` is the stable, machine-readable handle
+    that all auto-posting logic looks up by — never look up an Account by
+    name/code from code, since those are user-editable display fields.
+    """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    code = models.CharField(max_length=10, unique=True)
+    system_key = models.CharField(max_length=50, unique=True, db_index=True)
+    name = models.CharField(max_length=150)
+    description = models.TextField(blank=True)
+    account_type = models.CharField(max_length=10, choices=AccountTypeChoices.choices)
+    account_subtype = models.CharField(max_length=30, blank=True)
+    normal_balance = models.CharField(
+        max_length=6, choices=[('debit', 'Debit'), ('credit', 'Credit')],
+    )
+    is_active = models.BooleanField(default=True)
+    is_system = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'accounts'
+        ordering = ['code']
+
+    def __str__(self):
+        return f"{self.code} — {self.name}"
+
+
+class LedgerTransaction(models.Model):
+    """One balanced journal entry (header). Immutable once created — to
+    correct a mistake, post a reversing entry via `reverses`, never edit."""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    transaction_date = models.DateField(db_index=True)
+    description = models.CharField(max_length=255)
+    source_model = models.CharField(max_length=50)
+    source_id = models.CharField(max_length=50)
+    cash_flow_stream = models.CharField(
+        max_length=10, choices=CashFlowStreamChoices.choices, null=True, blank=True,
+    )
+    created_by = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='ledger_transactions',
+    )
+    reverses = models.ForeignKey(
+        'self', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='reversed_by',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'ledger_transactions'
+        ordering = ['-transaction_date', '-created_at']
+        indexes = [
+            models.Index(fields=['source_model', 'source_id']),
+            models.Index(fields=['transaction_date']),
+        ]
+
+    def __str__(self):
+        return f"{self.transaction_date} — {self.description}"
+
+
+class LedgerEntry(models.Model):
+    """One debit or credit line within a LedgerTransaction."""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    transaction = models.ForeignKey(
+        LedgerTransaction, on_delete=models.CASCADE, related_name='entries',
+    )
+    account = models.ForeignKey(
+        Account, on_delete=models.PROTECT, related_name='ledger_entries',
+    )
+    debit = models.DecimalField(max_digits=14, decimal_places=2, default=0)
+    credit = models.DecimalField(max_digits=14, decimal_places=2, default=0)
+    memo = models.CharField(max_length=255, blank=True)
+
+    class Meta:
+        db_table = 'ledger_entries'
+        indexes = [models.Index(fields=['account'])]
+
+    def __str__(self):
+        return f"{self.account.system_key} Dr{self.debit}/Cr{self.credit}"
+
+
+class Expense(models.Model):
+    """
+    Canonical money-out record — replaces the informal 'PurchaseSlip as
+    expense' pattern. Optionally wraps a PurchaseSlip when the expense also
+    needs to feed the SARS VAT201 input-tax-claim pipeline.
+    """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    category = models.CharField(
+        max_length=12,
+        choices=[('cogs', 'Cost of Goods Sold'), ('operating', 'Operating Expense'), ('capital', 'Capital / Asset Purchase')],
+    )
+    account = models.ForeignKey(Account, on_delete=models.PROTECT, related_name='expenses')
+    amount = models.DecimalField(max_digits=12, decimal_places=2)
+    vendor = models.CharField(max_length=255)
+    description = models.CharField(max_length=500, blank=True)
+    expense_date = models.DateField()
+    cash_flow_stream = models.CharField(
+        max_length=10, choices=CashFlowStreamChoices.choices,
+        default=CashFlowStreamChoices.OCF,
+    )
+    is_recurring = models.BooleanField(default=False)
+    recurring_frequency = models.CharField(
+        max_length=10,
+        choices=[('weekly', 'Weekly'), ('monthly', 'Monthly'), ('quarterly', 'Quarterly'), ('annual', 'Annual')],
+        blank=True,
+    )
+    payment_status = models.CharField(
+        max_length=10, choices=[('paid', 'Paid'), ('unpaid', 'Unpaid / Payable')], default='paid',
+    )
+    cash_transaction = models.ForeignKey(
+        CashTransaction, on_delete=models.SET_NULL, null=True, blank=True, related_name='expenses',
+    )
+    purchase_slip = models.OneToOneField(
+        PurchaseSlip, on_delete=models.SET_NULL, null=True, blank=True, related_name='expense',
+    )
+    receipt_image_path = models.CharField(max_length=500, blank=True)
+    recorded_by = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, related_name='expenses_recorded',
+    )
+    approved_by = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True, related_name='expenses_approved',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'expenses'
+        ordering = ['-expense_date']
+
+    def __str__(self):
+        return f"{self.vendor} R{self.amount} ({self.expense_date})"
 
 
 # ============================================================================
