@@ -87,6 +87,21 @@
         </div>
 
         <!-- Payroll table -->
+        <div class="row g-2 mb-3">
+          <div class="col-md-4">
+            <input type="text" class="form-control form-control-sm" id="fSearch" placeholder="Search by name or employee #…">
+          </div>
+          <div class="col-md-3">
+            <select class="form-select form-select-sm" id="fFrozen">
+              <option value="">All (Active + Frozen)</option>
+              <option value="false">Active</option>
+              <option value="true">Frozen</option>
+            </select>
+          </div>
+          <div class="col-md-2">
+            <button class="btn btn-sm btn-outline-secondary w-100" id="fClear">Clear</button>
+          </div>
+        </div>
         <div class="card">
           <div class="card-header"><h6 class="mb-0">Payroll Detail — Current Period</h6></div>
           <div class="card-body p-0">
@@ -116,6 +131,7 @@
 
 <script src="/portal/static/js/app.js"></script>
 <script src="/portal/static/js/hq-sidebar-menu.js"></script>
+<script src="/portal/static/js/hq-filters.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
 <script>
 const API = '/portal/api';
@@ -154,9 +170,17 @@ async function loadPeriods() {
   else if (list.length) { sel.value = list[0].id; loadEMP201(list[0].id); }
 }
 
+function currentPayrollFilters() {
+  return {
+    is_frozen: document.getElementById('fFrozen').value,
+    search: document.getElementById('fSearch').value.trim(),
+  };
+}
+
 async function loadEMP201(id) {
   currentPeriodId = id;
-  const r = await apiFetch(API+'/compliance/'+id+'/emp201/');
+  const params = HQFilters.qs(currentPayrollFilters());
+  const r = await apiFetch(API+'/compliance/'+id+'/emp201/'+(params?'?'+params:''));
   if (!r) return;
   const d = await r.json();
   document.getElementById('totalPaye').textContent = fmt(d.emp201.total_paye);
@@ -182,6 +206,14 @@ async function loadEMP201(id) {
 }
 
 document.getElementById('periodSelect').addEventListener('change', function(){ if (this.value) loadEMP201(this.value); });
+
+document.getElementById('fSearch').addEventListener('input', HQFilters.debounce(() => { if (currentPeriodId) loadEMP201(currentPeriodId); }, 350));
+document.getElementById('fFrozen').addEventListener('change', () => { if (currentPeriodId) loadEMP201(currentPeriodId); });
+document.getElementById('fClear').addEventListener('click', () => {
+  document.getElementById('fSearch').value = '';
+  document.getElementById('fFrozen').value = '';
+  if (currentPeriodId) loadEMP201(currentPeriodId);
+});
 
 document.getElementById('btnCalc').addEventListener('click', async () => {
   if (!currentPeriodId) { alert('Select a period first.'); return; }

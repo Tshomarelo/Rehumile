@@ -45,6 +45,37 @@
           </button>
         </div>
         <div id="pageAlert"></div>
+        <div class="row g-2 mb-3">
+          <div class="col-md-4">
+            <input type="text" class="form-control form-control-sm" id="fSearch" placeholder="Search by name or email…">
+          </div>
+          <div class="col-md-2">
+            <select class="form-select form-select-sm" id="fRole">
+              <option value="">All Roles</option>
+              <option value="admin">Admin</option>
+              <option value="agent">Agent</option>
+              <option value="finance">Finance</option>
+              <option value="client">Client</option>
+              <option value="viewer">Viewer</option>
+            </select>
+          </div>
+          <div class="col-md-2">
+            <select class="form-select form-select-sm" id="fStatus">
+              <option value="">All Statuses</option>
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+              <option value="suspended">Suspended</option>
+            </select>
+          </div>
+          <div class="col-md-3">
+            <select class="form-select form-select-sm" id="fCompany">
+              <option value="">All Companies</option>
+            </select>
+          </div>
+          <div class="col-md-1">
+            <button class="btn btn-sm btn-outline-secondary w-100" id="fClear">Clear</button>
+          </div>
+        </div>
         <div class="card">
           <div class="card-header d-flex align-items-center justify-content-between">
             <h5 class="card-title mb-0">Portal Users</h5>
@@ -150,6 +181,7 @@
 
 <script src="/portal/static/js/app.js"></script>
 <script src="/portal/static/js/hq-sidebar-menu.js"></script>
+<script src="/portal/static/js/hq-filters.js"></script>
 <script>(function(){function _i(){var s=document.querySelector('.js-sidebar'),t=document.querySelector('.js-sidebar-toggle');if(!s||!t)return;if(window.innerWidth<992&&localStorage.getItem('ims_sidebar')==='open')s.classList.add('collapsed');t.addEventListener('click',function(){setTimeout(function(){localStorage.setItem('ims_sidebar',s.classList.contains('collapsed')?'open':'closed');},50);});}document.readyState==='loading'?document.addEventListener('DOMContentLoaded',_i):_i();})();</script>
 <script>
 (function(){
@@ -180,12 +212,24 @@
       const _cj=await r.json(); const companies=Array.isArray(_cj)?_cj:(_cj.results||[]);
       const sel=document.getElementById('f_company');
       sel.innerHTML='<option value="">No company (HQ staff)</option>'+companies.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
+      const filterSel=document.getElementById('fCompany');
+      filterSel.innerHTML='<option value="">All Companies</option>'+companies.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
     }catch{}
+  }
+
+  function currentFilters(){
+    return {
+      search: document.getElementById('fSearch').value.trim(),
+      role: document.getElementById('fRole').value,
+      status: document.getElementById('fStatus').value,
+      company: document.getElementById('fCompany').value,
+    };
   }
 
   async function loadUsers(){
     try{
-      const r=await api('/portal/api/users/');
+      const params = HQFilters.qs(currentFilters());
+      const r=await api('/portal/api/users/'+(params?'?'+params:''));
       const _j=await r.json(); const data=Array.isArray(_j)?_j:(_j.results||[]);
       document.getElementById('tableLoading').style.display='none';
       document.getElementById('userCount').textContent=data.length+' record'+(data.length!==1?'s':'');
@@ -280,6 +324,19 @@
     btn.innerHTML=orig;
   };
 
+  document.getElementById('fSearch').addEventListener('input', HQFilters.debounce(loadUsers, 350));
+  document.getElementById('fRole').addEventListener('change', loadUsers);
+  document.getElementById('fStatus').addEventListener('change', loadUsers);
+  document.getElementById('fCompany').addEventListener('change', loadUsers);
+  document.getElementById('fClear').addEventListener('click', ()=>{
+    document.getElementById('fSearch').value='';
+    document.getElementById('fRole').value='';
+    document.getElementById('fStatus').value='';
+    document.getElementById('fCompany').value='';
+    loadUsers();
+  });
+
+  loadCompaniesIntoSelect();
   loadUsers();
 })();
 </script>

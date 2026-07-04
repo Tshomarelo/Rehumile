@@ -57,6 +57,17 @@
         <div class="row">
           <!-- Shift history -->
           <div class="col-12 col-lg-7">
+            <div class="row g-2 mb-2">
+              <div class="col-6 col-md-4">
+                <input type="date" class="form-control form-control-sm" id="fShiftDateFrom" title="From date">
+              </div>
+              <div class="col-6 col-md-4">
+                <input type="date" class="form-control form-control-sm" id="fShiftDateTo" title="To date">
+              </div>
+              <div class="col-12 col-md-4">
+                <button class="btn btn-sm btn-outline-secondary w-100" id="fShiftClear">Clear Filters</button>
+              </div>
+            </div>
             <div class="card mb-3">
               <div class="card-header"><h5 class="card-title mb-0">Shift History (Last 30 days)</h5></div>
               <div class="card-body p-0">
@@ -99,6 +110,33 @@
             </div>
 
             <!-- Recent transactions -->
+            <div class="row g-2 mb-2">
+              <div class="col-6">
+                <select class="form-select form-select-sm" id="fTxnStream">
+                  <option value="">All Streams</option>
+                  <option value="ocf">OCF — Operating</option>
+                  <option value="icf">ICF — Investing</option>
+                  <option value="fcf">FCF — Financing</option>
+                </select>
+              </div>
+              <div class="col-6">
+                <select class="form-select form-select-sm" id="fTxnMethod">
+                  <option value="">All Methods</option>
+                  <option value="cash">Cash</option>
+                  <option value="card">Card</option>
+                  <option value="eft">EFT / Transfer</option>
+                </select>
+              </div>
+              <div class="col-6">
+                <input type="date" class="form-control form-control-sm" id="fTxnDateFrom" title="From date">
+              </div>
+              <div class="col-6">
+                <input type="date" class="form-control form-control-sm" id="fTxnDateTo" title="To date">
+              </div>
+              <div class="col-12">
+                <button class="btn btn-sm btn-outline-secondary w-100" id="fTxnClear">Clear Filters</button>
+              </div>
+            </div>
             <div class="card">
               <div class="card-header"><h5 class="card-title mb-0">Recent Transactions</h5></div>
               <div class="card-body p-0">
@@ -162,6 +200,7 @@
 
 <script src="/portal/static/js/app.js"></script>
 <script src="/portal/static/js/hq-sidebar-menu.js"></script>
+<script src="/portal/static/js/hq-filters.js"></script>
 <script>(function(){function _i(){var s=document.querySelector('.js-sidebar'),t=document.querySelector('.js-sidebar-toggle');if(!s||!t)return;t.addEventListener('click',function(){setTimeout(function(){localStorage.setItem('ims_sidebar',s.classList.contains('collapsed')?'open':'closed');},50);});}document.readyState==='loading'?document.addEventListener('DOMContentLoaded',_i):_i();})();</script>
 <script>
 (function(){
@@ -183,9 +222,26 @@
     return r;
   }
 
+  function currentShiftFilters(){
+    return {
+      date_from: document.getElementById('fShiftDateFrom').value,
+      date_to: document.getElementById('fShiftDateTo').value,
+    };
+  }
+
+  function currentTxnFilters(){
+    return {
+      stream: document.getElementById('fTxnStream').value,
+      payment_method: document.getElementById('fTxnMethod').value,
+      date_from: document.getElementById('fTxnDateFrom').value,
+      date_to: document.getElementById('fTxnDateTo').value,
+    };
+  }
+
   async function loadShifts(){
     try{
-      const r=await api('/portal/api/shifts/');const data=await r.json();
+      const params=HQFilters.qs(currentShiftFilters());
+      const r=await api('/portal/api/shifts/'+(params?'?'+params:''));const data=await r.json();
       const shifts=data.results||[];
       document.getElementById('shiftLoading').style.display='none';
       if(!shifts.length){document.getElementById('shiftLoading').textContent='No shifts recorded.';return;}
@@ -221,7 +277,8 @@
 
   async function loadTxns(){
     try{
-      const r=await api('/portal/api/cash-transactions/');const data=await r.json();
+      const params=HQFilters.qs(currentTxnFilters());
+      const r=await api('/portal/api/cash-transactions/'+(params?'?'+params:''));const data=await r.json();
       const txns=(data.results||[]).slice(0,20);
       document.getElementById('txnLoading').style.display='none';
       if(!txns.length){document.getElementById('txnLoading').textContent='No transactions yet.';return;}
@@ -303,6 +360,26 @@
       else{const err=await r.json().catch(()=>({}));alert.className='alert alert-danger';alert.textContent=err.detail||JSON.stringify(err);}
     }catch(e){if(e.message!=='Unauth'){alert.className='alert alert-danger';alert.textContent='Network error.';}}
     finally{btn.disabled=false;spin.classList.add('d-none');}
+  });
+
+  document.getElementById('fShiftDateFrom').addEventListener('change', loadShifts);
+  document.getElementById('fShiftDateTo').addEventListener('change', loadShifts);
+  document.getElementById('fShiftClear').addEventListener('click', ()=>{
+    document.getElementById('fShiftDateFrom').value='';
+    document.getElementById('fShiftDateTo').value='';
+    loadShifts();
+  });
+
+  document.getElementById('fTxnStream').addEventListener('change', loadTxns);
+  document.getElementById('fTxnMethod').addEventListener('change', loadTxns);
+  document.getElementById('fTxnDateFrom').addEventListener('change', loadTxns);
+  document.getElementById('fTxnDateTo').addEventListener('change', loadTxns);
+  document.getElementById('fTxnClear').addEventListener('click', ()=>{
+    document.getElementById('fTxnStream').value='';
+    document.getElementById('fTxnMethod').value='';
+    document.getElementById('fTxnDateFrom').value='';
+    document.getElementById('fTxnDateTo').value='';
+    loadTxns();
   });
 
   loadShifts();loadTxns();

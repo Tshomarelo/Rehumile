@@ -101,6 +101,19 @@
           </div>
         </div>
 
+        <div class="row g-2 mb-3">
+          <div class="col-md-3">
+            <select class="form-select form-select-sm" id="fStatus">
+              <option value="">All Statuses</option>
+              <option value="active">Active</option>
+              <option value="staging">Staging</option>
+              <option value="finalized">Finalized</option>
+            </select>
+          </div>
+          <div class="col-md-2">
+            <button class="btn btn-sm btn-outline-secondary w-100" id="fClear">Clear</button>
+          </div>
+        </div>
         <div class="card">
           <div class="card-header"><h6 class="mb-0">All Compliance Periods</h6></div>
           <div class="card-body p-0">
@@ -122,6 +135,7 @@
 
 <script src="/portal/static/js/app.js"></script>
 <script src="/portal/static/js/hq-sidebar-menu.js"></script>
+<script src="/portal/static/js/hq-filters.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
 <script>
 const API = '/portal/api';
@@ -144,8 +158,15 @@ async function loadUser() {
   document.getElementById('navUserRole').textContent = d.role || '';
 }
 
+function currentFilters() {
+  return {
+    status: document.getElementById('fStatus').value,
+  };
+}
+
 async function loadPeriods() {
-  const r = await apiFetch(API+'/compliance/');
+  const params = HQFilters.qs(currentFilters());
+  const r = await apiFetch(API+'/compliance/'+(params?'?'+params:''));
   if (!r) return;
   const list = await r.json();
   const tbody = document.getElementById('periodsTbody');
@@ -235,6 +256,12 @@ document.getElementById('logoutBtn').addEventListener('click', e => {
   e.preventDefault();
   localStorage.removeItem('ims_access'); localStorage.removeItem('ims_refresh');
   location.href = '/portal/login/';
+});
+
+document.getElementById('fStatus').addEventListener('change', loadPeriods);
+document.getElementById('fClear').addEventListener('click', () => {
+  document.getElementById('fStatus').value = '';
+  loadPeriods();
 });
 
 if (!tok()) location.href='/portal/login/';

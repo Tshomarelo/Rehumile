@@ -92,6 +92,32 @@
           </div>
         </div>
 
+        <!-- Invoice Filters -->
+        <div class="row g-2 mb-3">
+          <div class="col-md-3">
+            <input type="text" class="form-control form-control-sm" id="fSearch" placeholder="Search invoice #…">
+          </div>
+          <div class="col-md-3">
+            <select class="form-select form-select-sm" id="fStatus">
+              <option value="">All Statuses</option>
+              <option value="draft">Draft</option>
+              <option value="sent">Sent</option>
+              <option value="paid">Paid</option>
+              <option value="overdue">Overdue</option>
+              <option value="cancelled">Cancelled</option>
+            </select>
+          </div>
+          <div class="col-md-2">
+            <input type="date" class="form-control form-control-sm" id="fDateFrom" title="Due date from">
+          </div>
+          <div class="col-md-2">
+            <input type="date" class="form-control form-control-sm" id="fDateTo" title="Due date to">
+          </div>
+          <div class="col-md-2">
+            <button class="btn btn-sm btn-outline-secondary w-100" id="fClear">Clear</button>
+          </div>
+        </div>
+
         <!-- Invoice Table -->
         <div class="card">
           <div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
@@ -132,6 +158,7 @@
   </div>
 </div>
 <script src="/portal/static/js/app.js"></script>
+<script src="/portal/static/js/hq-filters.js"></script>
 <script>(function(){function _i(){var s=document.querySelector('.js-sidebar'),t=document.querySelector('.js-sidebar-toggle');if(!s||!t)return;if(window.innerWidth<992&&localStorage.getItem('ims_sidebar')==='open')s.classList.add('collapsed');t.addEventListener('click',function(){setTimeout(function(){localStorage.setItem('ims_sidebar',s.classList.contains('collapsed')?'open':'closed');},50);});}document.readyState==='loading'?document.addEventListener('DOMContentLoaded',_i):_i();})();</script>
 <script>
 (function(){
@@ -166,9 +193,19 @@
   let allInvoices=[];
   const escHtml=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 
+  function currentFilters(){
+    return {
+      search: document.getElementById('fSearch').value.trim(),
+      status: document.getElementById('fStatus').value,
+      date_from: document.getElementById('fDateFrom').value,
+      date_to: document.getElementById('fDateTo').value,
+    };
+  }
+
   async function load(){
     try{
-      const r=await api('/portal/api/invoices/');
+      const params = HQFilters.qs(currentFilters());
+      const r=await api('/portal/api/invoices/'+(params?'?'+params:''));
       const _j=await r.json(); const invoices=_j.results!==undefined?_j.results:_j;
       allInvoices=invoices;
 
@@ -244,6 +281,19 @@
       if(window.feather)feather.replace();
     }catch(e){ if(e.message!=='Unauth') document.getElementById('tableLoading').textContent='Failed to load invoices.'; }
   }
+
+  document.getElementById('fSearch').addEventListener('input', HQFilters.debounce(load, 350));
+  document.getElementById('fStatus').addEventListener('change', load);
+  document.getElementById('fDateFrom').addEventListener('change', load);
+  document.getElementById('fDateTo').addEventListener('change', load);
+  document.getElementById('fClear').addEventListener('click', ()=>{
+    document.getElementById('fSearch').value='';
+    document.getElementById('fStatus').value='';
+    document.getElementById('fDateFrom').value='';
+    document.getElementById('fDateTo').value='';
+    load();
+  });
+
   load();
 
   // Show payment status banner if returning from PayFast

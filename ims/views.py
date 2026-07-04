@@ -499,7 +499,22 @@ class CompanyViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         user = self.request.user
         if user.role in ('admin', 'agent', 'finance'):
-            return Company.objects.filter(is_deleted=False).order_by('-created_at')
+            qs = Company.objects.filter(is_deleted=False).order_by('-created_at')
+            params = self.request.query_params
+            search = params.get('search')
+            if search:
+                qs = qs.filter(
+                    Q(name__icontains=search) |
+                    Q(contact_person__icontains=search) |
+                    Q(contact_email__icontains=search)
+                )
+            status_param = params.get('status')
+            if status_param:
+                qs = qs.filter(status=status_param)
+            sla_type = params.get('sla_type')
+            if sla_type:
+                qs = qs.filter(sla_type=sla_type)
+            return qs
         if user.company:
             return Company.objects.filter(id=user.company.id, is_deleted=False)
         return Company.objects.none()
@@ -534,7 +549,25 @@ class UserViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         user = self.request.user
         if user.role in ('admin', 'agent'):
-            return User.objects.all().order_by('-created_at')
+            qs = User.objects.all().order_by('-created_at')
+            params = self.request.query_params
+            search = params.get('search')
+            if search:
+                qs = qs.filter(
+                    Q(first_name__icontains=search) |
+                    Q(last_name__icontains=search) |
+                    Q(email__icontains=search)
+                )
+            role = params.get('role')
+            if role:
+                qs = qs.filter(role=role)
+            status_param = params.get('status')
+            if status_param:
+                qs = qs.filter(status=status_param)
+            company_id = params.get('company')
+            if company_id:
+                qs = qs.filter(company=company_id)
+            return qs
         if user.company:
             return User.objects.filter(company=user.company).order_by('-created_at')
         return User.objects.filter(id=user.id)
@@ -584,10 +617,28 @@ class IncidentViewSet(viewsets.ModelViewSet):
             company_id = self.request.query_params.get('company')
             if company_id:
                 qs = qs.filter(company=company_id)
-            return qs.order_by('-created_at')
-        if user.company:
-            return qs.filter(company=user.company).order_by('-created_at')
-        return qs.filter(submitted_by=user).order_by('-created_at')
+        elif user.company:
+            qs = qs.filter(company=user.company)
+        else:
+            qs = qs.filter(submitted_by=user)
+
+        params = self.request.query_params
+        search = params.get('search')
+        if search:
+            qs = qs.filter(Q(title__icontains=search) | Q(ticket_id__icontains=search))
+        status_param = params.get('status')
+        if status_param:
+            qs = qs.filter(status=status_param)
+        priority = params.get('priority')
+        if priority:
+            qs = qs.filter(priority=priority)
+        date_from = params.get('date_from')
+        if date_from:
+            qs = qs.filter(created_at__date__gte=date_from)
+        date_to = params.get('date_to')
+        if date_to:
+            qs = qs.filter(created_at__date__lte=date_to)
+        return qs.order_by('-created_at')
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
@@ -709,11 +760,33 @@ class InvoiceViewSet(viewsets.ModelViewSet):
         user = self.request.user
         qs = Invoice.objects.select_related('company').order_by('-created_at')
         if user.role in ('admin', 'agent', 'finance'):
-            return qs
-        # Clients only see their own company's invoices
-        if user.company:
-            return qs.filter(company=user.company)
-        return qs.none()
+            pass
+        elif user.company:
+            # Clients only see their own company's invoices
+            qs = qs.filter(company=user.company)
+        else:
+            return qs.none()
+
+        params = self.request.query_params
+        search = params.get('search')
+        if search:
+            qs = qs.filter(invoice_number__icontains=search)
+        status_param = params.get('status')
+        if status_param:
+            qs = qs.filter(status=status_param)
+        invoice_type = params.get('invoice_type')
+        if invoice_type:
+            qs = qs.filter(invoice_type=invoice_type)
+        company_id = params.get('company')
+        if company_id and user.role in ('admin', 'agent', 'finance'):
+            qs = qs.filter(company=company_id)
+        date_from = params.get('date_from')
+        if date_from:
+            qs = qs.filter(due_date__gte=date_from)
+        date_to = params.get('date_to')
+        if date_to:
+            qs = qs.filter(due_date__lte=date_to)
+        return qs
 
 
 # ============================================================================
@@ -758,7 +831,13 @@ class NotificationsView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        qs = Notification.objects.filter(user=request.user).order_by('-created_at')[:50]
+        qs = Notification.objects.filter(user=request.user).order_by('-created_at')
+        notif_type = request.query_params.get('type')
+        if notif_type:
+            qs = qs.filter(notification_type=notif_type)
+        if request.query_params.get('unread') in ('1', 'true', 'True'):
+            qs = qs.filter(is_read=False)
+        qs = qs[:50]
         data = [{
             'id': str(n.id),
             'type': n.notification_type,
@@ -793,7 +872,29 @@ class AuditLogView(APIView):
     permission_classes = [IsHQAdmin]
 
     def get(self, request):
-        qs = AuditLog.objects.select_related('user').order_by('-created_at')[:200]
+        qs = AuditLog.objects.select_related('user').order_by('-created_at')
+        params = request.query_params
+        search = params.get('search')
+        if search:
+            qs = qs.filter(
+                Q(user__email__icontains=search) |
+                Q(action__icontains=search) |
+                Q(model_name__icontains=search) |
+                Q(object_id__icontains=search)
+            )
+        action_param = params.get('action')
+        if action_param:
+            qs = qs.filter(action=action_param)
+        model_name = params.get('model_name')
+        if model_name:
+            qs = qs.filter(model_name=model_name)
+        date_from = params.get('date_from')
+        if date_from:
+            qs = qs.filter(created_at__date__gte=date_from)
+        date_to = params.get('date_to')
+        if date_to:
+            qs = qs.filter(created_at__date__lte=date_to)
+        qs = qs[:200]
         data = [{
             'id': str(log.id),
             'user': log.user.email if log.user else 'System',
@@ -816,7 +917,26 @@ class SLABreachListView(APIView):
     permission_classes = [IsHQAdminOrAgent]
 
     def get(self, request):
-        qs = SLABreach.objects.select_related('incident', 'company').order_by('-breached_at')[:100]
+        qs = SLABreach.objects.select_related('incident', 'company').order_by('-breached_at')
+        params = request.query_params
+        company_id = params.get('company')
+        if company_id:
+            qs = qs.filter(company=company_id)
+        breach_type = params.get('breach_type')
+        if breach_type:
+            qs = qs.filter(breach_type=breach_type)
+        resolved = params.get('resolved')
+        if resolved in ('1', 'true', 'True'):
+            qs = qs.filter(resolved_at__isnull=False)
+        elif resolved in ('0', 'false', 'False'):
+            qs = qs.filter(resolved_at__isnull=True)
+        date_from = params.get('date_from')
+        if date_from:
+            qs = qs.filter(breached_at__date__gte=date_from)
+        date_to = params.get('date_to')
+        if date_to:
+            qs = qs.filter(breached_at__date__lte=date_to)
+        qs = qs[:100]
         breaches = [{
             'id': str(b.id),
             'ticket_id': b.incident.ticket_id,
@@ -1046,6 +1166,22 @@ class JobCardListView(APIView):
         status_filter = request.GET.get("status")
         if status_filter:
             qs = qs.filter(status=status_filter)
+        search = request.GET.get("search")
+        if search:
+            qs = qs.filter(
+                Q(customer_name__icontains=search) |
+                Q(job_number__icontains=search) |
+                Q(serial_number__icontains=search)
+            )
+        technician_id = request.GET.get("technician")
+        if technician_id:
+            qs = qs.filter(technician_id=technician_id)
+        date_from = request.GET.get("date_from")
+        if date_from:
+            qs = qs.filter(created_at__date__gte=date_from)
+        date_to = request.GET.get("date_to")
+        if date_to:
+            qs = qs.filter(created_at__date__lte=date_to)
         data = [{
             "id": str(j.id),
             "job_number": j.job_number,
@@ -1176,6 +1312,19 @@ class InventoryListView(APIView):
         qs = InventoryItem.objects.filter(is_deleted=False)
         if request.GET.get("type"):
             qs = qs.filter(item_type=request.GET["type"])
+        search = request.GET.get("search")
+        if search:
+            qs = qs.filter(
+                Q(name__icontains=search) |
+                Q(category__icontains=search) |
+                Q(serial_number__icontains=search)
+            )
+        category = request.GET.get("category")
+        if category:
+            qs = qs.filter(category=category)
+        deployment_status = request.GET.get("deployment_status")
+        if deployment_status:
+            qs = qs.filter(deployment_status=deployment_status)
         low_stock_only = request.GET.get("low_stock")
         data = []
         for item in qs:
@@ -1275,7 +1424,14 @@ class ShiftLogView(APIView):
     def get(self, request):
         if request.user.role not in ("admin", "cashier", "finance"):
             return Response({"detail": "Permission denied."}, status=status.HTTP_403_FORBIDDEN)
-        qs = ShiftLog.objects.select_related("opened_by", "closed_by").order_by("-date")[:30]
+        qs = ShiftLog.objects.select_related("opened_by", "closed_by").order_by("-date")
+        date_from = request.GET.get("date_from")
+        if date_from:
+            qs = qs.filter(date__gte=date_from)
+        date_to = request.GET.get("date_to")
+        if date_to:
+            qs = qs.filter(date__lte=date_to)
+        qs = qs[:30]
         data = [{
             "id": str(s.id),
             "date": s.date.isoformat(),
@@ -1345,9 +1501,18 @@ class CashTransactionListView(APIView):
     def get(self, request):
         if request.user.role not in ("admin", "cashier", "finance"):
             return Response({"detail": "Permission denied."}, status=status.HTTP_403_FORBIDDEN)
-        qs = CashTransaction.objects.select_related("performed_by", "invoice", "job_card").order_by("-created_at")[:200]
+        qs = CashTransaction.objects.select_related("performed_by", "invoice", "job_card").order_by("-created_at")
         if request.GET.get("stream"):
             qs = qs.filter(cash_flow_stream=request.GET["stream"])
+        if request.GET.get("payment_method"):
+            qs = qs.filter(payment_method=request.GET["payment_method"])
+        date_from = request.GET.get("date_from")
+        if date_from:
+            qs = qs.filter(created_at__date__gte=date_from)
+        date_to = request.GET.get("date_to")
+        if date_to:
+            qs = qs.filter(created_at__date__lte=date_to)
+        qs = qs[:200]
         data = [{
             "id": str(t.id),
             "amount": str(t.amount),
@@ -1397,9 +1562,14 @@ class VoucherView(APIView):
     def get(self, request):
         if request.user.role not in ("admin", "cashier", "finance"):
             return Response({"detail": "Permission denied."}, status=status.HTTP_403_FORBIDDEN)
-        qs = Voucher.objects.select_related("sold_by").order_by("-created_at")[:200]
+        qs = Voucher.objects.select_related("sold_by").order_by("-created_at")
         if request.GET.get("status"):
             qs = qs.filter(status=request.GET["status"])
+        if request.GET.get("search"):
+            qs = qs.filter(voucher_code__icontains=request.GET["search"])
+        if request.GET.get("duration_hours"):
+            qs = qs.filter(duration_hours=request.GET["duration_hours"])
+        qs = qs[:200]
         data = [{
             "id": str(v.id),
             "voucher_code": v.voucher_code,
@@ -1556,7 +1726,11 @@ class CompliancePeriodListView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        periods = CompliancePeriod.objects.all().values(
+        qs = CompliancePeriod.objects.all()
+        status_param = request.query_params.get('status')
+        if status_param:
+            qs = qs.filter(status=status_param)
+        periods = qs.values(
             'id', 'period_label', 'period_start', 'period_end', 'status',
             'field1_standard_rated_sales', 'field4_output_tax',
             'field14_capital_goods_input', 'field15_non_capital_input',
@@ -1730,6 +1904,14 @@ class SupplierSlipOCRView(APIView):
         qs = SupplierSlipOCR.objects.select_related('purchase_slip', 'compliance_period')
         if period_id:
             qs = qs.filter(compliance_period_id=period_id)
+        ocr_status = request.query_params.get('ocr_status')
+        if ocr_status:
+            qs = qs.filter(ocr_status=ocr_status)
+        is_capital = request.query_params.get('is_capital_goods')
+        if is_capital in ('1', 'true', 'True'):
+            qs = qs.filter(is_capital_goods=True)
+        elif is_capital in ('0', 'false', 'False'):
+            qs = qs.filter(is_capital_goods=False)
         data = list(qs.values(
             'id', 'supplier_vat_number', 'invoice_date', 'gross_amount',
             'stated_vat_amount', 'is_capital_goods', 'ocr_status', 'ocr_flags',
@@ -1788,7 +1970,22 @@ class EmployeeListView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        qs = Employee.objects.filter(is_active=True).values(
+        is_active = request.query_params.get('is_active', 'true')
+        qs = Employee.objects.all()
+        if is_active in ('1', 'true', 'True'):
+            qs = qs.filter(is_active=True)
+        elif is_active in ('0', 'false', 'False'):
+            qs = qs.filter(is_active=False)
+        # else 'all' — no filter
+        search = request.query_params.get('search')
+        if search:
+            qs = qs.filter(
+                Q(first_name__icontains=search) |
+                Q(last_name__icontains=search) |
+                Q(employee_number__icontains=search) |
+                Q(job_title__icontains=search)
+            )
+        qs = qs.values(
             'id', 'employee_number', 'first_name', 'last_name',
             'job_title', 'employment_type', 'gross_monthly_salary',
             'start_date', 'is_active',
@@ -1950,6 +2147,18 @@ class EMP201View(APIView):
         except CompliancePeriod.DoesNotExist:
             return Response({'error': 'Not found.'}, status=404)
         entries = PayrollEntry.objects.filter(compliance_period=period).select_related('employee')
+        is_frozen = request.query_params.get('is_frozen')
+        if is_frozen in ('1', 'true', 'True'):
+            entries = entries.filter(is_frozen=True)
+        elif is_frozen in ('0', 'false', 'False'):
+            entries = entries.filter(is_frozen=False)
+        search = request.query_params.get('search')
+        if search:
+            entries = entries.filter(
+                Q(employee__first_name__icontains=search) |
+                Q(employee__last_name__icontains=search) |
+                Q(employee__employee_number__icontains=search)
+            )
         rows = []
         for e in entries:
             rows.append({
@@ -1960,6 +2169,7 @@ class EMP201View(APIView):
                 'uif_employee': float(e.uif_employee),
                 'uif_employer': float(e.uif_employer),
                 'net_pay': float(e.net_pay),
+                'is_frozen': e.is_frozen,
             })
         return Response({
             'period': period.period_label,
@@ -2001,6 +2211,9 @@ class LeaveRequestView(APIView):
         emp_id = request.query_params.get('employee_id')
         if emp_id:
             qs = qs.filter(employee_id=emp_id)
+        status_param = request.query_params.get('status')
+        if status_param:
+            qs = qs.filter(status=status_param)
         data = list(qs.values(
             'id', 'employee__first_name', 'employee__last_name',
             'leave_type', 'start_date', 'end_date', 'days_requested',
@@ -2148,10 +2361,19 @@ class ServicePriceView(APIView):
         return [IsAuthenticated()]
 
     def get(self, request):
-        qs = ServicePrice.objects.filter(is_active=True)
+        is_active = request.query_params.get('is_active', 'true')
+        qs = ServicePrice.objects.all()
+        if is_active in ('1', 'true', 'True'):
+            qs = qs.filter(is_active=True)
+        elif is_active in ('0', 'false', 'False'):
+            qs = qs.filter(is_active=False)
+        # 'all' — no filter
         featured_only = request.query_params.get('featured')
         if featured_only:
             qs = qs.filter(is_featured=True)
+        category = request.query_params.get('category')
+        if category:
+            qs = qs.filter(category=category)
         data = list(qs.values(
             'id', 'name', 'category', 'description', 'price', 'unit',
             'is_featured', 'is_active', 'display_order',
@@ -2686,6 +2908,15 @@ class WifiSubscriberListView(APIView):
         if request.user.role not in ('admin', 'finance', 'agent'):
             return Response({'detail': 'HQ access required.'}, status=403)
         qs = WifiSubscriber.objects.all().order_by('status', 'client_name')
+        status_param = request.query_params.get('status')
+        if status_param:
+            qs = qs.filter(status=status_param)
+        search = request.query_params.get('search')
+        if search:
+            qs = qs.filter(
+                Q(client_name__icontains=search) |
+                Q(axxess_id__icontains=search)
+            )
         return Response(WifiSubscriberSerializer(qs, many=True).data)
 
     def post(self, request):
@@ -2744,6 +2975,12 @@ class SLAContractListView(APIView):
         if request.user.role not in ('admin', 'finance', 'agent'):
             return Response({'detail': 'HQ access required.'}, status=403)
         qs = SLAContract.objects.all().order_by('status', 'client_name')
+        status_param = request.query_params.get('status')
+        if status_param:
+            qs = qs.filter(status=status_param)
+        search = request.query_params.get('search')
+        if search:
+            qs = qs.filter(client_name__icontains=search)
         return Response(SLAContractSerializer(qs, many=True).data)
 
     def post(self, request):

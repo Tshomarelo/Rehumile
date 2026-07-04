@@ -75,6 +75,28 @@
           </button>
         </div>
 
+        <div class="row g-2 mb-3">
+          <div class="col-md-4">
+            <input type="text" class="form-control form-control-sm" id="fSearch" placeholder="Search by name, category, or serial number…">
+          </div>
+          <div class="col-md-3">
+            <select class="form-select form-select-sm" id="fCategory">
+              <option value="">All Categories</option>
+            </select>
+          </div>
+          <div class="col-md-3">
+            <select class="form-select form-select-sm" id="fDeploymentStatus">
+              <option value="">All Deployment Statuses</option>
+              <option value="active">Active</option>
+              <option value="maintenance">Under Maintenance</option>
+              <option value="inactive">Inactive</option>
+            </select>
+          </div>
+          <div class="col-md-2">
+            <button class="btn btn-sm btn-outline-secondary w-100" id="fClear">Clear Filters</button>
+          </div>
+        </div>
+
         <div class="card">
           <div class="card-body p-0">
             <div id="invLoading" class="text-center py-4 text-muted">Loading…</div>
@@ -155,6 +177,7 @@
 
 <script src="/portal/static/js/app.js"></script>
 <script src="/portal/static/js/hq-sidebar-menu.js"></script>
+<script src="/portal/static/js/hq-filters.js"></script>
 <script>(function(){function _i(){var s=document.querySelector('.js-sidebar'),t=document.querySelector('.js-sidebar-toggle');if(!s||!t)return;t.addEventListener('click',function(){setTimeout(function(){localStorage.setItem('ims_sidebar',s.classList.contains('collapsed')?'open':'closed');},50);});}document.readyState==='loading'?document.addEventListener('DOMContentLoaded',_i):_i();})();</script>
 <script>
 (function(){
@@ -177,12 +200,35 @@
     return r;
   }
 
+  async function loadCategories(){
+    try{
+      const r=await api('/portal/api/inventory/');
+      const data=await r.json(); const items=data.results||[];
+      const cats=[...new Set(items.map(i=>i.category).filter(Boolean))].sort();
+      const sel=document.getElementById('fCategory');
+      const current=sel.value;
+      sel.innerHTML='<option value="">All Categories</option>'+cats.map(c=>`<option value="${c}">${c}</option>`).join('');
+      sel.value=current;
+    }catch(e){}
+  }
+
+  function currentFilters(){
+    return {
+      type: currentType,
+      low_stock: lowOnly ? '1' : '',
+      search: document.getElementById('fSearch').value.trim(),
+      category: document.getElementById('fCategory').value,
+      deployment_status: document.getElementById('fDeploymentStatus').value,
+    };
+  }
+
   async function load(){
     document.getElementById('invLoading').style.display='block';
     document.getElementById('invWrapper').style.display='none';
     document.getElementById('invEmpty').style.display='none';
     try{
-      let url='/portal/api/inventory/?'+(currentType?'type='+currentType:'' )+(lowOnly?(currentType?'&':'')+'low_stock=1':'');
+      const params = HQFilters.qs(currentFilters());
+      const url='/portal/api/inventory/'+(params?'?'+params:'');
       const r=await api(url);const data=await r.json();const items=data.results||[];
       document.getElementById('kpiTotal').textContent=items.length;
       document.getElementById('kpiConsumable').textContent=items.filter(i=>i.item_type==='consumable').length;
@@ -224,6 +270,19 @@
   document.getElementById('lowStockBtn').addEventListener('click',function(){
     lowOnly=!lowOnly;this.classList.toggle('btn-outline-danger',!lowOnly);this.classList.toggle('btn-danger',lowOnly);load();
   });
+  document.getElementById('fSearch').addEventListener('input', HQFilters.debounce(load, 350));
+  document.getElementById('fCategory').addEventListener('change', load);
+  document.getElementById('fDeploymentStatus').addEventListener('change', load);
+  document.getElementById('fClear').addEventListener('click', ()=>{
+    document.getElementById('fSearch').value='';
+    document.getElementById('fCategory').value='';
+    document.getElementById('fDeploymentStatus').value='';
+    document.querySelectorAll('[data-type]').forEach(b=>b.classList.remove('active'));
+    document.querySelector('[data-type=""]').classList.add('active');
+    currentType='';
+    if(lowOnly){lowOnly=false;document.getElementById('lowStockBtn').classList.remove('btn-danger');document.getElementById('lowStockBtn').classList.add('btn-outline-danger');}
+    load();
+  });
   document.getElementById('stockType').addEventListener('change',function(){
     document.getElementById('stockRefRow').style.display=this.value==='out'?'block':'none';
   });
@@ -249,6 +308,7 @@
         HQ.hideDrawer('newItemModal');
         showAlert('pageAlert','Item added successfully.','success');
         load();
+        loadCategories();
       }else{const err=await r.json().catch(()=>({}));showAlert('itemAlert',err.detail||JSON.stringify(err));}
     }catch(e){if(e.message!=='Unauth')showAlert('itemAlert','Network error.');}
     btn.disabled=false;btn.innerHTML=orig;
@@ -279,6 +339,7 @@
   });
 
   load();
+  loadCategories();
 })();
 </script>
 </body>

@@ -160,6 +160,12 @@
                 <option value="cloud">Cloud Services</option>
                 <option value="other">Other</option>
               </select>
+              <select id="filterActive" class="form-control" style="width:auto;padding:6px 10px" onchange="loadPrices()">
+                <option value="true" selected>Active</option>
+                <option value="false">Hidden</option>
+                <option value="all">All</option>
+              </select>
+              <button class="btn btn-outline btn-sm" id="fClear" onclick="clearPriceFilters()">Clear</button>
             </div>
           </div>
           <table class="dash-table">
@@ -279,6 +285,7 @@
 
 <script src="/portal/static/js/app.js"></script>
 <script src="/portal/static/js/hq-sidebar-menu.js"></script>
+<script src="/portal/static/js/hq-filters.js"></script>
 <script>
 const API = '/portal/api';
 const token = () => localStorage.getItem('ims_access');
@@ -347,18 +354,30 @@ const CAT_COLORS = {
   software: 'badge-blue', hardware: 'badge-gray', cloud: 'badge-blue', other: 'badge-gray',
 };
 
+function currentPriceFilters() {
+  return {
+    category: document.getElementById('filterCategory').value,
+    is_active: document.getElementById('filterActive').value,
+  };
+}
+
+function clearPriceFilters() {
+  document.getElementById('filterCategory').value = '';
+  document.getElementById('filterActive').value = 'true';
+  loadPrices();
+}
+
 async function loadPrices() {
-  const cat = document.getElementById('filterCategory').value;
-  let url = API + '/website/prices/';
+  const params = HQFilters.qs(currentPriceFilters());
+  const url = API + '/website/prices/' + (params ? '?' + params : '');
   const res = await fetch(url, { headers: authHeaders() });
   const data = await res.json();
-  const filtered = cat ? data.filter(p => p.category === cat) : data;
   const tbody = document.getElementById('pricesBody');
-  if (!filtered.length) {
+  if (!data.length) {
     tbody.innerHTML = '<tr><td colspan="7"><div class="empty-state">No services found. Click "Add Service Price" to get started.</div></td></tr>';
     return;
   }
-  tbody.innerHTML = filtered.map(p => `
+  tbody.innerHTML = data.map(p => `
     <tr>
       <td><strong>${p.name}</strong>${p.description ? '<br><span style="font-size:.75rem;color:#9ca3af">' + p.description.substring(0,80) + '</span>' : ''}</td>
       <td><span class="badge ${CAT_COLORS[p.category] || 'badge-gray'}">${CAT_LABELS[p.category] || p.category}</span></td>
