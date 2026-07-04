@@ -34,6 +34,16 @@ urlpatterns = [
     path('vouchers/', views.VoucherView.as_view(), name='voucher'),
     # Financial Analytics
     path('financial-analytics/', views.FinancialAnalyticsView.as_view(), name='financial-analytics'),
+    # Accounting Engine — Chart of Accounts, Ledger, Expenses, Statements
+    path('accounts/', views.ChartOfAccountsView.as_view(), name='account-list'),
+    path('accounts/<uuid:pk>/', views.ChartOfAccountsView.as_view(), name='account-detail'),
+    path('expenses/', views.ExpenseListView.as_view(), name='expense-list'),
+    path('expenses/<uuid:pk>/', views.ExpenseDetailView.as_view(), name='expense-detail'),
+    path('ledger/', views.LedgerQueryView.as_view(), name='ledger-query'),
+    path('ledger/transactions/<uuid:pk>/', views.LedgerTransactionDetailView.as_view(), name='ledger-transaction-detail'),
+    path('reports/income-statement/', views.IncomeStatementView.as_view(), name='income-statement'),
+    path('reports/balance-sheet/', views.BalanceSheetView.as_view(), name='balance-sheet'),
+    path('reports/cash-flow/', views.CashFlowStatementView.as_view(), name='cash-flow-statement'),
     # SARS Compliance Staging Engine
     path('compliance/', views.CompliancePeriodListView.as_view(), name='compliance-period-list'),
     path('compliance/<uuid:pk>/', views.CompliancePeriodDetailView.as_view(), name='compliance-period-detail'),

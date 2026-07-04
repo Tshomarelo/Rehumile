@@ -126,6 +126,7 @@
       ['/portal/dashboard/pos/','POS'],
       ['/portal/dashboard/vouchers/','Vouchers'],
       ['/portal/dashboard/cash-management/','Cash Management'],
+      ['/portal/dashboard/expenses/','Expenses & Accounts'],
       ['/portal/dashboard/financial-analytics/','Financial Analytics'],
     ]),
     header('Compliance'),

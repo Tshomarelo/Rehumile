@@ -788,6 +788,22 @@ class InvoiceViewSet(viewsets.ModelViewSet):
             qs = qs.filter(due_date__lte=date_to)
         return qs
 
+    def perform_create(self, serializer):
+        instance = serializer.save()
+        self._post_ledger_for_status_change(instance, old_status=None)
+
+    def perform_update(self, serializer):
+        old_status = serializer.instance.status
+        instance = serializer.save()
+        self._post_ledger_for_status_change(instance, old_status)
+
+    def _post_ledger_for_status_change(self, instance, old_status):
+        from .ledger import post_invoice_sent, post_invoice_paid
+        if old_status not in ('sent', 'paid') and instance.status in ('sent', 'paid'):
+            post_invoice_sent(instance, self.request.user)
+        if old_status != 'paid' and instance.status == 'paid':
+            post_invoice_paid(instance, self.request.user)
+
 
 # ============================================================================
 # DASHBOARD
@@ -1546,9 +1562,22 @@ class CashTransactionListView(APIView):
             amount=d["amount"],
             payment_method=d["payment_method"],
             cash_flow_stream=d.get("cash_flow_stream", "ocf"),
+            transaction_category=d.get("transaction_category", "sale"),
             description=d["description"].strip(),
             performed_by=u,
         )
+
+        from .ledger import post_invoice_paid, post_direct_sale_cash, post_owner_capital_transaction
+        if invoice is not None:
+            if invoice.status != "paid":
+                invoice.status = "paid"
+                invoice.save(update_fields=["status"])
+                post_invoice_paid(invoice, u)
+        elif txn.transaction_category in ("capital_injection", "owner_drawing"):
+            post_owner_capital_transaction(txn)
+        else:
+            post_direct_sale_cash(txn)
+
         return Response({"id": str(txn.id)}, status=status.HTTP_201_CREATED)
 
 
@@ -1617,6 +1646,8 @@ class VoucherView(APIView):
             v.sold_at = timezone.now()
             v.cash_transaction = txn
             v.save()
+            from .ledger import post_direct_sale_cash
+            post_direct_sale_cash(txn, revenue_system_key='REV_VOUCHER')
             return Response({"detail": "Voucher sold.", "voucher_code": v.voucher_code})
         return Response({"detail": "action must be create or sell."}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -1673,6 +1704,277 @@ class FinancialAnalyticsView(APIView):
             "job_cards": jc_counts,
             "low_stock_alerts": low_stock,
         })
+
+
+# ============================================================================
+# ACCOUNTING ENGINE — Chart of Accounts, General Ledger, Expenses, Statements
+# ============================================================================
+
+from .models import Account, Expense, LedgerTransaction, LedgerEntry
+
+_ACCOUNTING_READ_ROLES = ("admin", "finance", "cashier", "technician", "agent")
+_ACCOUNTING_STATEMENT_ROLES = ("admin", "finance")
+_EXPENSE_RECORD_ROLES = ("admin", "finance", "cashier", "technician")
+
+
+class ChartOfAccountsView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, pk=None):
+        if request.user.role not in _ACCOUNTING_READ_ROLES:
+            return Response({"detail": "Permission denied."}, status=status.HTTP_403_FORBIDDEN)
+        if pk is not None:
+            try:
+                acct = Account.objects.get(pk=pk)
+            except Account.DoesNotExist:
+                return Response({"detail": "Not found."}, status=404)
+            return Response({
+                "id": str(acct.id), "code": acct.code, "system_key": acct.system_key,
+                "name": acct.name, "description": acct.description,
+                "account_type": acct.account_type, "account_subtype": acct.account_subtype,
+                "normal_balance": acct.normal_balance, "is_active": acct.is_active, "is_system": acct.is_system,
+            })
+        qs = Account.objects.all()
+        account_type = request.query_params.get("account_type")
+        if account_type:
+            qs = qs.filter(account_type=account_type)
+        is_active = request.query_params.get("is_active")
+        if is_active in ("1", "true", "True"):
+            qs = qs.filter(is_active=True)
+        elif is_active in ("0", "false", "False"):
+            qs = qs.filter(is_active=False)
+        data = list(qs.values(
+            "id", "code", "system_key", "name", "description",
+            "account_type", "account_subtype", "normal_balance", "is_active", "is_system",
+        ))
+        return Response(data)
+
+    def patch(self, request, pk):
+        if request.user.role != "admin":
+            return Response({"detail": "Admin only."}, status=status.HTTP_403_FORBIDDEN)
+        try:
+            acct = Account.objects.get(pk=pk)
+        except Account.DoesNotExist:
+            return Response({"detail": "Not found."}, status=404)
+        for field in ("name", "description", "is_active"):
+            if field in request.data:
+                setattr(acct, field, request.data[field])
+        acct.save()
+        return Response({
+            "id": str(acct.id), "name": acct.name, "description": acct.description, "is_active": acct.is_active,
+        })
+
+
+class ExpenseListView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        if request.user.role not in _ACCOUNTING_READ_ROLES:
+            return Response({"detail": "Permission denied."}, status=status.HTTP_403_FORBIDDEN)
+        qs = Expense.objects.select_related("account", "recorded_by")
+        params = request.query_params
+        search = params.get("search")
+        if search:
+            qs = qs.filter(Q(vendor__icontains=search) | Q(description__icontains=search))
+        category = params.get("category")
+        if category:
+            qs = qs.filter(category=category)
+        account_id = params.get("account")
+        if account_id:
+            qs = qs.filter(account_id=account_id)
+        payment_status = params.get("payment_status")
+        if payment_status:
+            qs = qs.filter(payment_status=payment_status)
+        is_recurring = params.get("is_recurring")
+        if is_recurring in ("1", "true", "True"):
+            qs = qs.filter(is_recurring=True)
+        date_from = params.get("date_from")
+        if date_from:
+            qs = qs.filter(expense_date__gte=date_from)
+        date_to = params.get("date_to")
+        if date_to:
+            qs = qs.filter(expense_date__lte=date_to)
+
+        data = [{
+            "id": str(e.id),
+            "category": e.category,
+            "account": str(e.account_id),
+            "account_name": e.account.name,
+            "amount": str(e.amount),
+            "vendor": e.vendor,
+            "description": e.description,
+            "expense_date": e.expense_date.isoformat(),
+            "cash_flow_stream": e.cash_flow_stream,
+            "is_recurring": e.is_recurring,
+            "recurring_frequency": e.recurring_frequency,
+            "payment_status": e.payment_status,
+            "receipt_image_path": e.receipt_image_path,
+            "recorded_by": e.recorded_by.email if e.recorded_by else None,
+            "created_at": e.created_at.isoformat(),
+        } for e in qs.order_by("-expense_date")[:300]]
+        return Response({"results": data, "count": len(data)})
+
+    def post(self, request):
+        if request.user.role not in _EXPENSE_RECORD_ROLES:
+            return Response({"detail": "Permission denied."}, status=status.HTTP_403_FORBIDDEN)
+        d = request.data
+        required = ("category", "account", "amount", "vendor", "expense_date")
+        for f in required:
+            if not d.get(f):
+                return Response({"detail": f"{f} is required."}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            account = Account.objects.get(pk=d["account"])
+        except Account.DoesNotExist:
+            return Response({"detail": "Account not found."}, status=status.HTTP_400_BAD_REQUEST)
+
+        default_stream = "icf" if d["category"] == "capital" else "ocf"
+        expense = Expense.objects.create(
+            category=d["category"],
+            account=account,
+            amount=d["amount"],
+            vendor=d["vendor"].strip(),
+            description=d.get("description", "").strip(),
+            expense_date=d["expense_date"],
+            cash_flow_stream=d.get("cash_flow_stream", default_stream),
+            is_recurring=bool(d.get("is_recurring", False)),
+            recurring_frequency=d.get("recurring_frequency", ""),
+            payment_status=d.get("payment_status", "paid"),
+            receipt_image_path=d.get("receipt_image_path", ""),
+            recorded_by=request.user,
+        )
+        from .ledger import post_expense
+        post_expense(expense)
+        return Response({"id": str(expense.id)}, status=status.HTTP_201_CREATED)
+
+
+class ExpenseDetailView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, pk):
+        if request.user.role not in _ACCOUNTING_READ_ROLES:
+            return Response({"detail": "Permission denied."}, status=status.HTTP_403_FORBIDDEN)
+        try:
+            e = Expense.objects.select_related("account", "recorded_by").get(pk=pk)
+        except Expense.DoesNotExist:
+            return Response({"detail": "Not found."}, status=404)
+        return Response({
+            "id": str(e.id), "category": e.category, "account": str(e.account_id),
+            "account_name": e.account.name, "amount": str(e.amount), "vendor": e.vendor,
+            "description": e.description, "expense_date": e.expense_date.isoformat(),
+            "cash_flow_stream": e.cash_flow_stream, "is_recurring": e.is_recurring,
+            "recurring_frequency": e.recurring_frequency, "payment_status": e.payment_status,
+            "receipt_image_path": e.receipt_image_path,
+        })
+
+    def delete(self, request, pk):
+        if request.user.role not in ("admin", "finance"):
+            return Response({"detail": "Permission denied."}, status=status.HTTP_403_FORBIDDEN)
+        try:
+            e = Expense.objects.get(pk=pk)
+        except Expense.DoesNotExist:
+            return Response({"detail": "Not found."}, status=404)
+        e.delete()
+        return Response(status=204)
+
+
+class LedgerQueryView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        if request.user.role not in _ACCOUNTING_STATEMENT_ROLES:
+            return Response({"detail": "Permission denied."}, status=status.HTTP_403_FORBIDDEN)
+        qs = LedgerEntry.objects.select_related("account", "transaction").order_by("-transaction__transaction_date")
+        params = request.query_params
+        account_id = params.get("account")
+        if account_id:
+            qs = qs.filter(account_id=account_id)
+        source_model = params.get("source_model")
+        if source_model:
+            qs = qs.filter(transaction__source_model=source_model)
+        date_from = params.get("date_from")
+        if date_from:
+            qs = qs.filter(transaction__transaction_date__gte=date_from)
+        date_to = params.get("date_to")
+        if date_to:
+            qs = qs.filter(transaction__transaction_date__lte=date_to)
+        data = [{
+            "id": str(le.id),
+            "transaction_id": str(le.transaction_id),
+            "transaction_date": le.transaction.transaction_date.isoformat(),
+            "description": le.transaction.description,
+            "source_model": le.transaction.source_model,
+            "source_id": le.transaction.source_id,
+            "account": str(le.account_id),
+            "account_code": le.account.code,
+            "account_name": le.account.name,
+            "debit": str(le.debit),
+            "credit": str(le.credit),
+            "memo": le.memo,
+        } for le in qs[:500]]
+        return Response({"results": data, "count": len(data)})
+
+
+class LedgerTransactionDetailView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, pk):
+        if request.user.role not in _ACCOUNTING_STATEMENT_ROLES:
+            return Response({"detail": "Permission denied."}, status=status.HTTP_403_FORBIDDEN)
+        try:
+            txn = LedgerTransaction.objects.get(pk=pk)
+        except LedgerTransaction.DoesNotExist:
+            return Response({"detail": "Not found."}, status=404)
+        entries = [{
+            "account_code": le.account.code, "account_name": le.account.name,
+            "debit": str(le.debit), "credit": str(le.credit), "memo": le.memo,
+        } for le in txn.entries.select_related("account")]
+        return Response({
+            "id": str(txn.id), "transaction_date": txn.transaction_date.isoformat(),
+            "description": txn.description, "source_model": txn.source_model, "source_id": txn.source_id,
+            "cash_flow_stream": txn.cash_flow_stream, "entries": entries,
+        })
+
+
+class IncomeStatementView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        if request.user.role not in _ACCOUNTING_STATEMENT_ROLES:
+            return Response({"detail": "Permission denied."}, status=status.HTTP_403_FORBIDDEN)
+        from datetime import date as _date
+        import calendar as _calendar
+        from . import reports as _reports
+        today = _date.today()
+        date_from = request.query_params.get("date_from") or today.replace(day=1).isoformat()
+        date_to = request.query_params.get("date_to") or today.replace(day=_calendar.monthrange(today.year, today.month)[1]).isoformat()
+        return Response(_reports.income_statement(date_from, date_to))
+
+
+class BalanceSheetView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        if request.user.role not in _ACCOUNTING_STATEMENT_ROLES:
+            return Response({"detail": "Permission denied."}, status=status.HTTP_403_FORBIDDEN)
+        from datetime import date as _date
+        from . import reports as _reports
+        as_of = request.query_params.get("as_of") or _date.today().isoformat()
+        return Response(_reports.balance_sheet(as_of))
+
+
+class CashFlowStatementView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        if request.user.role not in _ACCOUNTING_STATEMENT_ROLES:
+            return Response({"detail": "Permission denied."}, status=status.HTTP_403_FORBIDDEN)
+        from datetime import date as _date
+        import calendar as _calendar
+        from . import reports as _reports
+        today = _date.today()
+        date_from = request.query_params.get("date_from") or today.replace(day=1).isoformat()
+        date_to = request.query_params.get("date_to") or today.replace(day=_calendar.monthrange(today.year, today.month)[1]).isoformat()
+        return Response(_reports.cash_flow_statement(date_from, date_to))
 
 
 # ============================================================================
@@ -2134,6 +2436,8 @@ class PayrollView(APIView):
             return Response({'error': 'Not found.'}, status=404)
         entry.is_frozen = True
         entry.save()
+        from .ledger import post_payroll_entry
+        post_payroll_entry(entry)
         return Response({'is_frozen': True})
 
 
@@ -2583,8 +2887,12 @@ class PayFastITNView(APIView):
             payment.status = "complete"
             if payment.invoice:
                 invoice = payment.invoice
+                was_paid = invoice.status == "paid"
                 invoice.status = "paid"
                 invoice.save(update_fields=["status"])
+                if not was_paid:
+                    from .ledger import post_invoice_paid
+                    post_invoice_paid(invoice)
         elif payment_status_str in ("FAILED", "CANCELLED"):
             payment.status = payment_status_str.lower()
 

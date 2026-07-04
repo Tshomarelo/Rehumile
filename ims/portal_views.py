@@ -78,6 +78,10 @@ def portal_financial_analytics_view(request):
     return _serve('hq-financial-analytics.html')
 
 
+def portal_expenses_view(request):
+    return _serve('hq-expenses.html')
+
+
 def portal_pos_view(request):
     return _serve('hq-pos.html')
 
