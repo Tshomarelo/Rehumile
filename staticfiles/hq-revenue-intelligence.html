@@ -116,6 +116,23 @@
           </div>
         </div>
 
+        <!-- ── Am I Growing? (MoM net profit from the ledger) ─────────────── -->
+        <div class="card mb-3" id="growthCard" style="display:none">
+          <div class="card-body d-flex flex-wrap align-items-center justify-content-between gap-2 py-3">
+            <div class="d-flex align-items-center gap-3">
+              <span id="growthArrow" style="font-size:2rem;line-height:1"></span>
+              <div>
+                <h5 class="mb-0" id="growthHeadline">—</h5>
+                <small class="text-muted" id="growthDetail"></small>
+              </div>
+            </div>
+            <div class="text-end">
+              <div class="small text-muted">Revenue vs last month</div>
+              <strong id="growthRevenue">—</strong>
+            </div>
+          </div>
+        </div>
+
         <!-- ── Revenue Trend Chart ────────────────────────────────────────── -->
         <div class="card mb-3" id="trendCard" style="display:none">
           <div class="card-header d-flex align-items-center justify-content-between">
@@ -649,6 +666,35 @@
       document.getElementById('live-margin-pct').textContent=totalRev>0?((netProfit/totalRev)*100).toFixed(1)+'% margin':'';
       document.getElementById('liveCards').style.display='';
 
+      // Am I growing? — ledger-truth MoM net profit
+      const g=d.growth;
+      if(g){
+        const pctVal=g.net_profit_pct;
+        const arrowEl=document.getElementById('growthArrow');
+        const headEl=document.getElementById('growthHeadline');
+        const detEl=document.getElementById('growthDetail');
+        if(pctVal==null){
+          arrowEl.textContent='●'; arrowEl.style.color='#6c757d';
+          headEl.textContent='No previous month to compare yet';
+          headEl.className='mb-0 text-muted';
+          detEl.textContent=`${g.current_month.label} net profit: ${R(g.current_month.net_profit)}`;
+        } else if(g.is_growing){
+          arrowEl.textContent='▲'; arrowEl.style.color='#198754';
+          headEl.textContent=`Growing — net profit up ${Math.abs(pctVal).toFixed(1)}% vs ${g.previous_month.label}`;
+          headEl.className='mb-0 text-success';
+          detEl.textContent=`${R(g.previous_month.net_profit)} → ${R(g.current_month.net_profit)} (${g.net_profit_change>=0?'+':''}${R(g.net_profit_change).replace('R ','R ')})`;
+        } else {
+          arrowEl.textContent='▼'; arrowEl.style.color='#dc3545';
+          headEl.textContent=`Shrinking — net profit down ${Math.abs(pctVal).toFixed(1)}% vs ${g.previous_month.label}`;
+          headEl.className='mb-0 text-danger';
+          detEl.textContent=`${R(g.previous_month.net_profit)} → ${R(g.current_month.net_profit)}`;
+        }
+        const rp=g.revenue_pct;
+        document.getElementById('growthRevenue').textContent = rp==null ? 'no comparison' : (rp>=0?'+':'')+rp.toFixed(1)+'%';
+        document.getElementById('growthRevenue').className = rp==null ? 'text-muted' : rp>=0 ? 'text-success' : 'text-danger';
+        document.getElementById('growthCard').style.display='';
+      }
+
       // Allocation
       const alloc=d.allocation||{};
       const allocReinvest=netProfit*parseFloat(alloc.reinvestment_pct||0.15);
@@ -1068,7 +1114,7 @@
     const asOf = document.getElementById('stmtAsOf').value;
     try{
       const [incR, bsR, cfR] = await Promise.all([
-        api(`/portal/api/reports/income-statement/?date_from=${dateFrom}&date_to=${dateTo}`),
+        api(`/portal/api/reports/income-statement/?date_from=${dateFrom}&date_to=${dateTo}&compare=1`),
         api(`/portal/api/reports/balance-sheet/?as_of=${asOf}`),
         api(`/portal/api/reports/cash-flow/?date_from=${dateFrom}&date_to=${dateTo}`),
       ]);
@@ -1080,6 +1126,18 @@
       incHtml += stmtRow('Gross Profit ('+inc.gross_profit_margin_pct+'% GPM)', inc.gross_profit, true);
       incHtml += inc.operating_expenses.accounts.map(a=>stmtRow(a.name, -a.amount)).join('');
       incHtml += stmtRow('Net Profit ('+inc.net_profit_margin_pct+'% NPM)', inc.net_profit, true);
+      if(inc.growth){
+        const gp=inc.growth.net_profit_pct;
+        const gLabel = gp==null
+          ? '<span class="text-muted">no prior-period activity</span>'
+          : gp>=0
+            ? `<span class="text-success">▲ +${gp.toFixed(1)}% vs previous period</span>`
+            : `<span class="text-danger">▼ ${gp.toFixed(1)}% vs previous period</span>`;
+        incHtml += `<tr><td colspan="2" class="small pt-2">
+          Growth (${inc.previous_period.date_from} → ${inc.previous_period.date_to}): ${gLabel}<br>
+          <span class="text-muted">Prev revenue ${fmtR(inc.previous_period.revenue)} · Prev net profit ${fmtR(inc.previous_period.net_profit)}</span>
+        </td></tr>`;
+      }
       document.getElementById('incomeStatementBody').innerHTML = incHtml;
 
       let bsHtml = '<tr><td colspan="2" class="fw-bold text-muted small text-uppercase">Assets</td></tr>';

@@ -1990,9 +1990,13 @@ class IncomeStatementView(APIView):
         import calendar as _calendar
         from . import reports as _reports
         today = _date.today()
-        date_from = request.query_params.get("date_from") or today.replace(day=1).isoformat()
-        date_to = request.query_params.get("date_to") or today.replace(day=_calendar.monthrange(today.year, today.month)[1]).isoformat()
-        return Response(_reports.income_statement(date_from, date_to))
+        try:
+            date_from = _date.fromisoformat(request.query_params.get("date_from") or today.replace(day=1).isoformat())
+            date_to = _date.fromisoformat(request.query_params.get("date_to") or today.replace(day=_calendar.monthrange(today.year, today.month)[1]).isoformat())
+        except ValueError:
+            return Response({"detail": "Invalid date format — use YYYY-MM-DD."}, status=status.HTTP_400_BAD_REQUEST)
+        compare = request.query_params.get("compare") in ("1", "true", "yes")
+        return Response(_reports.income_statement(date_from, date_to, compare_previous=compare))
 
 
 class BalanceSheetView(APIView):
@@ -3805,6 +3809,22 @@ class RevenueIntelligenceView(APIView):
             })
         client_prof.sort(key=lambda x: x['gross_margin'], reverse=True)
 
+        # ── Growth: month-over-month net profit from the ledger (source of
+        #    truth — same numbers as the Income Statement) ────────────────────
+        from . import reports as _reports
+        prev_year, prev_month = (today.year - 1, 12) if today.month == 1 else (today.year, today.month - 1)
+        p_start, p_end = _month_bounds(prev_year, prev_month)
+        cur_stmt = _reports.income_statement(m_start, m_end)
+        prev_stmt = _reports.income_statement(p_start, p_end)
+        growth = {
+            'current_month': {'label': m_start.strftime('%B %Y'), 'revenue': cur_stmt['revenue']['total'], 'net_profit': cur_stmt['net_profit']},
+            'previous_month': {'label': p_start.strftime('%B %Y'), 'revenue': prev_stmt['revenue']['total'], 'net_profit': prev_stmt['net_profit']},
+            'net_profit_pct': _reports._growth_pct(Decimal(str(cur_stmt['net_profit'])), Decimal(str(prev_stmt['net_profit']))),
+            'revenue_pct': _reports._growth_pct(Decimal(str(cur_stmt['revenue']['total'])), Decimal(str(prev_stmt['revenue']['total']))),
+            'net_profit_change': round(cur_stmt['net_profit'] - prev_stmt['net_profit'], 2),
+            'is_growing': cur_stmt['net_profit'] > prev_stmt['net_profit'],
+        }
+
         return Response({
             'period': {'start': m_start, 'end': m_end, 'label': m_start.strftime('%B %Y')},
             'streams': {
@@ -3817,6 +3837,7 @@ class RevenueIntelligenceView(APIView):
                 'adhoc': {'paid': adhoc_paid, 'outstanding': adhoc_outstanding},
             },
             'costs': {'axxess': axxess_costs, 'subscriptions': subscription_costs},
+            'growth': growth,
             'totals': {
                 'revenue': total_revenue,
                 'net_profit': net_profit,
