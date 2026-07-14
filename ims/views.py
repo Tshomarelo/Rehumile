@@ -3457,6 +3457,152 @@ class SubscriptionDetailView(APIView):
         return Response(status=204)
 
 
+# ── Bank Reconciliation ───────────────────────────────────────────────────────
+
+class BankStatementListView(APIView):
+    """GET: list uploaded statements. POST (multipart): upload + parse + auto-match a CSV."""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        if request.user.role not in ('admin', 'finance'):
+            return Response({'detail': 'Admin/Finance access required.'}, status=403)
+        from .models import BankStatement
+        data = []
+        for s in BankStatement.objects.all()[:50]:
+            lines = s.lines.all()
+            matched = lines.filter(match_status__in=('matched', 'manual')).count()
+            data.append({
+                'id': str(s.id),
+                'label': s.label,
+                'original_filename': s.original_filename,
+                'date_from': str(s.date_from) if s.date_from else None,
+                'date_to': str(s.date_to) if s.date_to else None,
+                'lines_total': lines.count(),
+                'lines_matched': matched,
+                'uploaded_by': s.uploaded_by.email if s.uploaded_by else None,
+                'created_at': s.created_at.isoformat(),
+            })
+        return Response(data)
+
+    def post(self, request):
+        if request.user.role not in ('admin', 'finance'):
+            return Response({'detail': 'Admin/Finance access required.'}, status=403)
+        from .models import BankStatement, BankStatementLine
+        from .reconciliation import parse_statement_csv, auto_match, StatementParseError
+
+        uploaded = request.FILES.get('file')
+        if not uploaded:
+            return Response({'detail': 'No file provided.'}, status=status.HTTP_400_BAD_REQUEST)
+        if uploaded.size > 5 * 1024 * 1024:
+            return Response({'detail': 'File size exceeds 5 MB limit.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            parsed = parse_statement_csv(uploaded.read(), uploaded.name)
+        except StatementParseError as exc:
+            return Response({'detail': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+        label = (request.data.get('label') or '').strip() or f"Bank statement — {uploaded.name}"
+        statement = BankStatement.objects.create(
+            label=label,
+            original_filename=uploaded.name[:255],
+            uploaded_by=request.user,
+        )
+        BankStatementLine.objects.bulk_create([
+            BankStatementLine(statement=statement, **row) for row in parsed
+        ])
+        summary = auto_match(statement)
+        return Response({'id': str(statement.id), 'label': statement.label, 'summary': summary}, status=201)
+
+
+class BankStatementDetailView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def _get(self, pk):
+        from .models import BankStatement
+        try:
+            return BankStatement.objects.get(pk=pk)
+        except BankStatement.DoesNotExist:
+            return None
+
+    def get(self, request, pk):
+        if request.user.role not in ('admin', 'finance'):
+            return Response({'detail': 'Admin/Finance access required.'}, status=403)
+        from .reconciliation import summarize
+        s = self._get(pk)
+        if not s:
+            return Response({'detail': 'Not found.'}, status=404)
+        lines = [{
+            'id': str(l.id),
+            'date': str(l.line_date),
+            'description': l.description,
+            'amount': float(l.amount),
+            'balance': float(l.balance) if l.balance is not None else None,
+            'match_status': l.match_status,
+            'matched_description': l.matched_entry.transaction.description if l.matched_entry else None,
+            'matched_date': str(l.matched_entry.transaction.transaction_date) if l.matched_entry else None,
+        } for l in s.lines.select_related('matched_entry', 'matched_entry__transaction')]
+        return Response({
+            'id': str(s.id),
+            'label': s.label,
+            'original_filename': s.original_filename,
+            'date_from': str(s.date_from) if s.date_from else None,
+            'date_to': str(s.date_to) if s.date_to else None,
+            'created_at': s.created_at.isoformat(),
+            'lines': lines,
+            'summary': summarize(s),
+        })
+
+    def post(self, request, pk):
+        """Re-run auto-matching (e.g. after recording missing expenses/income)."""
+        if request.user.role not in ('admin', 'finance'):
+            return Response({'detail': 'Admin/Finance access required.'}, status=403)
+        from .reconciliation import auto_match
+        s = self._get(pk)
+        if not s:
+            return Response({'detail': 'Not found.'}, status=404)
+        return Response({'summary': auto_match(s)})
+
+    def delete(self, request, pk):
+        if request.user.role != 'admin':
+            return Response({'detail': 'Admin access required.'}, status=403)
+        s = self._get(pk)
+        if not s:
+            return Response({'detail': 'Not found.'}, status=404)
+        s.delete()
+        return Response(status=204)
+
+
+class BankStatementLineMatchView(APIView):
+    """POST with {"entry_id": ...} to match a line by hand; empty body to unmatch."""
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pk, line_id):
+        if request.user.role not in ('admin', 'finance'):
+            return Response({'detail': 'Admin/Finance access required.'}, status=403)
+        from .models import BankStatementLine, LedgerEntry as LE
+        try:
+            line = BankStatementLine.objects.get(pk=line_id, statement_id=pk)
+        except BankStatementLine.DoesNotExist:
+            return Response({'detail': 'Not found.'}, status=404)
+
+        entry_id = request.data.get('entry_id')
+        if not entry_id:
+            line.match_status, line.matched_entry = 'unmatched', None
+            line.save(update_fields=['match_status', 'matched_entry'])
+            return Response({'detail': 'Line unmatched.'})
+
+        try:
+            entry = LE.objects.get(pk=entry_id, account__system_key='BANK_CASH')
+        except LE.DoesNotExist:
+            return Response({'detail': 'Ledger entry not found (must be a Bank & Cash entry).'}, status=400)
+        if BankStatementLine.objects.filter(matched_entry=entry).exclude(pk=line.pk).exists():
+            return Response({'detail': 'That ledger entry is already matched to another statement line.'}, status=400)
+
+        line.match_status, line.matched_entry = 'manual', entry
+        line.save(update_fields=['match_status', 'matched_entry'])
+        return Response({'detail': 'Line matched.'})
+
+
 # ── Revenue Allocation Settings ───────────────────────────────────────────────
 
 class RevenueAllocationView(APIView):

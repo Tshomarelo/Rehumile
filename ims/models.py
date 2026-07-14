@@ -2170,6 +2170,68 @@ class RevenueAllocation(models.Model):
         return f"Allocation: {float(self.reinvestment_pct)*100:.0f}% / {float(self.opex_pct)*100:.0f}% / {float(self.owner_pct)*100:.0f}%"
 
 
+# ============================================================================
+# BANK RECONCILIATION — imported bank statements matched against the ledger
+# ============================================================================
+
+class BankStatement(models.Model):
+    """
+    One imported bank statement (CSV export from the bank). Its lines are
+    auto-matched against BANK_CASH ledger entries so money in/out of the real
+    bank account can be compared with what the books say — the month-end
+    "am I misusing business money?" check.
+    """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    label = models.CharField(max_length=200, help_text='e.g. "FNB Business — July 2026"')
+    original_filename = models.CharField(max_length=255, blank=True)
+    date_from = models.DateField(null=True, blank=True)
+    date_to = models.DateField(null=True, blank=True)
+    uploaded_by = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, related_name='bank_statements',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'bank_statements'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return self.label
+
+
+class BankStatementLine(models.Model):
+    """One transaction row on a bank statement. amount > 0 = money in,
+    amount < 0 = money out."""
+    MATCH_STATUS_CHOICES = [
+        ('matched', 'Matched Automatically'),
+        ('manual', 'Matched Manually'),
+        ('unmatched', 'Unmatched'),
+    ]
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    statement = models.ForeignKey(
+        BankStatement, on_delete=models.CASCADE, related_name='lines', db_index=True,
+    )
+    line_date = models.DateField(db_index=True)
+    description = models.CharField(max_length=500, blank=True)
+    amount = models.DecimalField(max_digits=14, decimal_places=2)
+    balance = models.DecimalField(max_digits=14, decimal_places=2, null=True, blank=True)
+    match_status = models.CharField(
+        max_length=12, choices=MATCH_STATUS_CHOICES, default='unmatched', db_index=True,
+    )
+    matched_entry = models.ForeignKey(
+        'LedgerEntry', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='bank_lines',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'bank_statement_lines'
+        ordering = ['line_date', 'created_at']
+
+    def __str__(self):
+        return f"{self.line_date} {self.description[:40]} R{self.amount}"
+
+
 class CompanySettings(models.Model):
     """
     Singleton (id=1). Holds Rehumile's own contact & banking details.

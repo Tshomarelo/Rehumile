@@ -72,6 +72,7 @@
           <li class="nav-item"><a class="nav-link" id="tabbtn-expenses" onclick="switchMainTab('expenses')">Expenses &amp; Accounts</a></li>
           <li class="nav-item"><a class="nav-link" id="tabbtn-statements" onclick="switchMainTab('statements')">Financial Statements</a></li>
           <li class="nav-item"><a class="nav-link" id="tabbtn-ledger" onclick="switchMainTab('ledger')">Ledger</a></li>
+          <li class="nav-item"><a class="nav-link" id="tabbtn-reconciliation" onclick="switchMainTab('reconciliation')">Bank Reconciliation</a></li>
         </ul>
 
         <!-- ════════════════════════ DASHBOARD TAB ════════════════════════ -->
@@ -426,6 +427,112 @@
           </div>
         </div><!-- /tab-ledger -->
 
+        <!-- ═══════════════════ BANK RECONCILIATION TAB ════════════════════ -->
+        <div id="tab-reconciliation" class="tab-pane">
+          <div class="row">
+            <div class="col-lg-5 mb-3">
+              <div class="card">
+                <div class="card-header"><h5 class="card-title mb-0">Upload Bank Statement (CSV)</h5></div>
+                <div class="card-body">
+                  <p class="text-muted small">Export your statement from the bank as <strong>CSV</strong> and upload it here.
+                  Every line is automatically matched against the Bank &amp; Cash ledger — anything left over on either
+                  side is exactly what you need to explain at month-end.</p>
+                  <div class="mb-2">
+                    <label class="form-label small">Label</label>
+                    <input type="text" class="form-control form-control-sm" id="bsLabel" placeholder='e.g. "FNB Business — July 2026"'>
+                  </div>
+                  <div class="mb-3">
+                    <label class="form-label small">CSV File</label>
+                    <input type="file" class="form-control form-control-sm" id="bsFile" accept=".csv,.txt">
+                  </div>
+                  <button class="btn btn-primary btn-sm w-100" id="bsUploadBtn">
+                    <i data-feather="upload" style="width:14px;height:14px"></i> Upload &amp; Reconcile
+                  </button>
+                  <div id="bsUploadResult" class="mt-2 small"></div>
+                </div>
+              </div>
+
+              <div class="card mt-3">
+                <div class="card-header d-flex align-items-center justify-content-between">
+                  <h5 class="card-title mb-0">Imported Statements</h5>
+                  <span class="badge bg-secondary" id="bsCount">0</span>
+                </div>
+                <div class="card-body p-0">
+                  <div id="bsListLoading" class="text-center py-3 text-muted">Loading…</div>
+                  <div class="table-responsive" id="bsListTable" style="display:none">
+                    <table class="table table-hover table-sm mb-0 small">
+                      <thead><tr><th>Statement</th><th>Period</th><th>Matched</th><th></th></tr></thead>
+                      <tbody id="bsListTbody"></tbody>
+                    </table>
+                  </div>
+                  <div id="bsListEmpty" class="text-center py-4 text-muted" style="display:none">No statements uploaded yet.</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-lg-7 mb-3">
+              <div id="bsDetailEmpty" class="card">
+                <div class="card-body text-center py-5 text-muted">
+                  <i data-feather="columns" style="width:48px;height:48px;opacity:.2"></i>
+                  <p class="mt-2 mb-0">Upload or select a statement to see the reconciliation report.</p>
+                </div>
+              </div>
+              <div id="bsDetail" style="display:none">
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                  <h5 class="mb-0" id="bsDetailTitle"></h5>
+                  <div class="d-flex gap-2">
+                    <button class="btn btn-sm btn-outline-primary" id="bsRematchBtn" title="Re-run matching after recording missing items">Re-run Matching</button>
+                    <button class="btn btn-sm btn-outline-danger" id="bsDeleteBtn">Delete</button>
+                  </div>
+                </div>
+                <div class="row mb-3">
+                  <div class="col-6 col-md-3 mb-2"><div class="card text-center py-2"><h6 class="text-muted small mb-1">Match Rate</h6><h4 class="mb-0" id="bs-match-rate">—</h4></div></div>
+                  <div class="col-6 col-md-3 mb-2"><div class="card text-center py-2"><h6 class="text-muted small mb-1">Money In</h6><h4 class="mb-0 text-success" id="bs-money-in">—</h4></div></div>
+                  <div class="col-6 col-md-3 mb-2"><div class="card text-center py-2"><h6 class="text-muted small mb-1">Money Out</h6><h4 class="mb-0 text-danger" id="bs-money-out">—</h4></div></div>
+                  <div class="col-6 col-md-3 mb-2"><div class="card text-center py-2"><h6 class="text-muted small mb-1">Discrepancies</h6><h4 class="mb-0" id="bs-discrepancies">—</h4></div></div>
+                </div>
+                <div id="bsCleanBanner" class="alert alert-success py-2 small" style="display:none">
+                  ✅ <strong>Fully reconciled.</strong> Every bank line matches the books and every book entry appears on the statement.
+                </div>
+
+                <div class="card mb-3" id="bsUnmatchedBankCard" style="display:none">
+                  <div class="card-header py-2"><h6 class="card-title mb-0 text-danger">On the bank statement but NOT in the books</h6></div>
+                  <div class="card-body p-0">
+                    <p class="text-muted small px-3 pt-2 mb-1">Money that moved through the real account with no matching record — record the missing income/expense, then re-run matching.</p>
+                    <div class="table-responsive">
+                      <table class="table table-sm mb-0 small"><thead><tr><th>Date</th><th>Description</th><th class="text-end">Amount</th></tr></thead>
+                      <tbody id="bsUnmatchedBankTbody"></tbody></table>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="card mb-3" id="bsUnmatchedLedgerCard" style="display:none">
+                  <div class="card-header py-2"><h6 class="card-title mb-0 text-warning">In the books but NOT on the bank statement</h6></div>
+                  <div class="card-body p-0">
+                    <p class="text-muted small px-3 pt-2 mb-1">The books say this money moved, but the bank never saw it — check for timing differences, cash-drawer amounts, or entries that need correcting.</p>
+                    <div class="table-responsive">
+                      <table class="table table-sm mb-0 small"><thead><tr><th>Date</th><th>Description</th><th class="text-end">Amount</th></tr></thead>
+                      <tbody id="bsUnmatchedLedgerTbody"></tbody></table>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="card">
+                  <div class="card-header py-2"><h6 class="card-title mb-0">All Statement Lines</h6></div>
+                  <div class="card-body p-0">
+                    <div class="table-responsive">
+                      <table class="table table-hover table-sm mb-0 small">
+                        <thead><tr><th>Date</th><th>Description</th><th class="text-end">Amount</th><th>Status</th><th>Matched To</th></tr></thead>
+                        <tbody id="bsLinesTbody"></tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div><!-- /tab-reconciliation -->
+
       </div>
     </main>
     <footer class="footer"><div class="container-fluid"><p class="mb-0 text-muted">Rehumile TMW IMS &copy; 2025</p></div></footer>
@@ -607,7 +714,7 @@
   const fmtDate=d=>d?new Date(d).toLocaleDateString('en-ZA',{year:'numeric',month:'short',day:'numeric'}):'—';
 
   // ── Tab switching (with URL-hash routing so old bookmarks land right) ──────
-  const TABS=['dashboard','expenses','statements','ledger'];
+  const TABS=['dashboard','expenses','statements','ledger','reconciliation'];
   window.switchMainTab=function(name){
     if(!TABS.includes(name)) name='dashboard';
     TABS.forEach(t=>{
@@ -619,6 +726,7 @@
     if(name==='expenses'){ loadExpenses(); }
     if(name==='statements'){ runStatements(); }
     if(name==='ledger'){ loadLedgerAccounts(); loadLedger(); }
+    if(name==='reconciliation'){ loadBankStatements(); }
   };
 
   // Full client_profitability array as fetched from the server — filtering below is purely client-side
@@ -1214,6 +1322,143 @@
     document.getElementById('ledgerDateTo').value='';
     loadLedger();
   });
+
+  // ══════════════════════ BANK RECONCILIATION TAB ══════════════════════════════
+  let bsCurrentId=null;
+
+  async function loadBankStatements(){
+    try{
+      const r=await api('/portal/api/bank-statements/');
+      const data=await r.json();
+      document.getElementById('bsListLoading').style.display='none';
+      if(!r.ok){ showAlert('pageAlert',data.detail||'Failed to load bank statements.'); return; }
+      document.getElementById('bsCount').textContent=data.length;
+      if(!data.length){
+        document.getElementById('bsListEmpty').style.display='block';
+        document.getElementById('bsListTable').style.display='none';
+        return;
+      }
+      document.getElementById('bsListEmpty').style.display='none';
+      document.getElementById('bsListTable').style.display='block';
+      document.getElementById('bsListTbody').innerHTML=data.map(s=>{
+        const rate=s.lines_total?Math.round(s.lines_matched/s.lines_total*100):0;
+        const rateCls=rate===100?'bg-success':rate>=70?'bg-warning text-dark':'bg-danger';
+        return `<tr>
+          <td><strong>${s.label}</strong><br><small class="text-muted">${s.original_filename||''}</small></td>
+          <td class="small">${s.date_from||'—'} → ${s.date_to||'—'}</td>
+          <td><span class="badge ${rateCls}">${s.lines_matched}/${s.lines_total}</span></td>
+          <td><button class="btn btn-sm btn-outline-primary" onclick="openBankStatement('${s.id}')">View</button></td>
+        </tr>`;
+      }).join('');
+    }catch(e){ if(e.message!=='Unauth') document.getElementById('bsListLoading').textContent='Failed to load.'; }
+  }
+
+  document.getElementById('bsUploadBtn').onclick=async()=>{
+    const fileInput=document.getElementById('bsFile');
+    const resultEl=document.getElementById('bsUploadResult');
+    if(!fileInput.files.length){ resultEl.innerHTML='<span class="text-danger">Choose a CSV file first.</span>'; return; }
+    const fd=new FormData();
+    fd.append('file', fileInput.files[0]);
+    fd.append('label', document.getElementById('bsLabel').value.trim());
+    const btn=document.getElementById('bsUploadBtn');
+    const orig=btn.innerHTML;
+    btn.disabled=true;
+    btn.innerHTML='<span class="spinner-border spinner-border-sm me-1"></span>Reconciling…';
+    try{
+      // FormData upload — must NOT set Content-Type (browser adds the boundary)
+      const r=await fetch('/portal/api/bank-statements/',{method:'POST',headers:{'Authorization':'Bearer '+token},body:fd});
+      if(r.status===401){ localStorage.clear(); window.location.href='/portal/login/'; return; }
+      const d=await r.json();
+      if(r.ok){
+        const su=d.summary;
+        resultEl.innerHTML=`<span class="text-success">Imported ${su.lines_total} lines — ${su.lines_matched} matched (${su.match_rate_pct}%).</span>`;
+        fileInput.value=''; document.getElementById('bsLabel').value='';
+        loadBankStatements();
+        openBankStatement(d.id);
+      } else {
+        resultEl.innerHTML='<span class="text-danger">'+(d.detail||'Upload failed.')+'</span>';
+      }
+    }catch(e){ resultEl.innerHTML='<span class="text-danger">Network error.</span>'; }
+    btn.disabled=false;
+    btn.innerHTML=orig;
+    if(window.feather)feather.replace();
+  };
+
+  window.openBankStatement=async function(id){
+    bsCurrentId=id;
+    try{
+      const r=await api(`/portal/api/bank-statements/${id}/`);
+      const d=await r.json();
+      if(!r.ok){ showAlert('pageAlert',d.detail||'Failed to load statement.'); return; }
+      document.getElementById('bsDetailEmpty').style.display='none';
+      document.getElementById('bsDetail').style.display='';
+      document.getElementById('bsDetailTitle').textContent=d.label;
+
+      const su=d.summary;
+      const rateEl=document.getElementById('bs-match-rate');
+      rateEl.textContent=su.match_rate_pct+'%';
+      rateEl.className='mb-0 '+(su.match_rate_pct===100?'text-success':su.match_rate_pct>=70?'text-warning':'text-danger');
+      document.getElementById('bs-money-in').textContent=R(su.bank_money_in);
+      document.getElementById('bs-money-out').textContent=R(su.bank_money_out);
+      const discrepancies=su.unmatched_bank_lines.length+su.unmatched_ledger_entries.length;
+      const discEl=document.getElementById('bs-discrepancies');
+      discEl.textContent=discrepancies;
+      discEl.className='mb-0 '+(discrepancies===0?'text-success':'text-danger');
+      document.getElementById('bsCleanBanner').style.display=su.is_clean?'':'none';
+
+      const ubCard=document.getElementById('bsUnmatchedBankCard');
+      if(su.unmatched_bank_lines.length){
+        ubCard.style.display='';
+        document.getElementById('bsUnmatchedBankTbody').innerHTML=su.unmatched_bank_lines.map(l=>`
+          <tr class="table-danger">
+            <td>${l.date}</td><td>${l.description||'—'}</td>
+            <td class="text-end fw-semibold">${l.amount>=0?'+':''}${R(l.amount)}</td>
+          </tr>`).join('');
+      } else ubCard.style.display='none';
+
+      const ulCard=document.getElementById('bsUnmatchedLedgerCard');
+      if(su.unmatched_ledger_entries.length){
+        ulCard.style.display='';
+        document.getElementById('bsUnmatchedLedgerTbody').innerHTML=su.unmatched_ledger_entries.map(l=>`
+          <tr class="table-warning">
+            <td>${l.date}</td><td>${l.description}${l.memo?` <small class="text-muted">(${l.memo})</small>`:''}</td>
+            <td class="text-end fw-semibold">${l.amount>=0?'+':''}${R(l.amount)}</td>
+          </tr>`).join('');
+      } else ulCard.style.display='none';
+
+      const stBadge=s=>({matched:'<span class="badge bg-success">Matched</span>',manual:'<span class="badge bg-info text-dark">Manual</span>',unmatched:'<span class="badge bg-danger">Unmatched</span>'}[s]||s);
+      document.getElementById('bsLinesTbody').innerHTML=d.lines.map(l=>`
+        <tr>
+          <td>${l.date}</td>
+          <td>${l.description||'—'}</td>
+          <td class="text-end ${l.amount>=0?'text-success':'text-danger'}">${l.amount>=0?'+':''}${R(l.amount)}</td>
+          <td>${stBadge(l.match_status)}</td>
+          <td class="small text-muted">${l.matched_description?`${l.matched_description} (${l.matched_date})`:'—'}</td>
+        </tr>`).join('');
+      if(window.feather)feather.replace();
+    }catch(e){ if(e.message!=='Unauth') showAlert('pageAlert','Failed to load statement detail.'); }
+  };
+
+  document.getElementById('bsRematchBtn').onclick=async()=>{
+    if(!bsCurrentId) return;
+    try{
+      const r=await api(`/portal/api/bank-statements/${bsCurrentId}/`,{method:'POST'});
+      if(r.ok){ openBankStatement(bsCurrentId); loadBankStatements(); }
+    }catch{}
+  };
+
+  document.getElementById('bsDeleteBtn').onclick=async()=>{
+    if(!bsCurrentId||!confirm('Delete this imported statement? The bank\'s records and your ledger are untouched — only the import is removed.')) return;
+    try{
+      const r=await api(`/portal/api/bank-statements/${bsCurrentId}/`,{method:'DELETE'});
+      if(r.ok||r.status===204){
+        bsCurrentId=null;
+        document.getElementById('bsDetail').style.display='none';
+        document.getElementById('bsDetailEmpty').style.display='';
+        loadBankStatements();
+      } else { const d=await r.json(); showAlert('pageAlert',d.detail||'Delete failed.'); }
+    }catch{}
+  };
 
   // ── Init: load dashboard data, honour a #tab hash from old bookmarks ────────
   loadIntelligence();
