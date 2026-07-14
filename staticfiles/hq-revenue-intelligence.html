@@ -53,32 +53,57 @@
 
         <!-- ── Current Month Live ─────────────────────────────────────────── -->
         <div class="row mb-3" id="liveCards" style="display:none">
-          <div class="col-md-3 col-sm-6 mb-3">
+          <div class="col-md col-sm-6 mb-3">
             <div class="card text-center py-3">
               <h6 class="text-muted small mb-1">WiFi Revenue</h6>
               <h4 class="mb-0 text-primary" id="live-wifi">R —</h4>
               <small class="text-muted" id="live-wifi-sub"></small>
             </div>
           </div>
-          <div class="col-md-3 col-sm-6 mb-3">
+          <div class="col-md col-sm-6 mb-3">
             <div class="card text-center py-3">
               <h6 class="text-muted small mb-1">SLA Revenue</h6>
               <h4 class="mb-0 text-primary" id="live-sla">R —</h4>
               <small class="text-muted" id="live-sla-sub"></small>
             </div>
           </div>
-          <div class="col-md-3 col-sm-6 mb-3">
+          <div class="col-md col-sm-6 mb-3">
             <div class="card text-center py-3">
-              <h6 class="text-muted small mb-1">Ad-Hoc Revenue</h6>
-              <h4 class="mb-0 text-info" id="live-adhoc">R —</h4>
-              <small class="text-muted">Growth income</small>
+              <h6 class="text-muted small mb-1">Other Subscriptions</h6>
+              <h4 class="mb-0 text-primary" id="live-subs">R —</h4>
+              <small class="text-muted" id="live-subs-sub"></small>
             </div>
           </div>
-          <div class="col-md-3 col-sm-6 mb-3">
+          <div class="col-md col-sm-6 mb-3">
+            <div class="card text-center py-3">
+              <h6 class="text-muted small mb-1">Ad-Hoc / Projects</h6>
+              <h4 class="mb-0 text-info" id="live-adhoc">R —</h4>
+              <small class="text-muted">Irregular income — incl. call-outs</small>
+            </div>
+          </div>
+          <div class="col-md col-sm-6 mb-3">
             <div class="card text-center py-3" style="background:#50181E">
               <h6 class="text-white-50 small mb-1">Net Profit</h6>
               <h4 class="mb-0 text-white" id="live-profit">R —</h4>
               <small class="text-white-50" id="live-margin-pct"></small>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── Subscriptions by Type ──────────────────────────────────────── -->
+        <div class="card mb-3" id="subsTypeCard" style="display:none">
+          <div class="card-header d-flex align-items-center justify-content-between">
+            <h5 class="card-title mb-0">Subscriptions by Type (This Month)</h5>
+            <small class="text-muted">Email, hosting, domains &amp; more</small>
+          </div>
+          <div class="card-body p-0">
+            <div class="table-responsive">
+              <table class="table table-hover my-0 small">
+                <thead><tr>
+                  <th>Type</th><th>Active</th><th>Paid</th><th>Outstanding</th><th>Expected / Month</th>
+                </tr></thead>
+                <tbody id="subsTypeTbody"></tbody>
+              </table>
             </div>
           </div>
         </div>
@@ -140,6 +165,12 @@
               <option value="">All Types</option>
               <option value="wifi">WiFi</option>
               <option value="sla">SLA</option>
+              <option value="email">Email Hosting</option>
+              <option value="hosting">Website Hosting</option>
+              <option value="domain">Domain Registration</option>
+              <option value="backup">Cloud Backup</option>
+              <option value="software">Software License</option>
+              <option value="other">Other Subscription</option>
             </select>
           </div>
           <div class="card-body p-0">
@@ -168,8 +199,8 @@
               <table class="table table-hover my-0 small">
                 <thead><tr>
                   <th>Month</th>
-                  <th>WiFi</th><th>SLA</th><th>Ad-Hoc</th>
-                  <th>Axxess Cost</th><th>Net Profit</th>
+                  <th>WiFi</th><th>SLA</th><th>Subscriptions</th><th>Ad-Hoc / Projects</th>
+                  <th>Supplier Costs</th><th>Net Profit</th>
                   <th>Floor %</th><th>Growth %</th>
                   <th>Owner Draw</th>
                 </tr></thead>
@@ -269,7 +300,23 @@
       document.getElementById('live-wifi-sub').textContent=`Expected: ${R(s.wifi?.expected)}`;
       document.getElementById('live-sla').textContent=R(s.sla?.paid);
       document.getElementById('live-sla-sub').textContent=`Expected: ${R(s.sla?.expected)}`;
+      document.getElementById('live-subs').textContent=R(s.subscriptions?.paid);
+      document.getElementById('live-subs-sub').textContent=`Expected: ${R(s.subscriptions?.expected)}`;
       document.getElementById('live-adhoc').textContent=R(s.adhoc?.paid);
+
+      // Subscriptions by type breakdown
+      const byType=s.subscriptions?.by_type||[];
+      if(byType.length){
+        document.getElementById('subsTypeTbody').innerHTML=byType.map(t=>`
+          <tr>
+            <td><strong>${t.label}</strong></td>
+            <td>${t.active_count}</td>
+            <td class="text-success">${R(t.paid)}</td>
+            <td class="${parseFloat(t.outstanding||0)>0?'text-danger':'text-muted'}">${R(t.outstanding)}</td>
+            <td>${R(t.expected)}</td>
+          </tr>`).join('');
+        document.getElementById('subsTypeCard').style.display='';
+      }
       const netProfit=parseFloat(totals.net_profit||0);
       const totalRev=parseFloat(totals.revenue||0);
       document.getElementById('live-profit').textContent=R(netProfit);
@@ -336,7 +383,7 @@
         return `<tr>
           <td class="text-muted">${i+1}</td>
           <td><strong>${c.client_name}</strong></td>
-          <td><span class="badge bg-light text-dark border">${c.type||'adhoc'}</span></td>
+          <td><span class="badge bg-light text-dark border">${c.type_label||c.type||'adhoc'}</span></td>
           <td>${R(c.revenue)}</td>
           <td>${R(c.cost)}</td>
           <td class="${cls} fw-semibold">${R(c.gross_margin)}</td>
@@ -354,9 +401,10 @@
   async function loadMonthly(){
     try{
       const r=await api('/portal/api/revenue-intelligence/monthly/');
-      const rows=await r.json();
+      const d=await r.json();
+      const rows=Array.isArray(d)?d:(d.months||[]);
       document.getElementById('monthlyLoading').style.display='none';
-      if(!Array.isArray(rows)||!rows.length){
+      if(!rows.length){
         document.getElementById('monthlyLoading').textContent='No historical data yet.';
         document.getElementById('monthlyLoading').style.display='block';
         return;
@@ -365,13 +413,14 @@
       document.getElementById('monthlyTbody').innerHTML=rows.map(m=>{
         const profit=parseFloat(m.net_profit||0);
         const profitCls=profit<0?'text-danger':profit===0?'text-muted':'text-success';
-        const floorPct=parseFloat(m.floor_pct||0)*100;
-        const growthPct=parseFloat(m.growth_pct||0)*100;
+        const floorPct=parseFloat(m.floor_pct||0);
+        const growthPct=parseFloat(m.growth_pct||0);
         return `<tr>
           <td><strong>${m.label}</strong></td>
-          <td>${R(m.wifi)}</td>
-          <td>${R(m.sla)}</td>
-          <td>${R(m.adhoc)}</td>
+          <td>${R(m.wifi_revenue)}</td>
+          <td>${R(m.sla_revenue)}</td>
+          <td>${R(m.subscription_revenue)}</td>
+          <td>${R(m.adhoc_revenue)}</td>
           <td class="text-warning">${R(m.axxess_costs)}</td>
           <td class="${profitCls} fw-semibold">${R(m.net_profit)}</td>
           <td>

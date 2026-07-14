@@ -748,17 +748,22 @@ class Invoice(models.Model):
         ('sla', 'SLA Monthly Retainer'),
         ('callout', 'SLA Call-Out'),
         ('adhoc', 'Ad-Hoc / Project'),
+        ('subscription', 'Other Subscription (Email/Hosting/etc.)'),
     ]
     invoice_type = models.CharField(max_length=20, choices=INVOICE_TYPE_CHOICES, default='adhoc', db_index=True)
 
-    # Subscriber/contract references (set when invoice_type is wifi/sla/callout)
+    # Subscriber/contract references (set when invoice_type is wifi/sla/callout/subscription)
     wifi_subscriber = models.ForeignKey(
         'WifiSubscriber', null=True, blank=True, on_delete=models.SET_NULL, related_name='invoices',
     )
     sla_contract = models.ForeignKey(
         'SLAContract', null=True, blank=True, on_delete=models.SET_NULL, related_name='invoices',
     )
-    # Axxess wholesale cost at time of invoice — locked so history is accurate even if rate changes
+    subscription = models.ForeignKey(
+        'Subscription', null=True, blank=True, on_delete=models.SET_NULL, related_name='invoices',
+    )
+    # Supplier/wholesale cost at time of invoice (Axxess for wifi, supplier for
+    # generic subscriptions) — locked so history is accurate even if rate changes
     wholesale_cost = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
 
     # Description (short human-readable label — used in print/email)
@@ -2080,6 +2085,72 @@ class SLAContract(models.Model):
 
     def __str__(self):
         return f"{self.client_name} SLA — R{self.monthly_retainer}/month"
+
+
+class SubscriptionTypeChoices(models.TextChoices):
+    """Service types for generic recurring subscriptions. WiFi and SLA keep
+    their dedicated models (WifiSubscriber/SLAContract); everything else a
+    client can subscribe to monthly lives here. Add new types by adding a
+    choice — no new table needed."""
+    EMAIL = 'email', _('Email Hosting')
+    HOSTING = 'hosting', _('Website Hosting')
+    DOMAIN = 'domain', _('Domain Registration')
+    BACKUP = 'backup', _('Cloud Backup')
+    SOFTWARE = 'software', _('Software License')
+    OTHER = 'other', _('Other Subscription')
+
+
+class Subscription(models.Model):
+    """
+    Generic recurring subscription (email hosting, website hosting, domains,
+    backups, software, …). Auto-invoiced monthly alongside WiFi and SLA.
+    """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    subscription_type = models.CharField(
+        max_length=20, choices=SubscriptionTypeChoices.choices,
+        default=SubscriptionTypeChoices.OTHER, db_index=True,
+    )
+    service_name = models.CharField(
+        max_length=255, blank=True,
+        help_text='e.g. "Microsoft 365 Business Basic", "cPanel hosting — rehumile.co.za"',
+    )
+    client_name = models.CharField(max_length=255, db_index=True)
+    contact_name = models.CharField(max_length=255, blank=True)
+    contact_email = models.EmailField(blank=True)
+    contact_phone = models.CharField(max_length=20, blank=True)
+    company = models.ForeignKey(
+        Company, null=True, blank=True, on_delete=models.SET_NULL,
+        related_name='subscriptions',
+    )
+    monthly_price = models.DecimalField(
+        max_digits=10, decimal_places=2, help_text='What you charge the client per month',
+    )
+    monthly_cost = models.DecimalField(
+        max_digits=10, decimal_places=2, default=0,
+        help_text='What the supplier charges you per month (0 if none)',
+    )
+    billing_day = models.IntegerField(default=1, help_text='Day of month invoice is generated')
+    start_date = models.DateField(null=True, blank=True)
+    end_date = models.DateField(null=True, blank=True)
+    status = models.CharField(max_length=20, choices=SubscriberStatusChoices.choices, default='active', db_index=True)
+    notes = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'subscriptions'
+        ordering = ['client_name']
+
+    def __str__(self):
+        return f"{self.client_name} — {self.get_subscription_type_display()} (R{self.monthly_price}/month)"
+
+    @property
+    def gross_margin(self):
+        return float(self.monthly_price) - float(self.monthly_cost)
+
+    @property
+    def is_loss_making(self):
+        return self.monthly_cost >= self.monthly_price
 
 
 class RevenueAllocation(models.Model):

@@ -41,9 +41,11 @@ SEED_ACCOUNTS = [
     ('4200', 'REV_ADHOC', 'Ad-Hoc / Project Revenue', 'revenue', '', 'credit'),
     ('4300', 'REV_RETAIL', 'Retail / POS Sales Revenue', 'revenue', '', 'credit'),
     ('4400', 'REV_VOUCHER', 'Voucher Sales Revenue', 'revenue', '', 'credit'),
+    ('4500', 'REV_SUBSCRIPTIONS', 'Other Subscription Revenue (Email/Hosting/etc.)', 'revenue', '', 'credit'),
 
     ('5000', 'COGS_HARDWARE', 'Cost of Goods Sold — Hardware/Parts', 'expense', 'cogs', 'debit'),
     ('5100', 'COGS_AXXESS', 'Cost of Goods Sold — Axxess Wholesale', 'expense', 'cogs', 'debit'),
+    ('5200', 'COGS_SUBSCRIPTIONS', 'Cost of Goods Sold — Subscription Suppliers', 'expense', 'cogs', 'debit'),
 
     ('6000', 'OPEX_RENT', 'Rent Expense', 'expense', 'operating_expense', 'debit'),
     ('6100', 'OPEX_UTILITIES', 'Utilities / Internet Expense', 'expense', 'operating_expense', 'debit'),
@@ -58,8 +60,9 @@ SEED_ACCOUNTS = [
 INVOICE_TYPE_REVENUE_KEY = {
     'wifi': 'REV_WIFI',
     'sla': 'REV_SLA',
-    'callout': 'REV_SLA',
+    'callout': 'REV_ADHOC',   # callouts are irregular income — booked with ad-hoc/projects
     'adhoc': 'REV_ADHOC',
+    'subscription': 'REV_SUBSCRIPTIONS',
 }
 
 
@@ -81,7 +84,24 @@ def seed_chart_of_accounts():
 
 
 def account(system_key):
-    return Account.objects.get(system_key=system_key)
+    try:
+        return Account.objects.get(system_key=system_key)
+    except Account.DoesNotExist:
+        # Self-heal: an account added to SEED_ACCOUNTS in a newer release may
+        # not exist yet on a DB seeded before the release. Create it on demand
+        # so postings never crash on a fresh system key.
+        for code, key, name, account_type, account_subtype, normal_balance in SEED_ACCOUNTS:
+            if key == system_key:
+                obj, _ = Account.objects.get_or_create(
+                    system_key=key,
+                    defaults=dict(
+                        code=code, name=name, account_type=account_type,
+                        account_subtype=account_subtype, normal_balance=normal_balance,
+                        is_system=True,
+                    ),
+                )
+                return obj
+        raise
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -160,6 +180,9 @@ def post_invoice_sent(invoice, user=None):
     if invoice.invoice_type == 'wifi' and wholesale_cost > 0:
         lines.append(('COGS_AXXESS', wholesale_cost, Decimal('0'), f"Axxess cost — {invoice.invoice_number}"))
         lines.append(('ACCOUNTS_PAYABLE', Decimal('0'), wholesale_cost, f"Axxess cost — {invoice.invoice_number}"))
+    elif invoice.invoice_type == 'subscription' and wholesale_cost > 0:
+        lines.append(('COGS_SUBSCRIPTIONS', wholesale_cost, Decimal('0'), f"Supplier cost — {invoice.invoice_number}"))
+        lines.append(('ACCOUNTS_PAYABLE', Decimal('0'), wholesale_cost, f"Supplier cost — {invoice.invoice_number}"))
 
     return post_transaction(
         'Invoice', invoice.id,

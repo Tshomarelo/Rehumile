@@ -79,6 +79,9 @@ urlpatterns = [
     # Revenue Intelligence — SLA Contracts
     path('sla-contracts/', views.SLAContractListView.as_view(), name='sla-contract-list'),
     path('sla-contracts/<uuid:pk>/', views.SLAContractDetailView.as_view(), name='sla-contract-detail'),
+    # Revenue Intelligence — Generic Subscriptions (email, hosting, domains…)
+    path('subscriptions/', views.SubscriptionListView.as_view(), name='subscription-list'),
+    path('subscriptions/<uuid:pk>/', views.SubscriptionDetailView.as_view(), name='subscription-detail'),
     # Revenue Intelligence — Settings & Auto-invoicing
     path('revenue-allocation/', views.RevenueAllocationView.as_view(), name='revenue-allocation'),
     path('billing/generate-monthly/', views.GenerateMonthlyInvoicesView.as_view(), name='generate-monthly'),

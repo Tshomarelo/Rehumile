@@ -65,6 +65,10 @@
             <i data-feather="file-text" style="width:14px;height:14px"></i> SLA Contracts
             <span class="badge bg-secondary ms-1" id="slaCount">0</span>
           </button></li>
+          <li class="nav-item"><button class="nav-link" id="tab-subs" onclick="showTab('subs')">
+            <i data-feather="repeat" style="width:14px;height:14px"></i> Other Subscriptions
+            <span class="badge bg-secondary ms-1" id="subsCount">0</span>
+          </button></li>
         </ul>
 
         <!-- WiFi Subscribers Panel -->
@@ -148,6 +152,63 @@
               <div id="slaEmpty" class="text-center py-5 text-muted" style="display:none">
                 <i data-feather="file-text" style="width:48px;height:48px;opacity:.2"></i>
                 <p class="mt-2">No SLA contracts yet.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Other Subscriptions Panel -->
+        <div id="panel-subs" style="display:none">
+          <div class="row g-2 mb-3">
+            <div class="col-md-4">
+              <input type="text" class="form-control form-control-sm" id="fSubsSearch" placeholder="Search by client or service name…">
+            </div>
+            <div class="col-md-3">
+              <select class="form-select form-select-sm" id="fSubsType">
+                <option value="">All Types</option>
+                <option value="email">Email Hosting</option>
+                <option value="hosting">Website Hosting</option>
+                <option value="domain">Domain Registration</option>
+                <option value="backup">Cloud Backup</option>
+                <option value="software">Software License</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+            <div class="col-md-3">
+              <select class="form-select form-select-sm" id="fSubsStatus">
+                <option value="">All Statuses</option>
+                <option value="active">Active</option>
+                <option value="suspended">Suspended</option>
+                <option value="cancelled">Cancelled</option>
+              </select>
+            </div>
+            <div class="col-md-2">
+              <button class="btn btn-sm btn-outline-secondary w-100" id="fSubsClear">Clear</button>
+            </div>
+          </div>
+          <div class="row mb-3" id="subsStats" style="display:none">
+            <div class="col-sm-3"><div class="card text-center py-3"><h6 class="text-muted small mb-1">Active Subscriptions</h6><h4 class="mb-0 text-success" id="subs-stat-active">0</h4></div></div>
+            <div class="col-sm-3"><div class="card text-center py-3"><h6 class="text-muted small mb-1">Monthly Revenue</h6><h4 class="mb-0 text-primary" id="subs-stat-revenue">R 0</h4></div></div>
+            <div class="col-sm-3"><div class="card text-center py-3"><h6 class="text-muted small mb-1">Supplier Cost</h6><h4 class="mb-0 text-warning" id="subs-stat-cost">R 0</h4></div></div>
+            <div class="col-sm-3"><div class="card text-center py-3"><h6 class="text-muted small mb-1">Net Margin</h6><h4 class="mb-0 text-success" id="subs-stat-margin">R 0</h4></div></div>
+          </div>
+          <div class="card">
+            <div class="card-header"><h5 class="card-title mb-0">Recurring Subscriptions (Email, Hosting, Domains &amp; More)</h5></div>
+            <div class="card-body p-0">
+              <div id="subsLoading" class="text-center py-4 text-muted">Loading…</div>
+              <div class="table-responsive" id="subsTable" style="display:none">
+                <table class="table table-hover my-0 small">
+                  <thead><tr>
+                    <th>Client</th><th>Type</th><th>Service</th><th>Contact</th>
+                    <th>Price</th><th>Cost</th><th>Margin</th>
+                    <th>Status</th><th>Actions</th>
+                  </tr></thead>
+                  <tbody id="subsTbody"></tbody>
+                </table>
+              </div>
+              <div id="subsEmpty" class="text-center py-5 text-muted" style="display:none">
+                <i data-feather="repeat" style="width:48px;height:48px;opacity:.2"></i>
+                <p class="mt-2">No subscriptions yet. Add email hosting, website hosting, domains and more.</p>
               </div>
             </div>
           </div>
@@ -316,6 +377,107 @@
   </div>
 </div>
 <div class="hq-backdrop" id="slaModal-bd" onclick="HQ.hideDrawer('slaModal')"></div>
+
+<!-- Other Subscription Drawer -->
+<div class="hq-drawer hq-wide" id="subsModal">
+  <div class="hq-drawer-header">
+    <h5 class="hq-drawer-title" id="subsModalTitle">Add Subscription</h5>
+    <button type="button" class="btn-close btn-close-white" onclick="HQ.hideDrawer('subsModal')"></button>
+  </div>
+  <div class="hq-drawer-body">
+    <div id="subsModalAlert"></div>
+    <form id="subsForm">
+      <input type="hidden" id="sub_id">
+      <div class="row">
+        <div class="col-md-6 mb-3">
+          <label class="form-label fw-semibold">Client Name <span class="text-danger">*</span></label>
+          <input type="text" class="form-control" id="sub_client_name" required>
+        </div>
+        <div class="col-md-6 mb-3">
+          <label class="form-label fw-semibold">Subscription Type <span class="text-danger">*</span></label>
+          <select class="form-select" id="sub_type">
+            <option value="email">Email Hosting</option>
+            <option value="hosting">Website Hosting</option>
+            <option value="domain">Domain Registration</option>
+            <option value="backup">Cloud Backup</option>
+            <option value="software">Software License</option>
+            <option value="other" selected>Other Subscription</option>
+          </select>
+        </div>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Service Name <span class="text-muted small">(what exactly they're subscribed to)</span></label>
+        <input type="text" class="form-control" id="sub_service_name" placeholder='e.g. "Microsoft 365 Business Basic", "cPanel hosting — client.co.za"'>
+      </div>
+      <div class="row">
+        <div class="col-md-4 mb-3">
+          <label class="form-label">Contact Name</label>
+          <input type="text" class="form-control" id="sub_contact_name">
+        </div>
+        <div class="col-md-4 mb-3">
+          <label class="form-label">Contact Email</label>
+          <input type="email" class="form-control" id="sub_contact_email">
+        </div>
+        <div class="col-md-4 mb-3">
+          <label class="form-label">Contact Phone</label>
+          <input type="text" class="form-control" id="sub_contact_phone">
+        </div>
+      </div>
+      <div class="row">
+        <div class="col-md-6 mb-3">
+          <label class="form-label fw-semibold">Monthly Price (ZAR) <span class="text-danger">*</span></label>
+          <input type="number" class="form-control" id="sub_monthly_price" required min="0" step="0.01" oninput="calcSubsMargin()">
+        </div>
+        <div class="col-md-6 mb-3">
+          <label class="form-label">Supplier Cost / Month (ZAR)</label>
+          <input type="number" class="form-control" id="sub_monthly_cost" min="0" step="0.01" value="0" oninput="calcSubsMargin()">
+        </div>
+      </div>
+      <div class="alert alert-light border py-2 mb-3" id="subsMarginPreview" style="display:none">
+        <strong>Gross Margin: </strong><span id="subsMarginAmt">R 0</span>
+        (<span id="subsMarginPct">0%</span>)
+        <span id="subsMarginWarn" class="text-danger ms-2 small" style="display:none">⚠ Loss-making line</span>
+      </div>
+      <div class="row">
+        <div class="col-md-4 mb-3">
+          <label class="form-label">Start Date</label>
+          <input type="date" class="form-control" id="sub_start_date">
+        </div>
+        <div class="col-md-4 mb-3">
+          <label class="form-label">End Date <span class="text-muted small">(blank = open-ended)</span></label>
+          <input type="date" class="form-control" id="sub_end_date">
+        </div>
+        <div class="col-md-4 mb-3">
+          <label class="form-label">Billing Day</label>
+          <input type="number" class="form-control" id="sub_billing_day" value="1" min="1" max="28">
+        </div>
+      </div>
+      <div class="row">
+        <div class="col-md-6 mb-3">
+          <label class="form-label">Linked Company (optional)</label>
+          <select class="form-select" id="sub_company"><option value="">No linked company</option></select>
+        </div>
+        <div class="col-md-6 mb-3">
+          <label class="form-label">Status</label>
+          <select class="form-select" id="sub_status">
+            <option value="active" selected>Active</option>
+            <option value="suspended">Suspended</option>
+            <option value="cancelled">Cancelled</option>
+          </select>
+        </div>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Notes</label>
+        <textarea class="form-control" id="sub_notes" rows="2" placeholder="Renewal details, supplier account refs…"></textarea>
+      </div>
+    </form>
+  </div>
+  <div class="hq-drawer-footer">
+    <button type="button" class="btn btn-secondary" onclick="HQ.hideDrawer('subsModal')">Cancel</button>
+    <button type="button" class="btn btn-danger" id="saveSubsBtn">Save Subscription</button>
+  </div>
+</div>
+<div class="hq-backdrop" id="subsModal-bd" onclick="HQ.hideDrawer('subsModal')"></div>
 
 <!-- Import Spreadsheet Drawer -->
 <div class="hq-drawer hq-wide" id="importModal">
@@ -493,12 +655,13 @@
   let currentTab = 'wifi';
   window.showTab = function(tab){
     currentTab = tab;
-    ['wifi','sla'].forEach(t=>{
+    ['wifi','sla','subs'].forEach(t=>{
       document.getElementById('panel-'+t).style.display = t===tab?'block':'none';
       document.getElementById('tab-'+t).classList.toggle('active', t===tab);
     });
-    document.getElementById('newBtnLabel').textContent = tab==='wifi' ? 'New Subscriber' : 'New SLA Contract';
+    document.getElementById('newBtnLabel').textContent = tab==='wifi' ? 'New Subscriber' : tab==='sla' ? 'New SLA Contract' : 'New Subscription';
     if(tab==='sla' && !slaLoaded) loadSla();
+    if(tab==='subs' && !subsLoaded) loadSubs();
   };
 
   // ── Companies loader ─────────────────────────────────────────────────────────
@@ -572,7 +735,8 @@
   // ── New/Edit WiFi Drawer ─────────────────────────────────────────────────────
   document.getElementById('newRecordBtn').onclick=async()=>{
     if(currentTab==='wifi') openWifiModal();
-    else openSlaModal();
+    else if(currentTab==='sla') openSlaModal();
+    else openSubsModal();
   };
 
   async function openWifiModal(data){
@@ -769,6 +933,150 @@
     }catch(e){ if(e.message!=='Unauth') showAlert('pageAlert','Failed to delete.'); }
   };
 
+  // ── Other Subscriptions (email, hosting, domains, backups, software…) ───────
+  function currentSubsFilters(){
+    return {
+      search: document.getElementById('fSubsSearch').value.trim(),
+      subscription_type: document.getElementById('fSubsType').value,
+      status: document.getElementById('fSubsStatus').value,
+    };
+  }
+
+  let subsData=[], subsLoaded=false;
+  async function loadSubs(){
+    subsLoaded=true;
+    document.getElementById('subsLoading').style.display='block';
+    document.getElementById('subsTable').style.display='none';
+    document.getElementById('subsEmpty').style.display='none';
+    try{
+      const params=HQFilters.qs(currentSubsFilters());
+      const r=await api('/portal/api/subscriptions/'+(params?'?'+params:''));
+      const _j=await r.json(); subsData=Array.isArray(_j)?_j:(_j.results||[]);
+      document.getElementById('subsLoading').style.display='none';
+      document.getElementById('subsCount').textContent=subsData.length;
+      // Stats
+      const active=subsData.filter(s=>s.status==='active');
+      const totalRevenue=active.reduce((s,x)=>s+parseFloat(x.monthly_price||0),0);
+      const totalCost=active.reduce((s,x)=>s+parseFloat(x.monthly_cost||0),0);
+      document.getElementById('subs-stat-active').textContent=active.length;
+      document.getElementById('subs-stat-revenue').textContent=R(totalRevenue);
+      document.getElementById('subs-stat-cost').textContent=R(totalCost);
+      document.getElementById('subs-stat-margin').textContent=R(totalRevenue-totalCost);
+      document.getElementById('subsStats').style.display='';
+      if(!subsData.length){ document.getElementById('subsEmpty').style.display='block'; if(window.feather)feather.replace(); return; }
+      document.getElementById('subsTable').style.display='block';
+      document.getElementById('subsTbody').innerHTML=subsData.map(s=>{
+        const margin=parseFloat(s.gross_margin||0);
+        const pct=parseFloat(s.monthly_price||0)>0?((margin/parseFloat(s.monthly_price))*100).toFixed(0):0;
+        const marginCls=s.is_loss_making?'text-danger fw-bold':'text-success';
+        return `<tr>
+          <td><strong>${s.client_name}</strong>${s.company_name?`<br><small class="text-muted">${s.company_name}</small>`:''}</td>
+          <td><span class="badge bg-light text-dark border">${s.type_label||s.subscription_type}</span></td>
+          <td class="small">${s.service_name||'—'}</td>
+          <td>${s.contact_email||s.contact_phone||'—'}</td>
+          <td>${R(s.monthly_price)}</td>
+          <td>${R(s.monthly_cost)}</td>
+          <td class="${marginCls}">${R(margin)} <small>(${pct}%)</small>${s.is_loss_making?'<br><span class="badge bg-danger small">Loss-making</span>':''}</td>
+          <td>${statusBadge(s.status)}</td>
+          <td class="d-flex gap-1 flex-wrap">${canEdit?`
+            <button class="btn btn-sm btn-outline-primary" onclick='editSubs(${JSON.stringify(s)})'>Edit</button>
+            <button class="btn btn-sm btn-outline-danger" onclick='deleteSubs("${s.id}","${s.client_name}")'>Del</button>`
+          :'<span class="text-muted small">View only</span>'}
+          </td>
+        </tr>`;
+      }).join('');
+      if(window.feather)feather.replace();
+    }catch(e){ if(e.message!=='Unauth') document.getElementById('subsLoading').textContent='Failed to load subscriptions.'; }
+  }
+
+  async function openSubsModal(data){
+    await loadCompanies();
+    document.getElementById('subsForm').reset();
+    document.getElementById('sub_id').value='';
+    document.getElementById('subsModalAlert').innerHTML='';
+    document.getElementById('subsModalTitle').textContent=data?'Edit Subscription':'Add Subscription';
+    document.getElementById('subsMarginPreview').style.display='none';
+    populateCompanySelect('sub_company', data?.company||'');
+    if(data){
+      document.getElementById('sub_id').value=data.id;
+      document.getElementById('sub_client_name').value=data.client_name||'';
+      document.getElementById('sub_type').value=data.subscription_type||'other';
+      document.getElementById('sub_service_name').value=data.service_name||'';
+      document.getElementById('sub_contact_name').value=data.contact_name||'';
+      document.getElementById('sub_contact_email').value=data.contact_email||'';
+      document.getElementById('sub_contact_phone').value=data.contact_phone||'';
+      document.getElementById('sub_monthly_price').value=data.monthly_price||'';
+      document.getElementById('sub_monthly_cost').value=data.monthly_cost||0;
+      document.getElementById('sub_start_date').value=data.start_date||'';
+      document.getElementById('sub_end_date').value=data.end_date||'';
+      document.getElementById('sub_billing_day').value=data.billing_day||1;
+      document.getElementById('sub_status').value=data.status||'active';
+      document.getElementById('sub_notes').value=data.notes||'';
+      calcSubsMargin();
+    }
+    HQ.showDrawer('subsModal');
+  }
+
+  window.editSubs=function(data){ openSubsModal(data); };
+
+  window.calcSubsMargin=function(){
+    const price=parseFloat(document.getElementById('sub_monthly_price').value)||0;
+    const cost=parseFloat(document.getElementById('sub_monthly_cost').value)||0;
+    const margin=price-cost;
+    const pct=price>0?((margin/price)*100).toFixed(1):'—';
+    document.getElementById('subsMarginAmt').textContent=R(margin);
+    document.getElementById('subsMarginPct').textContent=pct+'%';
+    document.getElementById('subsMarginWarn').style.display=margin<0?'inline':'none';
+    document.getElementById('subsMarginPreview').style.display=price||cost?'block':'none';
+  };
+
+  document.getElementById('saveSubsBtn').onclick=async()=>{
+    const id=document.getElementById('sub_id').value;
+    const body={
+      client_name:document.getElementById('sub_client_name').value.trim(),
+      subscription_type:document.getElementById('sub_type').value,
+      service_name:document.getElementById('sub_service_name').value.trim(),
+      contact_name:document.getElementById('sub_contact_name').value.trim(),
+      contact_email:document.getElementById('sub_contact_email').value.trim(),
+      contact_phone:document.getElementById('sub_contact_phone').value.trim(),
+      monthly_price:parseFloat(document.getElementById('sub_monthly_price').value)||0,
+      monthly_cost:parseFloat(document.getElementById('sub_monthly_cost').value)||0,
+      start_date:document.getElementById('sub_start_date').value||null,
+      end_date:document.getElementById('sub_end_date').value||null,
+      billing_day:parseInt(document.getElementById('sub_billing_day').value)||1,
+      status:document.getElementById('sub_status').value,
+      notes:document.getElementById('sub_notes').value.trim(),
+      company:document.getElementById('sub_company').value||null,
+    };
+    if(!body.client_name){ showAlert('subsModalAlert','Client name is required.'); return; }
+    const btn=document.getElementById('saveSubsBtn');
+    const orig=btn.innerHTML;
+    btn.disabled=true;
+    btn.innerHTML='<span class="spinner-border spinner-border-sm me-1"></span>Saving…';
+    try{
+      const r=id
+        ? await api(`/portal/api/subscriptions/${id}/`,{method:'PATCH',body:JSON.stringify(body)})
+        : await api('/portal/api/subscriptions/',{method:'POST',body:JSON.stringify(body)});
+      const d=await r.json();
+      if(r.ok){
+        HQ.hideDrawer('subsModal');
+        showAlert('pageAlert',id?'Subscription updated successfully.':'Subscription added successfully.','success');
+        loadSubs();
+      } else { showAlert('subsModalAlert',d.detail||JSON.stringify(d)); }
+    }catch(e){ if(e.message!=='Unauth') showAlert('subsModalAlert','Failed to save.'); }
+    btn.disabled=false;
+    btn.innerHTML=orig;
+  };
+
+  window.deleteSubs=async function(id,name){
+    if(!confirm(`Delete subscription for "${name}"? This cannot be undone.`)) return;
+    try{
+      const r=await api(`/portal/api/subscriptions/${id}/`,{method:'DELETE'});
+      if(r.ok||r.status===204){ showAlert('pageAlert','Subscription deleted.','warning'); loadSubs(); }
+      else{ const d=await r.json(); showAlert('pageAlert',d.detail||'Delete failed.'); }
+    }catch(e){ if(e.message!=='Unauth') showAlert('pageAlert','Failed to delete.'); }
+  };
+
   // ── SLA Call-Out Invoice ─────────────────────────────────────────────────────
   window.raiseCallout=function(slaId, clientName){
     document.getElementById('co_sla_id').value=slaId;
@@ -842,11 +1150,14 @@
         const res=document.getElementById('genResult');
         res.innerHTML=`<div class="alert alert-success">
           <strong>Done!</strong><br>
-          WiFi invoices: ${d.wifi_created} created, ${d.wifi_skipped} skipped (already invoiced)<br>
-          SLA invoices: ${d.sla_created} created, ${d.sla_skipped} skipped<br>
-          ${sendEmail?`Emails sent: ${d.emails_sent}`:'Email sending: off'}
+          WiFi invoices created: ${d.wifi_created}<br>
+          SLA invoices created: ${d.sla_created}<br>
+          Subscription invoices created: ${d.subscriptions_created??0}<br>
+          Skipped (already invoiced): ${d.skipped}<br>
+          ${sendEmail?'Emails: sent to clients with an email on file':'Email sending: off'}
         </div>`;
         loadWifi();
+        if(subsLoaded) loadSubs();
       } else { document.getElementById('genResult').innerHTML=`<div class="alert alert-danger">${d.detail||JSON.stringify(d)}</div>`; }
     }catch(e){ document.getElementById('genResult').innerHTML=`<div class="alert alert-danger">${e.message}</div>`; }
     btn.disabled=false;
@@ -1026,6 +1337,15 @@
     document.getElementById('fSlaSearch').value='';
     document.getElementById('fSlaStatus').value='';
     loadSla();
+  });
+  document.getElementById('fSubsSearch').addEventListener('input', HQFilters.debounce(loadSubs, 350));
+  document.getElementById('fSubsType').addEventListener('change', loadSubs);
+  document.getElementById('fSubsStatus').addEventListener('change', loadSubs);
+  document.getElementById('fSubsClear').addEventListener('click', ()=>{
+    document.getElementById('fSubsSearch').value='';
+    document.getElementById('fSubsType').value='';
+    document.getElementById('fSubsStatus').value='';
+    loadSubs();
   });
 
   // ── Init ─────────────────────────────────────────────────────────────────────

@@ -385,6 +385,177 @@ class DashboardMetricAdmin(admin.ModelAdmin):
     metric_value_display.short_description = 'Value'
 
 
+# ============================================================================
+# FINANCE & REVENUE ADMIN
+# ============================================================================
+
+from .models import (
+    WifiSubscriber, SLAContract, Subscription, RevenueAllocation,
+    Account, LedgerTransaction, LedgerEntry, Expense,
+    CashTransaction, ShiftLog, Voucher, PurchaseSlip, Payment,
+    Employee, PayrollEntry, CompanySettings,
+)
+
+
+@admin.register(InvoicePayment)
+class InvoicePaymentAdmin(admin.ModelAdmin):
+    list_display = ('invoice', 'amount', 'payment_date', 'payment_method', 'recorded_by', 'created_at')
+    list_filter = ('payment_method', 'payment_date')
+    search_fields = ('invoice__invoice_number', 'notes')
+    readonly_fields = ('id', 'created_at')
+
+
+@admin.register(WifiSubscriber)
+class WifiSubscriberAdmin(admin.ModelAdmin):
+    list_display = ('client_name', 'axxess_id', 'retail_price', 'wholesale_cost', 'billing_day', 'status')
+    list_filter = ('status',)
+    search_fields = ('client_name', 'axxess_id', 'contact_email')
+    readonly_fields = ('id', 'created_at', 'updated_at')
+
+
+@admin.register(SLAContract)
+class SLAContractAdmin(admin.ModelAdmin):
+    list_display = ('client_name', 'monthly_retainer', 'contract_start', 'contract_end', 'billing_day', 'status')
+    list_filter = ('status',)
+    search_fields = ('client_name', 'contact_email')
+    readonly_fields = ('id', 'created_at', 'updated_at')
+
+
+@admin.register(Subscription)
+class SubscriptionAdmin(admin.ModelAdmin):
+    list_display = ('client_name', 'subscription_type', 'service_name', 'monthly_price', 'monthly_cost', 'billing_day', 'status')
+    list_filter = ('subscription_type', 'status')
+    search_fields = ('client_name', 'service_name', 'contact_email')
+    readonly_fields = ('id', 'created_at', 'updated_at')
+
+
+@admin.register(RevenueAllocation)
+class RevenueAllocationAdmin(admin.ModelAdmin):
+    list_display = ('__str__', 'reinvestment_pct', 'opex_pct', 'owner_pct', 'updated_at')
+
+
+@admin.register(Account)
+class AccountAdmin(admin.ModelAdmin):
+    list_display = ('code', 'name', 'system_key', 'account_type', 'account_subtype', 'normal_balance', 'is_active')
+    list_filter = ('account_type', 'account_subtype', 'is_active', 'is_system')
+    search_fields = ('code', 'name', 'system_key')
+    readonly_fields = ('id', 'system_key', 'is_system', 'created_at', 'updated_at')
+
+
+class LedgerEntryInline(admin.TabularInline):
+    model = LedgerEntry
+    extra = 0
+    can_delete = False
+    readonly_fields = ('account', 'debit', 'credit', 'memo')
+
+    def has_add_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(LedgerTransaction)
+class LedgerTransactionAdmin(admin.ModelAdmin):
+    """Read-only: the journal is append-only and only ims/ledger.py may write
+    it. Corrections are made by posting reversing entries, never by editing."""
+    list_display = ('transaction_date', 'description', 'source_model', 'source_id', 'cash_flow_stream', 'created_by')
+    list_filter = ('cash_flow_stream', 'source_model', 'transaction_date')
+    search_fields = ('description', 'source_id')
+    inlines = [LedgerEntryInline]
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(LedgerEntry)
+class LedgerEntryAdmin(admin.ModelAdmin):
+    """Read-only — see LedgerTransactionAdmin."""
+    list_display = ('transaction', 'account', 'debit', 'credit', 'memo')
+    list_filter = ('account',)
+    search_fields = ('memo', 'transaction__description')
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(Expense)
+class ExpenseAdmin(admin.ModelAdmin):
+    list_display = ('vendor', 'amount', 'category', 'account', 'expense_date', 'payment_status', 'cash_flow_stream')
+    list_filter = ('category', 'payment_status', 'cash_flow_stream', 'expense_date')
+    search_fields = ('vendor', 'description')
+    readonly_fields = ('id', 'created_at', 'updated_at')
+
+
+@admin.register(CashTransaction)
+class CashTransactionAdmin(admin.ModelAdmin):
+    list_display = ('description', 'amount', 'payment_method', 'transaction_category', 'cash_flow_stream', 'performed_by', 'created_at')
+    list_filter = ('payment_method', 'transaction_category', 'cash_flow_stream')
+    search_fields = ('description',)
+    readonly_fields = ('id', 'created_at')
+
+
+@admin.register(ShiftLog)
+class ShiftLogAdmin(admin.ModelAdmin):
+    list_display = ('date', 'opened_by', 'opening_float', 'closed_by', 'system_total', 'variance', 'is_closed')
+    list_filter = ('is_closed', 'date')
+    readonly_fields = ('id',)
+
+
+@admin.register(Voucher)
+class VoucherAdmin(admin.ModelAdmin):
+    list_display = ('voucher_code', 'duration_hours', 'selling_price', 'status', 'sold_by', 'sold_at')
+    list_filter = ('status',)
+    search_fields = ('voucher_code',)
+
+
+@admin.register(PurchaseSlip)
+class PurchaseSlipAdmin(admin.ModelAdmin):
+    list_display = ('supplier_name', 'amount', 'purchase_date', 'cash_flow_stream', 'uploaded_by')
+    list_filter = ('cash_flow_stream', 'purchase_date')
+    search_fields = ('supplier_name', 'reference_number')
+
+
+@admin.register(Payment)
+class PaymentAdmin(admin.ModelAdmin):
+    list_display = ('reference', 'amount', 'item_name', 'status', 'invoice', 'created_at')
+    list_filter = ('status',)
+    search_fields = ('reference', 'pf_payment_id', 'item_name', 'email_address')
+    readonly_fields = ('id', 'raw_itn', 'created_at', 'updated_at')
+
+
+@admin.register(PayrollEntry)
+class PayrollEntryAdmin(admin.ModelAdmin):
+    list_display = ('employee', 'compliance_period', 'total_gross', 'paye_amount', 'net_pay', 'is_frozen')
+    list_filter = ('is_frozen',)
+    readonly_fields = ('id', 'calculated_at')
+
+
+@admin.register(CompanySettings)
+class CompanySettingsAdmin(admin.ModelAdmin):
+    list_display = ('company_name', 'phone', 'email')
+
+
+# ── Catch-all: register every remaining ims model with a default admin so
+#    nothing (present or future) is ever missing from the admin site. ─────────
+from django.apps import apps as django_apps
+
+for _model in django_apps.get_app_config('ims').get_models():
+    try:
+        admin.site.register(_model)
+    except admin.sites.AlreadyRegistered:
+        pass
+
+
 # Custom Admin Site Configuration
 admin.site.site_header = "Rehumile Portal IMS Administration"
 admin.site.site_title = "IMS Admin"
