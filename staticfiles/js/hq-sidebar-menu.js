@@ -121,13 +121,12 @@
     ]),
     header('Finance'),
     submenu('nav-finance','dollar-sign','Finance',[
+      ['/portal/dashboard/revenue-intelligence/','Business Intelligence'],
       ['/portal/invoices/','Invoices'],
       ['/portal/reports/','Reports'],
       ['/portal/dashboard/pos/','POS'],
       ['/portal/dashboard/vouchers/','Vouchers'],
       ['/portal/dashboard/cash-management/','Cash Management'],
-      ['/portal/dashboard/expenses/','Expenses & Accounts'],
-      ['/portal/dashboard/financial-analytics/','Financial Analytics'],
     ]),
     header('Compliance'),
     submenu('nav-compliance','shield','Compliance',[
@@ -144,7 +143,6 @@
     header('Revenue'),
     submenu('nav-revenue','trending-up','Revenue',[
       ['/portal/dashboard/wifi-sla/','Subscriber & Contract Registry'],
-      ['/portal/dashboard/revenue-intelligence/','Business Intelligence'],
     ]),
     header('Website'),
     link('/portal/dashboard/website/','globe','Website Manager'),
