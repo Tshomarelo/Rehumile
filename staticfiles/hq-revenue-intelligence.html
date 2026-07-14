@@ -6,7 +6,18 @@
   <link rel="shortcut icon" href="/portal/static/img/icons/icon-48x48.png"/>
   <title>Business Intelligence | Rehumile IMS</title>
   <link href="/portal/static/css/app.css" rel="stylesheet">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;606&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+  <style>
+    .tab-pane{display:none}.tab-pane.active{display:block}
+    .nav-tabs .nav-link{cursor:pointer}
+    .stmt-row td:first-child{color:#555}
+    .stmt-row td:last-child{text-align:right;font-weight:600}
+    .stmt-total{border-top:2px solid #333;font-weight:700}
+    .stmt-total td{padding-top:8px}
+    .chart-wrap{position:relative;height:280px}
+  </style>
 </head>
 <body>
 <div class="wrapper">
@@ -43,42 +54,111 @@
         <div class="d-flex align-items-center justify-content-between mb-3">
           <div>
             <h1 class="h3 mb-0"><strong>Business Intelligence</strong></h1>
-            <p class="text-muted small mb-0" id="intelligenceSubtitle">Revenue Intelligence Ledger</p>
+            <p class="text-muted small mb-0" id="intelligenceSubtitle">The central hub for all financial matters</p>
           </div>
-          <button class="btn btn-outline-secondary btn-sm" id="refreshBtn">
-            <i data-feather="refresh-cw" style="width:14px;height:14px"></i> Refresh
-          </button>
+          <div class="d-flex gap-2">
+            <button class="btn btn-primary btn-sm" id="newExpenseBtn" style="display:none">
+              <i data-feather="plus" style="width:14px;height:14px"></i> Log Expense
+            </button>
+            <button class="btn btn-outline-secondary btn-sm" id="refreshBtn">
+              <i data-feather="refresh-cw" style="width:14px;height:14px"></i> Refresh
+            </button>
+          </div>
         </div>
         <div id="pageAlert"></div>
 
+        <ul class="nav nav-tabs mb-3" id="mainTabs">
+          <li class="nav-item"><a class="nav-link active" id="tabbtn-dashboard" onclick="switchMainTab('dashboard')">Dashboard</a></li>
+          <li class="nav-item"><a class="nav-link" id="tabbtn-expenses" onclick="switchMainTab('expenses')">Expenses &amp; Accounts</a></li>
+          <li class="nav-item"><a class="nav-link" id="tabbtn-statements" onclick="switchMainTab('statements')">Financial Statements</a></li>
+          <li class="nav-item"><a class="nav-link" id="tabbtn-ledger" onclick="switchMainTab('ledger')">Ledger</a></li>
+          <li class="nav-item"><a class="nav-link" id="tabbtn-reconciliation" onclick="switchMainTab('reconciliation')">Bank Reconciliation</a></li>
+        </ul>
+
+        <!-- ════════════════════════ DASHBOARD TAB ════════════════════════ -->
+        <div id="tab-dashboard" class="tab-pane active">
+
         <!-- ── Current Month Live ─────────────────────────────────────────── -->
         <div class="row mb-3" id="liveCards" style="display:none">
-          <div class="col-md-3 col-sm-6 mb-3">
+          <div class="col-md col-sm-6 mb-3">
             <div class="card text-center py-3">
               <h6 class="text-muted small mb-1">WiFi Revenue</h6>
               <h4 class="mb-0 text-primary" id="live-wifi">R —</h4>
               <small class="text-muted" id="live-wifi-sub"></small>
             </div>
           </div>
-          <div class="col-md-3 col-sm-6 mb-3">
+          <div class="col-md col-sm-6 mb-3">
             <div class="card text-center py-3">
               <h6 class="text-muted small mb-1">SLA Revenue</h6>
               <h4 class="mb-0 text-primary" id="live-sla">R —</h4>
               <small class="text-muted" id="live-sla-sub"></small>
             </div>
           </div>
-          <div class="col-md-3 col-sm-6 mb-3">
+          <div class="col-md col-sm-6 mb-3">
             <div class="card text-center py-3">
-              <h6 class="text-muted small mb-1">Ad-Hoc Revenue</h6>
-              <h4 class="mb-0 text-info" id="live-adhoc">R —</h4>
-              <small class="text-muted">Growth income</small>
+              <h6 class="text-muted small mb-1">Other Subscriptions</h6>
+              <h4 class="mb-0 text-primary" id="live-subs">R —</h4>
+              <small class="text-muted" id="live-subs-sub"></small>
             </div>
           </div>
-          <div class="col-md-3 col-sm-6 mb-3">
+          <div class="col-md col-sm-6 mb-3">
+            <div class="card text-center py-3">
+              <h6 class="text-muted small mb-1">Ad-Hoc / Projects</h6>
+              <h4 class="mb-0 text-info" id="live-adhoc">R —</h4>
+              <small class="text-muted">Irregular income — incl. call-outs</small>
+            </div>
+          </div>
+          <div class="col-md col-sm-6 mb-3">
             <div class="card text-center py-3" style="background:#50181E">
               <h6 class="text-white-50 small mb-1">Net Profit</h6>
               <h4 class="mb-0 text-white" id="live-profit">R —</h4>
               <small class="text-white-50" id="live-margin-pct"></small>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── Am I Growing? (MoM net profit from the ledger) ─────────────── -->
+        <div class="card mb-3" id="growthCard" style="display:none">
+          <div class="card-body d-flex flex-wrap align-items-center justify-content-between gap-2 py-3">
+            <div class="d-flex align-items-center gap-3">
+              <span id="growthArrow" style="font-size:2rem;line-height:1"></span>
+              <div>
+                <h5 class="mb-0" id="growthHeadline">—</h5>
+                <small class="text-muted" id="growthDetail"></small>
+              </div>
+            </div>
+            <div class="text-end">
+              <div class="small text-muted">Revenue vs last month</div>
+              <strong id="growthRevenue">—</strong>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── Revenue Trend Chart ────────────────────────────────────────── -->
+        <div class="card mb-3" id="trendCard" style="display:none">
+          <div class="card-header d-flex align-items-center justify-content-between">
+            <h5 class="card-title mb-0">Revenue Trend — 12 Months</h5>
+            <small class="text-muted">Stacked by income stream, with net profit line</small>
+          </div>
+          <div class="card-body">
+            <div class="chart-wrap"><canvas id="trendChart"></canvas></div>
+          </div>
+        </div>
+
+        <!-- ── Subscriptions by Type ──────────────────────────────────────── -->
+        <div class="card mb-3" id="subsTypeCard" style="display:none">
+          <div class="card-header d-flex align-items-center justify-content-between">
+            <h5 class="card-title mb-0">Subscriptions by Type (This Month)</h5>
+            <small class="text-muted">Email, hosting, domains &amp; more</small>
+          </div>
+          <div class="card-body p-0">
+            <div class="table-responsive">
+              <table class="table table-hover my-0 small">
+                <thead><tr>
+                  <th>Type</th><th>Active</th><th>Paid</th><th>Outstanding</th><th>Expected / Month</th>
+                </tr></thead>
+                <tbody id="subsTypeTbody"></tbody>
+              </table>
             </div>
           </div>
         </div>
@@ -140,6 +220,12 @@
               <option value="">All Types</option>
               <option value="wifi">WiFi</option>
               <option value="sla">SLA</option>
+              <option value="email">Email Hosting</option>
+              <option value="hosting">Website Hosting</option>
+              <option value="domain">Domain Registration</option>
+              <option value="backup">Cloud Backup</option>
+              <option value="software">Software License</option>
+              <option value="other">Other Subscription</option>
             </select>
           </div>
           <div class="card-body p-0">
@@ -168,8 +254,8 @@
               <table class="table table-hover my-0 small">
                 <thead><tr>
                   <th>Month</th>
-                  <th>WiFi</th><th>SLA</th><th>Ad-Hoc</th>
-                  <th>Axxess Cost</th><th>Net Profit</th>
+                  <th>WiFi</th><th>SLA</th><th>Subscriptions</th><th>Ad-Hoc / Projects</th>
+                  <th>Supplier Costs</th><th>Net Profit</th>
                   <th>Floor %</th><th>Growth %</th>
                   <th>Owner Draw</th>
                 </tr></thead>
@@ -178,6 +264,274 @@
             </div>
           </div>
         </div>
+
+        </div><!-- /tab-dashboard -->
+
+        <!-- ════════════════════════ EXPENSES TAB ═════════════════════════ -->
+        <div id="tab-expenses" class="tab-pane">
+          <ul class="nav nav-pills mb-3">
+            <li class="nav-item"><a class="nav-link active" id="pillbtn-explist" onclick="switchExpensePill('explist')">Expenses</a></li>
+            <li class="nav-item"><a class="nav-link" id="pillbtn-accounts" onclick="switchExpensePill('accounts')">Chart of Accounts</a></li>
+          </ul>
+
+          <div id="pill-explist">
+            <div class="row g-2 mb-3">
+              <div class="col-md-3">
+                <input type="text" class="form-control form-control-sm" id="fSearch" placeholder="Search vendor or description…">
+              </div>
+              <div class="col-md-2">
+                <select class="form-select form-select-sm" id="fCategory">
+                  <option value="">All Categories</option>
+                  <option value="cogs">Cost of Goods Sold</option>
+                  <option value="operating">Operating Expense</option>
+                  <option value="capital">Capital / Asset Purchase</option>
+                </select>
+              </div>
+              <div class="col-md-2">
+                <select class="form-select form-select-sm" id="fPaymentStatus">
+                  <option value="">All</option>
+                  <option value="paid">Paid</option>
+                  <option value="unpaid">Unpaid / Payable</option>
+                </select>
+              </div>
+              <div class="col-md-1">
+                <input type="date" class="form-control form-control-sm" id="fDateFrom" title="From">
+              </div>
+              <div class="col-md-1">
+                <input type="date" class="form-control form-control-sm" id="fDateTo" title="To">
+              </div>
+              <div class="col-md-2">
+                <button class="btn btn-sm btn-outline-secondary w-100" id="fClear">Clear</button>
+              </div>
+            </div>
+            <div class="card">
+              <div class="card-header d-flex align-items-center justify-content-between">
+                <h5 class="card-title mb-0">Expenses</h5>
+                <span class="badge bg-secondary" id="expenseCount">Loading…</span>
+              </div>
+              <div class="card-body p-0">
+                <div id="tableLoading" class="text-center py-4 text-muted">Loading…</div>
+                <div class="table-responsive" id="tableWrapper" style="display:none">
+                  <table class="table table-hover my-0">
+                    <thead><tr>
+                      <th>Date</th><th>Vendor</th><th class="d-none d-md-table-cell">Description</th>
+                      <th>Category</th><th class="d-none d-lg-table-cell">Account</th>
+                      <th>Amount</th><th>Status</th><th class="d-none d-md-table-cell">Recurring</th><th>Actions</th>
+                    </tr></thead>
+                    <tbody id="expenseTbody"></tbody>
+                  </table>
+                </div>
+                <div id="tableEmpty" class="text-center py-4 text-muted" style="display:none">No expenses found.</div>
+              </div>
+            </div>
+          </div>
+
+          <div id="pill-accounts" style="display:none">
+            <div class="card">
+              <div class="card-header d-flex align-items-center justify-content-between">
+                <h5 class="card-title mb-0">Chart of Accounts</h5>
+                <span class="text-muted small">System accounts — admins can rename or deactivate, not delete.</span>
+              </div>
+              <div class="card-body p-0">
+                <div class="table-responsive">
+                  <table class="table table-hover my-0 small">
+                    <thead><tr><th>Code</th><th>Name</th><th>Type</th><th class="d-none d-md-table-cell">Subtype</th><th>Normal Balance</th><th>Status</th><th>Actions</th></tr></thead>
+                    <tbody id="accountTbody"><tr><td colspan="7" class="text-center text-muted py-3">Loading…</td></tr></tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div><!-- /tab-expenses -->
+
+        <!-- ═══════════════════ FINANCIAL STATEMENTS TAB ══════════════════ -->
+        <div id="tab-statements" class="tab-pane">
+          <div class="row g-2 mb-3 align-items-end">
+            <div class="col-md-3">
+              <label class="form-label small text-muted mb-1">From</label>
+              <input type="date" class="form-control form-control-sm" id="stmtDateFrom">
+            </div>
+            <div class="col-md-3">
+              <label class="form-label small text-muted mb-1">To</label>
+              <input type="date" class="form-control form-control-sm" id="stmtDateTo">
+            </div>
+            <div class="col-md-3">
+              <label class="form-label small text-muted mb-1">Balance Sheet As Of</label>
+              <input type="date" class="form-control form-control-sm" id="stmtAsOf">
+            </div>
+            <div class="col-md-3">
+              <button class="btn btn-sm btn-primary w-100" id="runStatementsBtn">Run Statements</button>
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="col-lg-4 mb-3">
+              <div class="card h-100">
+                <div class="card-header"><h5 class="card-title mb-0">Income Statement</h5></div>
+                <div class="card-body p-0">
+                  <table class="table table-sm mb-0"><tbody id="incomeStatementBody"></tbody></table>
+                </div>
+              </div>
+            </div>
+            <div class="col-lg-4 mb-3">
+              <div class="card h-100">
+                <div class="card-header d-flex align-items-center justify-content-between">
+                  <h5 class="card-title mb-0">Balance Sheet</h5>
+                  <span id="bsBalanceBadge"></span>
+                </div>
+                <div class="card-body p-0">
+                  <table class="table table-sm mb-0"><tbody id="balanceSheetBody"></tbody></table>
+                </div>
+              </div>
+            </div>
+            <div class="col-lg-4 mb-3">
+              <div class="card h-100">
+                <div class="card-header"><h5 class="card-title mb-0">Cash Flow Statement</h5></div>
+                <div class="card-body p-0">
+                  <table class="table table-sm mb-0"><tbody id="cashFlowBody"></tbody></table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div><!-- /tab-statements -->
+
+        <!-- ═══════════════════════════ LEDGER TAB ═════════════════════════ -->
+        <div id="tab-ledger" class="tab-pane">
+          <div class="row g-2 mb-3">
+            <div class="col-md-4">
+              <select class="form-select form-select-sm" id="ledgerAccount"><option value="">All Accounts</option></select>
+            </div>
+            <div class="col-md-3">
+              <input type="date" class="form-control form-control-sm" id="ledgerDateFrom" title="From">
+            </div>
+            <div class="col-md-3">
+              <input type="date" class="form-control form-control-sm" id="ledgerDateTo" title="To">
+            </div>
+            <div class="col-md-2">
+              <button class="btn btn-sm btn-outline-secondary w-100" id="ledgerClearBtn">Clear</button>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-header d-flex align-items-center justify-content-between">
+              <h5 class="card-title mb-0">General Ledger</h5>
+              <span class="badge bg-secondary" id="ledgerCount"></span>
+            </div>
+            <div class="card-body p-0">
+              <div class="table-responsive">
+                <table class="table table-hover table-sm mb-0">
+                  <thead><tr><th>Date</th><th>Description</th><th>Account</th><th class="text-end">Debit</th><th class="text-end">Credit</th><th>Memo</th></tr></thead>
+                  <tbody id="ledgerTbody"><tr><td colspan="6" class="text-center text-muted py-3">Select a filter or view all recent entries.</td></tr></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div><!-- /tab-ledger -->
+
+        <!-- ═══════════════════ BANK RECONCILIATION TAB ════════════════════ -->
+        <div id="tab-reconciliation" class="tab-pane">
+          <div class="row">
+            <div class="col-lg-5 mb-3">
+              <div class="card">
+                <div class="card-header"><h5 class="card-title mb-0">Upload Bank Statement (CSV)</h5></div>
+                <div class="card-body">
+                  <p class="text-muted small">Export your statement from the bank as <strong>CSV</strong> and upload it here.
+                  Every line is automatically matched against the Bank &amp; Cash ledger — anything left over on either
+                  side is exactly what you need to explain at month-end.</p>
+                  <div class="mb-2">
+                    <label class="form-label small">Label</label>
+                    <input type="text" class="form-control form-control-sm" id="bsLabel" placeholder='e.g. "FNB Business — July 2026"'>
+                  </div>
+                  <div class="mb-3">
+                    <label class="form-label small">CSV File</label>
+                    <input type="file" class="form-control form-control-sm" id="bsFile" accept=".csv,.txt">
+                  </div>
+                  <button class="btn btn-primary btn-sm w-100" id="bsUploadBtn">
+                    <i data-feather="upload" style="width:14px;height:14px"></i> Upload &amp; Reconcile
+                  </button>
+                  <div id="bsUploadResult" class="mt-2 small"></div>
+                </div>
+              </div>
+
+              <div class="card mt-3">
+                <div class="card-header d-flex align-items-center justify-content-between">
+                  <h5 class="card-title mb-0">Imported Statements</h5>
+                  <span class="badge bg-secondary" id="bsCount">0</span>
+                </div>
+                <div class="card-body p-0">
+                  <div id="bsListLoading" class="text-center py-3 text-muted">Loading…</div>
+                  <div class="table-responsive" id="bsListTable" style="display:none">
+                    <table class="table table-hover table-sm mb-0 small">
+                      <thead><tr><th>Statement</th><th>Period</th><th>Matched</th><th></th></tr></thead>
+                      <tbody id="bsListTbody"></tbody>
+                    </table>
+                  </div>
+                  <div id="bsListEmpty" class="text-center py-4 text-muted" style="display:none">No statements uploaded yet.</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-lg-7 mb-3">
+              <div id="bsDetailEmpty" class="card">
+                <div class="card-body text-center py-5 text-muted">
+                  <i data-feather="columns" style="width:48px;height:48px;opacity:.2"></i>
+                  <p class="mt-2 mb-0">Upload or select a statement to see the reconciliation report.</p>
+                </div>
+              </div>
+              <div id="bsDetail" style="display:none">
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                  <h5 class="mb-0" id="bsDetailTitle"></h5>
+                  <div class="d-flex gap-2">
+                    <button class="btn btn-sm btn-outline-primary" id="bsRematchBtn" title="Re-run matching after recording missing items">Re-run Matching</button>
+                    <button class="btn btn-sm btn-outline-danger" id="bsDeleteBtn">Delete</button>
+                  </div>
+                </div>
+                <div class="row mb-3">
+                  <div class="col-6 col-md-3 mb-2"><div class="card text-center py-2"><h6 class="text-muted small mb-1">Match Rate</h6><h4 class="mb-0" id="bs-match-rate">—</h4></div></div>
+                  <div class="col-6 col-md-3 mb-2"><div class="card text-center py-2"><h6 class="text-muted small mb-1">Money In</h6><h4 class="mb-0 text-success" id="bs-money-in">—</h4></div></div>
+                  <div class="col-6 col-md-3 mb-2"><div class="card text-center py-2"><h6 class="text-muted small mb-1">Money Out</h6><h4 class="mb-0 text-danger" id="bs-money-out">—</h4></div></div>
+                  <div class="col-6 col-md-3 mb-2"><div class="card text-center py-2"><h6 class="text-muted small mb-1">Discrepancies</h6><h4 class="mb-0" id="bs-discrepancies">—</h4></div></div>
+                </div>
+                <div id="bsCleanBanner" class="alert alert-success py-2 small" style="display:none">
+                  ✅ <strong>Fully reconciled.</strong> Every bank line matches the books and every book entry appears on the statement.
+                </div>
+
+                <div class="card mb-3" id="bsUnmatchedBankCard" style="display:none">
+                  <div class="card-header py-2"><h6 class="card-title mb-0 text-danger">On the bank statement but NOT in the books</h6></div>
+                  <div class="card-body p-0">
+                    <p class="text-muted small px-3 pt-2 mb-1">Money that moved through the real account with no matching record — record the missing income/expense, then re-run matching.</p>
+                    <div class="table-responsive">
+                      <table class="table table-sm mb-0 small"><thead><tr><th>Date</th><th>Description</th><th class="text-end">Amount</th></tr></thead>
+                      <tbody id="bsUnmatchedBankTbody"></tbody></table>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="card mb-3" id="bsUnmatchedLedgerCard" style="display:none">
+                  <div class="card-header py-2"><h6 class="card-title mb-0 text-warning">In the books but NOT on the bank statement</h6></div>
+                  <div class="card-body p-0">
+                    <p class="text-muted small px-3 pt-2 mb-1">The books say this money moved, but the bank never saw it — check for timing differences, cash-drawer amounts, or entries that need correcting.</p>
+                    <div class="table-responsive">
+                      <table class="table table-sm mb-0 small"><thead><tr><th>Date</th><th>Description</th><th class="text-end">Amount</th></tr></thead>
+                      <tbody id="bsUnmatchedLedgerTbody"></tbody></table>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="card">
+                  <div class="card-header py-2"><h6 class="card-title mb-0">All Statement Lines</h6></div>
+                  <div class="card-body p-0">
+                    <div class="table-responsive">
+                      <table class="table table-hover table-sm mb-0 small">
+                        <thead><tr><th>Date</th><th>Description</th><th class="text-end">Amount</th><th>Status</th><th>Matched To</th></tr></thead>
+                        <tbody id="bsLinesTbody"></tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div><!-- /tab-reconciliation -->
 
       </div>
     </main>
@@ -221,8 +575,117 @@
   </div>
 </div>
 
+<!-- Log Expense Drawer -->
+<div class="hq-drawer hq-wide" id="expenseModal">
+  <div class="hq-drawer-header">
+    <h5 class="hq-drawer-title">Log Expense</h5>
+    <button type="button" class="btn-close btn-close-white" onclick="HQ.hideDrawer('expenseModal')"></button>
+  </div>
+  <div class="hq-drawer-body">
+    <div id="modalAlert"></div>
+    <form id="expenseForm">
+      <div class="row">
+        <div class="col-md-4 mb-3">
+          <label class="form-label">Category <span class="text-danger">*</span></label>
+          <select class="form-select" id="f_category" required onchange="onCategoryChange()">
+            <option value="">Select…</option>
+            <option value="cogs">Cost of Goods Sold</option>
+            <option value="operating">Operating Expense</option>
+            <option value="capital">Capital / Asset Purchase</option>
+          </select>
+        </div>
+        <div class="col-md-8 mb-3">
+          <label class="form-label">Account <span class="text-danger">*</span></label>
+          <select class="form-select" id="f_account" required><option value="">Select category first…</option></select>
+        </div>
+      </div>
+      <div class="row">
+        <div class="col-md-6 mb-3">
+          <label class="form-label">Vendor / Supplier <span class="text-danger">*</span></label>
+          <input type="text" class="form-control" id="f_vendor" required placeholder="e.g. Vodacom, Pinnacle, Landlord">
+        </div>
+        <div class="col-md-6 mb-3">
+          <label class="form-label">Amount (ZAR) <span class="text-danger">*</span></label>
+          <input type="number" class="form-control" id="f_amount" required min="0" step="0.01">
+        </div>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Description</label>
+        <input type="text" class="form-control" id="f_description" placeholder="What was this expense for?">
+      </div>
+      <div class="row">
+        <div class="col-md-4 mb-3">
+          <label class="form-label">Expense Date <span class="text-danger">*</span></label>
+          <input type="date" class="form-control" id="f_expense_date" required>
+        </div>
+        <div class="col-md-4 mb-3">
+          <label class="form-label">Cash Flow Stream</label>
+          <select class="form-select" id="f_cash_flow_stream">
+            <option value="ocf">Operating (OCF)</option>
+            <option value="icf">Investing (ICF)</option>
+            <option value="fcf">Financing (FCF)</option>
+          </select>
+        </div>
+        <div class="col-md-4 mb-3">
+          <label class="form-label">Payment Status</label>
+          <select class="form-select" id="f_payment_status">
+            <option value="paid" selected>Paid</option>
+            <option value="unpaid">Unpaid / Payable</option>
+          </select>
+        </div>
+      </div>
+      <div class="row">
+        <div class="col-md-4 mb-3 d-flex align-items-end">
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" id="f_is_recurring" onchange="onRecurringChange()">
+            <label class="form-check-label" for="f_is_recurring">This is a recurring expense</label>
+          </div>
+        </div>
+        <div class="col-md-4 mb-3" id="f_frequency_row" style="display:none">
+          <label class="form-label">Frequency</label>
+          <select class="form-select" id="f_recurring_frequency">
+            <option value="monthly">Monthly</option>
+            <option value="weekly">Weekly</option>
+            <option value="quarterly">Quarterly</option>
+            <option value="annual">Annual</option>
+          </select>
+        </div>
+      </div>
+    </form>
+  </div>
+  <div class="hq-drawer-footer">
+    <button type="button" class="btn btn-secondary" onclick="HQ.hideDrawer('expenseModal')">Cancel</button>
+    <button type="button" class="btn btn-primary" id="saveBtn">Save Expense</button>
+  </div>
+</div>
+<div class="hq-backdrop" id="expenseModal-bd" onclick="HQ.hideDrawer('expenseModal')"></div>
+
+<!-- Edit Account Drawer (admin only) -->
+<div class="hq-drawer" id="accountModal">
+  <div class="hq-drawer-header">
+    <h5 class="hq-drawer-title">Edit Account</h5>
+    <button type="button" class="btn-close btn-close-white" onclick="HQ.hideDrawer('accountModal')"></button>
+  </div>
+  <div class="hq-drawer-body">
+    <div id="acctModalAlert"></div>
+    <input type="hidden" id="acct_id">
+    <div class="mb-3"><label class="form-label">Name</label><input type="text" class="form-control" id="acct_name"></div>
+    <div class="mb-3"><label class="form-label">Description</label><textarea class="form-control" id="acct_description" rows="2"></textarea></div>
+    <div class="form-check">
+      <input class="form-check-input" type="checkbox" id="acct_is_active">
+      <label class="form-check-label" for="acct_is_active">Active</label>
+    </div>
+  </div>
+  <div class="hq-drawer-footer">
+    <button type="button" class="btn btn-secondary" onclick="HQ.hideDrawer('accountModal')">Cancel</button>
+    <button type="button" class="btn btn-primary" id="saveAcctBtn">Save Account</button>
+  </div>
+</div>
+<div class="hq-backdrop" id="accountModal-bd" onclick="HQ.hideDrawer('accountModal')"></div>
+
 <script src="/portal/static/js/app.js"></script>
 <script src="/portal/static/js/hq-sidebar-menu.js"></script>
+<script src="/portal/static/js/hq-filters.js"></script>
 <script>(function(){function _i(){var s=document.querySelector('.js-sidebar'),t=document.querySelector('.js-sidebar-toggle');if(!s||!t)return;if(window.innerWidth<992&&localStorage.getItem('ims_sidebar')==='open')s.classList.add('collapsed');t.addEventListener('click',function(){setTimeout(function(){localStorage.setItem('ims_sidebar',s.classList.contains('collapsed')?'open':'closed');},50);});}document.readyState==='loading'?document.addEventListener('DOMContentLoaded',_i):_i();})();</script>
 <script>
 (function(){
@@ -235,6 +698,7 @@
   document.getElementById('logoutBtn').onclick=e=>{ e.preventDefault(); localStorage.clear(); window.location.href='/portal/login/'; };
 
   const isAdmin = userData.role==='admin';
+  const canFinance = ['admin','finance'].includes(userData.role);
 
   async function api(url,opts={}){
     const r=await fetch(url,{...opts,headers:{'Content-Type':'application/json','Authorization':'Bearer '+token,...(opts.headers||{})}});
@@ -246,21 +710,38 @@
   }
   const R=n=>n!=null?'R '+parseFloat(n).toFixed(2):'R —';
   const pct=n=>n!=null?(parseFloat(n)*100).toFixed(1)+'%':'—';
+  const fmtR=n=>'R '+parseFloat(n||0).toLocaleString('en-ZA',{minimumFractionDigits:2,maximumFractionDigits:2});
+  const fmtDate=d=>d?new Date(d).toLocaleDateString('en-ZA',{year:'numeric',month:'short',day:'numeric'}):'—';
+
+  // ── Tab switching (with URL-hash routing so old bookmarks land right) ──────
+  const TABS=['dashboard','expenses','statements','ledger','reconciliation'];
+  window.switchMainTab=function(name){
+    if(!TABS.includes(name)) name='dashboard';
+    TABS.forEach(t=>{
+      document.getElementById('tab-'+t).classList.toggle('active', t===name);
+      document.getElementById('tabbtn-'+t).classList.toggle('active', t===name);
+    });
+    document.getElementById('newExpenseBtn').style.display = (name==='expenses'&&canFinance)?'':'none';
+    if(history.replaceState) history.replaceState(null,'','#'+name);
+    if(name==='expenses'){ loadExpenses(); }
+    if(name==='statements'){ runStatements(); }
+    if(name==='ledger'){ loadLedgerAccounts(); loadLedger(); }
+    if(name==='reconciliation'){ loadBankStatements(); }
+  };
 
   // Full client_profitability array as fetched from the server — filtering below is purely client-side
   let clientProfitability=[];
 
-  // ── Revenue Intelligence ─────────────────────────────────────────────────────
+  // ── Revenue Intelligence (Dashboard tab) ───────────────────────────────────
   async function loadIntelligence(){
     try{
       const r=await api('/portal/api/revenue-intelligence/');
       const d=await r.json();
       if(!r.ok){ showAlert('pageAlert',d.detail||'Failed to load intelligence.'); return; }
 
-      // Current month subtitle
       const now=new Date();
       document.getElementById('intelligenceSubtitle').textContent=
-        `Live data — ${now.toLocaleString('en-ZA',{month:'long',year:'numeric'})}`;
+        `The central hub for all financial matters — ${now.toLocaleString('en-ZA',{month:'long',year:'numeric'})}`;
 
       // Live cards
       const s=d.streams||{};
@@ -269,12 +750,58 @@
       document.getElementById('live-wifi-sub').textContent=`Expected: ${R(s.wifi?.expected)}`;
       document.getElementById('live-sla').textContent=R(s.sla?.paid);
       document.getElementById('live-sla-sub').textContent=`Expected: ${R(s.sla?.expected)}`;
+      document.getElementById('live-subs').textContent=R(s.subscriptions?.paid);
+      document.getElementById('live-subs-sub').textContent=`Expected: ${R(s.subscriptions?.expected)}`;
       document.getElementById('live-adhoc').textContent=R(s.adhoc?.paid);
+
+      // Subscriptions by type breakdown
+      const byType=s.subscriptions?.by_type||[];
+      if(byType.length){
+        document.getElementById('subsTypeTbody').innerHTML=byType.map(t=>`
+          <tr>
+            <td><strong>${t.label}</strong></td>
+            <td>${t.active_count}</td>
+            <td class="text-success">${R(t.paid)}</td>
+            <td class="${parseFloat(t.outstanding||0)>0?'text-danger':'text-muted'}">${R(t.outstanding)}</td>
+            <td>${R(t.expected)}</td>
+          </tr>`).join('');
+        document.getElementById('subsTypeCard').style.display='';
+      }
+
       const netProfit=parseFloat(totals.net_profit||0);
       const totalRev=parseFloat(totals.revenue||0);
       document.getElementById('live-profit').textContent=R(netProfit);
       document.getElementById('live-margin-pct').textContent=totalRev>0?((netProfit/totalRev)*100).toFixed(1)+'% margin':'';
       document.getElementById('liveCards').style.display='';
+
+      // Am I growing? — ledger-truth MoM net profit
+      const g=d.growth;
+      if(g){
+        const pctVal=g.net_profit_pct;
+        const arrowEl=document.getElementById('growthArrow');
+        const headEl=document.getElementById('growthHeadline');
+        const detEl=document.getElementById('growthDetail');
+        if(pctVal==null){
+          arrowEl.textContent='●'; arrowEl.style.color='#6c757d';
+          headEl.textContent='No previous month to compare yet';
+          headEl.className='mb-0 text-muted';
+          detEl.textContent=`${g.current_month.label} net profit: ${R(g.current_month.net_profit)}`;
+        } else if(g.is_growing){
+          arrowEl.textContent='▲'; arrowEl.style.color='#198754';
+          headEl.textContent=`Growing — net profit up ${Math.abs(pctVal).toFixed(1)}% vs ${g.previous_month.label}`;
+          headEl.className='mb-0 text-success';
+          detEl.textContent=`${R(g.previous_month.net_profit)} → ${R(g.current_month.net_profit)} (${g.net_profit_change>=0?'+':''}${R(g.net_profit_change).replace('R ','R ')})`;
+        } else {
+          arrowEl.textContent='▼'; arrowEl.style.color='#dc3545';
+          headEl.textContent=`Shrinking — net profit down ${Math.abs(pctVal).toFixed(1)}% vs ${g.previous_month.label}`;
+          headEl.className='mb-0 text-danger';
+          detEl.textContent=`${R(g.previous_month.net_profit)} → ${R(g.current_month.net_profit)}`;
+        }
+        const rp=g.revenue_pct;
+        document.getElementById('growthRevenue').textContent = rp==null ? 'no comparison' : (rp>=0?'+':'')+rp.toFixed(1)+'%';
+        document.getElementById('growthRevenue').className = rp==null ? 'text-muted' : rp>=0 ? 'text-success' : 'text-danger';
+        document.getElementById('growthCard').style.display='';
+      }
 
       // Allocation
       const alloc=d.allocation||{};
@@ -336,7 +863,7 @@
         return `<tr>
           <td class="text-muted">${i+1}</td>
           <td><strong>${c.client_name}</strong></td>
-          <td><span class="badge bg-light text-dark border">${c.type||'adhoc'}</span></td>
+          <td><span class="badge bg-light text-dark border">${c.type_label||c.type||'adhoc'}</span></td>
           <td>${R(c.revenue)}</td>
           <td>${R(c.cost)}</td>
           <td class="${cls} fw-semibold">${R(c.gross_margin)}</td>
@@ -350,28 +877,59 @@
     }
   }
 
-  // ── 12-Month Breakdown ───────────────────────────────────────────────────────
+  // ── 12-Month Breakdown + Trend Chart ─────────────────────────────────────────
+  let trendChart=null;
+  function renderTrendChart(rows){
+    try{
+      if(typeof Chart==='undefined') return;
+      const ctx=document.getElementById('trendChart').getContext('2d');
+      if(trendChart) trendChart.destroy();
+      trendChart=new Chart(ctx,{
+        type:'bar',
+        data:{
+          labels:rows.map(m=>m.month_short||m.label),
+          datasets:[
+            {label:'WiFi',data:rows.map(m=>m.wifi_revenue||0),backgroundColor:'#50181E',stack:'rev'},
+            {label:'SLA',data:rows.map(m=>m.sla_revenue||0),backgroundColor:'#B38F43',stack:'rev'},
+            {label:'Subscriptions',data:rows.map(m=>m.subscription_revenue||0),backgroundColor:'#2b6cb0',stack:'rev'},
+            {label:'Ad-Hoc / Projects',data:rows.map(m=>m.adhoc_revenue||0),backgroundColor:'#4fd1c5',stack:'rev'},
+            {label:'Net Profit',data:rows.map(m=>m.net_profit||0),type:'line',borderColor:'#198754',backgroundColor:'#198754',tension:.3,yAxisID:'y'},
+          ],
+        },
+        options:{
+          responsive:true,maintainAspectRatio:false,
+          scales:{x:{stacked:true},y:{stacked:true,ticks:{callback:v=>'R'+v}}},
+          plugins:{legend:{position:'bottom',labels:{boxWidth:12}}},
+        },
+      });
+      document.getElementById('trendCard').style.display='';
+    }catch(e){ /* chart is progressive enhancement — table below always renders */ }
+  }
+
   async function loadMonthly(){
     try{
       const r=await api('/portal/api/revenue-intelligence/monthly/');
-      const rows=await r.json();
+      const d=await r.json();
+      const rows=Array.isArray(d)?d:(d.months||[]);
       document.getElementById('monthlyLoading').style.display='none';
-      if(!Array.isArray(rows)||!rows.length){
+      if(!rows.length){
         document.getElementById('monthlyLoading').textContent='No historical data yet.';
         document.getElementById('monthlyLoading').style.display='block';
         return;
       }
+      renderTrendChart(rows);
       document.getElementById('monthlyTable').style.display='block';
       document.getElementById('monthlyTbody').innerHTML=rows.map(m=>{
         const profit=parseFloat(m.net_profit||0);
         const profitCls=profit<0?'text-danger':profit===0?'text-muted':'text-success';
-        const floorPct=parseFloat(m.floor_pct||0)*100;
-        const growthPct=parseFloat(m.growth_pct||0)*100;
+        const floorPct=parseFloat(m.floor_pct||0);
+        const growthPct=parseFloat(m.growth_pct||0);
         return `<tr>
           <td><strong>${m.label}</strong></td>
-          <td>${R(m.wifi)}</td>
-          <td>${R(m.sla)}</td>
-          <td>${R(m.adhoc)}</td>
+          <td>${R(m.wifi_revenue)}</td>
+          <td>${R(m.sla_revenue)}</td>
+          <td>${R(m.subscription_revenue)}</td>
+          <td>${R(m.adhoc_revenue)}</td>
           <td class="text-warning">${R(m.axxess_costs)}</td>
           <td class="${profitCls} fw-semibold">${R(m.net_profit)}</td>
           <td>
@@ -408,47 +966,507 @@
   };
 
   window.updateAllocTotal=function(){
-    const total=(parseFloat(document.getElementById('a_reinvest').value)||0)+
-                (parseFloat(document.getElementById('a_opex').value)||0)+
-                (parseFloat(document.getElementById('a_owner').value)||0);
+    const total=(parseFloat(document.getElementById('a_reinvest').value)||0)
+      +(parseFloat(document.getElementById('a_opex').value)||0)
+      +(parseFloat(document.getElementById('a_owner').value)||0);
     document.getElementById('allocTotal').textContent=total.toFixed(2)+'%';
     document.getElementById('allocTotalWarn').style.display=Math.abs(total-100)>0.01?'inline':'none';
   };
 
   document.getElementById('saveAllocBtn').onclick=async()=>{
-    const r_pct=parseFloat(document.getElementById('a_reinvest').value)||0;
-    const o_pct=parseFloat(document.getElementById('a_opex').value)||0;
-    const ow_pct=parseFloat(document.getElementById('a_owner').value)||0;
-    if(Math.abs(r_pct+o_pct+ow_pct-100)>0.01){ showAlert('allocModalAlert','Percentages must sum to 100%.'); return; }
-    const btn=document.getElementById('saveAllocBtn');
-    const orig=btn.innerHTML;
-    btn.disabled=true;
-    btn.innerHTML='<span class="spinner-border spinner-border-sm me-1"></span>Saving…';
+    const reinvest=(parseFloat(document.getElementById('a_reinvest').value)||0)/100;
+    const opex=(parseFloat(document.getElementById('a_opex').value)||0)/100;
+    const owner=(parseFloat(document.getElementById('a_owner').value)||0)/100;
+    if(Math.abs(reinvest+opex+owner-1)>0.0001){
+      showAlert('allocModalAlert','Percentages must add up to exactly 100%.'); return;
+    }
     try{
       const r=await api('/portal/api/revenue-allocation/',{method:'PATCH',body:JSON.stringify({
-        reinvestment_pct:(r_pct/100).toFixed(4),
-        opex_pct:(o_pct/100).toFixed(4),
-        owner_pct:(ow_pct/100).toFixed(4),
+        reinvestment_pct:reinvest.toFixed(4), opex_pct:opex.toFixed(4), owner_pct:owner.toFixed(4),
       })});
-      const d=await r.json();
       if(r.ok){
         bootstrap.Modal.getInstance(document.getElementById('allocModal')).hide();
-        showAlert('pageAlert','Profit allocation updated successfully.','success');
-        loadIntelligence();
-      } else { showAlert('allocModalAlert',d.detail||JSON.stringify(d)); }
-    }catch(e){ if(e.message!=='Unauth') showAlert('allocModalAlert','Failed to save.'); }
-    btn.disabled=false;
-    btn.innerHTML=orig;
+        showAlert('pageAlert','Allocation updated.','success');
+        loadIntelligence(); loadMonthly();
+      } else {
+        const d=await r.json();
+        showAlert('allocModalAlert',d.detail||JSON.stringify(d));
+      }
+    }catch(e){ if(e.message!=='Unauth') showAlert('allocModalAlert','Failed to save allocation.'); }
   };
 
-  // ── Refresh ──────────────────────────────────────────────────────────────────
+  document.getElementById('fClientType').addEventListener('change', renderClientTable);
   document.getElementById('refreshBtn').onclick=()=>{ loadIntelligence(); loadMonthly(); };
 
-  document.getElementById('fClientType').addEventListener('change', renderClientTable);
+  // ══════════════════════ EXPENSES & ACCOUNTS TAB ══════════════════════════════
+  const categoryBadge = c => ({
+    cogs: '<span class="badge bg-warning text-dark">COGS</span>',
+    operating: '<span class="badge bg-info text-dark">Operating</span>',
+    capital: '<span class="badge bg-primary">Capital</span>',
+  }[c] || `<span class="badge bg-secondary">${c}</span>`);
+  const payStatusBadge = s => s==='paid' ? '<span class="badge bg-success">Paid</span>' : '<span class="badge bg-warning text-dark">Unpaid</span>';
 
-  // ── Init ─────────────────────────────────────────────────────────────────────
+  window.switchExpensePill=function(name){
+    ['explist','accounts'].forEach(p=>{
+      document.getElementById('pill-'+p).style.display = p===name?'':'none';
+      document.getElementById('pillbtn-'+p).classList.toggle('active', p===name);
+    });
+    if(name==='accounts') loadAccounts();
+  };
+
+  let allAccounts = [];
+  async function loadAccountsIntoSelects(){
+    try{
+      const r = await api('/portal/api/accounts/?is_active=1');
+      allAccounts = await r.json();
+    }catch{ allAccounts = []; }
+  }
+
+  window.onCategoryChange = function(){
+    const cat = document.getElementById('f_category').value;
+    const subtypeMap = { cogs: 'cogs', operating: 'operating_expense', capital: 'fixed_asset' };
+    const wanted = subtypeMap[cat];
+    const sel = document.getElementById('f_account');
+    const opts = allAccounts.filter(a => !wanted || a.account_subtype === wanted || (cat==='capital' && a.account_type==='asset'));
+    sel.innerHTML = '<option value="">Select account…</option>' + opts.map(a=>`<option value="${a.id}">${a.code} — ${a.name}</option>`).join('');
+    if(cat === 'capital') document.getElementById('f_cash_flow_stream').value = 'icf';
+    else document.getElementById('f_cash_flow_stream').value = 'ocf';
+  };
+
+  window.onRecurringChange = function(){
+    document.getElementById('f_frequency_row').style.display = document.getElementById('f_is_recurring').checked ? '' : 'none';
+  };
+
+  function currentExpenseFilters(){
+    return {
+      search: document.getElementById('fSearch').value.trim(),
+      category: document.getElementById('fCategory').value,
+      payment_status: document.getElementById('fPaymentStatus').value,
+      date_from: document.getElementById('fDateFrom').value,
+      date_to: document.getElementById('fDateTo').value,
+    };
+  }
+
+  let expensesLoadedOnce=false;
+  async function loadExpenses(){
+    try{
+      const params = HQFilters.qs(currentExpenseFilters());
+      const r = await api('/portal/api/expenses/'+(params?'?'+params:''));
+      const _j = await r.json(); const data = Array.isArray(_j) ? _j : (_j.results||[]);
+      expensesLoadedOnce=true;
+      document.getElementById('tableLoading').style.display='none';
+      document.getElementById('expenseCount').textContent = data.length+' record'+(data.length!==1?'s':'');
+      if(!data.length){ document.getElementById('tableEmpty').style.display='block'; document.getElementById('tableWrapper').style.display='none'; return; }
+      document.getElementById('tableEmpty').style.display='none';
+      document.getElementById('tableWrapper').style.display='block';
+      document.getElementById('expenseTbody').innerHTML = data.map(e => `
+        <tr>
+          <td>${fmtDate(e.expense_date)}</td>
+          <td><strong>${e.vendor}</strong></td>
+          <td class="d-none d-md-table-cell">${e.description||'—'}</td>
+          <td>${categoryBadge(e.category)}</td>
+          <td class="d-none d-lg-table-cell">${e.account_name}</td>
+          <td>${fmtR(e.amount)}</td>
+          <td>${payStatusBadge(e.payment_status)}</td>
+          <td class="d-none d-md-table-cell">${e.is_recurring ? `<span class="badge bg-secondary">${e.recurring_frequency||'recurring'}</span>` : '—'}</td>
+          <td>${canFinance ? `<button class="btn btn-sm btn-outline-danger" onclick="deleteExpense('${e.id}')"><i data-feather="trash-2" style="width:13px;height:13px"></i></button>` : ''}</td>
+        </tr>`).join('');
+      if(window.feather) feather.replace();
+    }catch(e){ if(e.message!=='Unauth') showAlert('pageAlert','Failed to load expenses.'); }
+  }
+
+  window.deleteExpense = async function(id){
+    if(!confirm('Delete this expense? This does not reverse any ledger entries already posted — contact Finance to correct the books.')) return;
+    try{
+      const r = await api('/portal/api/expenses/'+id+'/', {method:'DELETE'});
+      if(r.ok || r.status===204){ showAlert('pageAlert','Expense deleted.','success'); loadExpenses(); }
+      else showAlert('pageAlert','Failed to delete expense.');
+    }catch(e){ if(e.message!=='Unauth') showAlert('pageAlert','Failed to delete expense.'); }
+  };
+
+  function resetExpenseForm(){
+    document.getElementById('expenseForm').reset();
+    document.getElementById('modalAlert').innerHTML='';
+    document.getElementById('f_account').innerHTML='<option value="">Select category first…</option>';
+    document.getElementById('f_frequency_row').style.display='none';
+    document.getElementById('f_expense_date').value = new Date().toISOString().slice(0,10);
+  }
+
+  document.getElementById('newExpenseBtn').onclick = () => { resetExpenseForm(); HQ.showDrawer('expenseModal'); };
+
+  document.getElementById('saveBtn').onclick = async () => {
+    const body = {
+      category: document.getElementById('f_category').value,
+      account: document.getElementById('f_account').value,
+      vendor: document.getElementById('f_vendor').value.trim(),
+      amount: document.getElementById('f_amount').value,
+      description: document.getElementById('f_description').value.trim(),
+      expense_date: document.getElementById('f_expense_date').value,
+      cash_flow_stream: document.getElementById('f_cash_flow_stream').value,
+      payment_status: document.getElementById('f_payment_status').value,
+      is_recurring: document.getElementById('f_is_recurring').checked,
+      recurring_frequency: document.getElementById('f_is_recurring').checked ? document.getElementById('f_recurring_frequency').value : '',
+    };
+    if(!body.category || !body.account || !body.vendor || !body.amount || !body.expense_date){
+      showAlert('modalAlert','Category, account, vendor, amount, and date are all required.'); return;
+    }
+    const btn = document.getElementById('saveBtn');
+    const orig = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Saving…';
+    try{
+      const r = await api('/portal/api/expenses/', {method:'POST', body:JSON.stringify(body)});
+      const data = await r.json();
+      if(r.ok){
+        HQ.hideDrawer('expenseModal');
+        showAlert('pageAlert','Expense logged successfully — the ledger and statements update automatically.','success');
+        loadExpenses();
+      } else { showAlert('modalAlert', data.detail || JSON.stringify(data)); }
+    }catch(e){ if(e.message!=='Unauth') showAlert('modalAlert','Failed to save expense.'); }
+    btn.disabled = false;
+    btn.innerHTML = orig;
+  };
+
+  // Chart of Accounts pill
+  let accountsLoaded = false;
+  async function loadAccounts(){
+    if(accountsLoaded) return;
+    try{
+      const r = await api('/portal/api/accounts/');
+      const data = await r.json();
+      accountsLoaded = true;
+      const typeBadge = t => ({
+        asset: '<span class="badge bg-primary">Asset</span>',
+        liability: '<span class="badge bg-danger">Liability</span>',
+        equity: '<span class="badge bg-dark">Equity</span>',
+        revenue: '<span class="badge bg-success">Revenue</span>',
+        expense: '<span class="badge bg-warning text-dark">Expense</span>',
+      }[t] || t);
+      document.getElementById('accountTbody').innerHTML = data.map(a => `
+        <tr>
+          <td><code>${a.code}</code></td>
+          <td>${a.name}</td>
+          <td>${typeBadge(a.account_type)}</td>
+          <td class="d-none d-md-table-cell text-muted">${a.account_subtype||'—'}</td>
+          <td class="text-capitalize">${a.normal_balance}</td>
+          <td>${a.is_active ? '<span class="badge bg-success">Active</span>' : '<span class="badge bg-secondary">Inactive</span>'}</td>
+          <td>${isAdmin ? `<button class="btn btn-sm btn-outline-primary" onclick='openEditAccount(${JSON.stringify(a)})'>Edit</button>` : '—'}</td>
+        </tr>`).join('');
+    }catch(e){ if(e.message!=='Unauth') showAlert('pageAlert','Failed to load chart of accounts.'); }
+  }
+
+  window.openEditAccount = function(a){
+    document.getElementById('acctModalAlert').innerHTML='';
+    document.getElementById('acct_id').value = a.id;
+    document.getElementById('acct_name').value = a.name;
+    document.getElementById('acct_description').value = a.description||'';
+    document.getElementById('acct_is_active').checked = a.is_active;
+    HQ.showDrawer('accountModal');
+  };
+
+  document.getElementById('saveAcctBtn').onclick = async () => {
+    const id = document.getElementById('acct_id').value;
+    const body = {
+      name: document.getElementById('acct_name').value.trim(),
+      description: document.getElementById('acct_description').value.trim(),
+      is_active: document.getElementById('acct_is_active').checked,
+    };
+    const btn = document.getElementById('saveAcctBtn');
+    const orig = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Saving…';
+    try{
+      const r = await api('/portal/api/accounts/'+id+'/', {method:'PATCH', body:JSON.stringify(body)});
+      if(r.ok){
+        HQ.hideDrawer('accountModal');
+        accountsLoaded = false;
+        loadAccounts();
+      } else {
+        const d = await r.json();
+        showAlert('acctModalAlert', d.detail || JSON.stringify(d));
+      }
+    }catch(e){ if(e.message!=='Unauth') showAlert('acctModalAlert','Failed to save account.'); }
+    btn.disabled = false;
+    btn.innerHTML = orig;
+  };
+
+  document.getElementById('fSearch').addEventListener('input', HQFilters.debounce(loadExpenses, 350));
+  document.getElementById('fCategory').addEventListener('change', loadExpenses);
+  document.getElementById('fPaymentStatus').addEventListener('change', loadExpenses);
+  document.getElementById('fDateFrom').addEventListener('change', loadExpenses);
+  document.getElementById('fDateTo').addEventListener('change', loadExpenses);
+  document.getElementById('fClear').addEventListener('click', () => {
+    document.getElementById('fSearch').value='';
+    document.getElementById('fCategory').value='';
+    document.getElementById('fPaymentStatus').value='';
+    document.getElementById('fDateFrom').value='';
+    document.getElementById('fDateTo').value='';
+    loadExpenses();
+  });
+
+  // ══════════════════════ FINANCIAL STATEMENTS TAB ═════════════════════════════
+  function today(){ return new Date().toISOString().slice(0,10); }
+  function monthStart(){ const d=new Date(); return new Date(d.getFullYear(),d.getMonth(),1).toISOString().slice(0,10); }
+
+  document.getElementById('stmtDateFrom').value = monthStart();
+  document.getElementById('stmtDateTo').value = today();
+  document.getElementById('stmtAsOf').value = today();
+
+  function stmtRow(label, amount, isTotal){
+    return `<tr class="stmt-row${isTotal?' stmt-total':''}"><td>${label}</td><td>${fmtR(amount)}</td></tr>`;
+  }
+
+  async function runStatements(){
+    const dateFrom = document.getElementById('stmtDateFrom').value;
+    const dateTo = document.getElementById('stmtDateTo').value;
+    const asOf = document.getElementById('stmtAsOf').value;
+    try{
+      const [incR, bsR, cfR] = await Promise.all([
+        api(`/portal/api/reports/income-statement/?date_from=${dateFrom}&date_to=${dateTo}&compare=1`),
+        api(`/portal/api/reports/balance-sheet/?as_of=${asOf}`),
+        api(`/portal/api/reports/cash-flow/?date_from=${dateFrom}&date_to=${dateTo}`),
+      ]);
+      const inc = await incR.json(), bs = await bsR.json(), cf = await cfR.json();
+
+      let incHtml = inc.revenue.accounts.map(a=>stmtRow(a.name, a.amount)).join('');
+      incHtml += stmtRow('Total Revenue', inc.revenue.total, true);
+      incHtml += inc.cogs.accounts.map(a=>stmtRow(a.name, -a.amount)).join('');
+      incHtml += stmtRow('Gross Profit ('+inc.gross_profit_margin_pct+'% GPM)', inc.gross_profit, true);
+      incHtml += inc.operating_expenses.accounts.map(a=>stmtRow(a.name, -a.amount)).join('');
+      incHtml += stmtRow('Net Profit ('+inc.net_profit_margin_pct+'% NPM)', inc.net_profit, true);
+      if(inc.growth){
+        const gp=inc.growth.net_profit_pct;
+        const gLabel = gp==null
+          ? '<span class="text-muted">no prior-period activity</span>'
+          : gp>=0
+            ? `<span class="text-success">▲ +${gp.toFixed(1)}% vs previous period</span>`
+            : `<span class="text-danger">▼ ${gp.toFixed(1)}% vs previous period</span>`;
+        incHtml += `<tr><td colspan="2" class="small pt-2">
+          Growth (${inc.previous_period.date_from} → ${inc.previous_period.date_to}): ${gLabel}<br>
+          <span class="text-muted">Prev revenue ${fmtR(inc.previous_period.revenue)} · Prev net profit ${fmtR(inc.previous_period.net_profit)}</span>
+        </td></tr>`;
+      }
+      document.getElementById('incomeStatementBody').innerHTML = incHtml;
+
+      let bsHtml = '<tr><td colspan="2" class="fw-bold text-muted small text-uppercase">Assets</td></tr>';
+      bsHtml += bs.assets.accounts.map(a=>stmtRow(a.name, a.amount)).join('');
+      bsHtml += stmtRow('Total Assets', bs.assets.total, true);
+      bsHtml += '<tr><td colspan="2" class="fw-bold text-muted small text-uppercase pt-3">Liabilities</td></tr>';
+      bsHtml += bs.liabilities.accounts.map(a=>stmtRow(a.name, a.amount)).join('');
+      bsHtml += stmtRow('Total Liabilities', bs.liabilities.total, true);
+      bsHtml += '<tr><td colspan="2" class="fw-bold text-muted small text-uppercase pt-3">Equity</td></tr>';
+      bsHtml += bs.equity.accounts.map(a=>stmtRow(a.name, a.amount)).join('');
+      bsHtml += stmtRow('Total Equity', bs.equity.total, true);
+      bsHtml += stmtRow('Liabilities + Equity', bs.liabilities_plus_equity, true);
+      document.getElementById('balanceSheetBody').innerHTML = bsHtml;
+      document.getElementById('bsBalanceBadge').innerHTML = bs.balances
+        ? '<span class="badge bg-success">Balances ✓</span>'
+        : '<span class="badge bg-danger">Out of Balance</span>';
+
+      let cfHtml = stmtRow('Operating (OCF) — Inflow', cf.operating.inflow);
+      cfHtml += stmtRow('Operating (OCF) — Outflow', -cf.operating.outflow);
+      cfHtml += stmtRow('Net Operating', cf.operating.net, true);
+      cfHtml += stmtRow('Investing (ICF) — Net', cf.investing.net, true);
+      cfHtml += stmtRow('Financing (FCF) — Net', cf.financing.net, true);
+      cfHtml += stmtRow('Net Change in Cash', cf.net_change_in_cash, true);
+      document.getElementById('cashFlowBody').innerHTML = cfHtml;
+    }catch(e){ if(e.message!=='Unauth') console.error('Failed to load statements', e); }
+  }
+  document.getElementById('runStatementsBtn').addEventListener('click', runStatements);
+
+  // ═══════════════════════════ LEDGER TAB ══════════════════════════════════════
+  async function loadLedgerAccounts(){
+    if(document.getElementById('ledgerAccount').dataset.loaded) return;
+    try{
+      const r = await api('/portal/api/accounts/');
+      const accounts = await r.json();
+      document.getElementById('ledgerAccount').innerHTML = '<option value="">All Accounts</option>' +
+        accounts.map(a=>`<option value="${a.id}">${a.code} — ${a.name}</option>`).join('');
+      document.getElementById('ledgerAccount').dataset.loaded = '1';
+    }catch{}
+  }
+
+  async function loadLedger(){
+    const params = new URLSearchParams();
+    const account = document.getElementById('ledgerAccount').value;
+    const dateFrom = document.getElementById('ledgerDateFrom').value;
+    const dateTo = document.getElementById('ledgerDateTo').value;
+    if(account) params.set('account', account);
+    if(dateFrom) params.set('date_from', dateFrom);
+    if(dateTo) params.set('date_to', dateTo);
+    try{
+      const r = await api('/portal/api/ledger/?'+params.toString());
+      const d = await r.json();
+      document.getElementById('ledgerCount').textContent = d.count+' entries';
+      if(!d.results.length){
+        document.getElementById('ledgerTbody').innerHTML = '<tr><td colspan="6" class="text-center text-muted py-3">No ledger entries found.</td></tr>';
+        return;
+      }
+      document.getElementById('ledgerTbody').innerHTML = d.results.map(le => `
+        <tr>
+          <td>${le.transaction_date}</td>
+          <td>${le.description}</td>
+          <td><code>${le.account_code}</code> ${le.account_name}</td>
+          <td class="text-end">${parseFloat(le.debit)>0 ? fmtR(le.debit) : ''}</td>
+          <td class="text-end">${parseFloat(le.credit)>0 ? fmtR(le.credit) : ''}</td>
+          <td class="text-muted small">${le.memo}</td>
+        </tr>`).join('');
+    }catch(e){ if(e.message!=='Unauth') console.error('Failed to load ledger', e); }
+  }
+  document.getElementById('ledgerAccount').addEventListener('change', loadLedger);
+  document.getElementById('ledgerDateFrom').addEventListener('change', loadLedger);
+  document.getElementById('ledgerDateTo').addEventListener('change', loadLedger);
+  document.getElementById('ledgerClearBtn').addEventListener('click', ()=>{
+    document.getElementById('ledgerAccount').value='';
+    document.getElementById('ledgerDateFrom').value='';
+    document.getElementById('ledgerDateTo').value='';
+    loadLedger();
+  });
+
+  // ══════════════════════ BANK RECONCILIATION TAB ══════════════════════════════
+  let bsCurrentId=null;
+
+  async function loadBankStatements(){
+    try{
+      const r=await api('/portal/api/bank-statements/');
+      const data=await r.json();
+      document.getElementById('bsListLoading').style.display='none';
+      if(!r.ok){ showAlert('pageAlert',data.detail||'Failed to load bank statements.'); return; }
+      document.getElementById('bsCount').textContent=data.length;
+      if(!data.length){
+        document.getElementById('bsListEmpty').style.display='block';
+        document.getElementById('bsListTable').style.display='none';
+        return;
+      }
+      document.getElementById('bsListEmpty').style.display='none';
+      document.getElementById('bsListTable').style.display='block';
+      document.getElementById('bsListTbody').innerHTML=data.map(s=>{
+        const rate=s.lines_total?Math.round(s.lines_matched/s.lines_total*100):0;
+        const rateCls=rate===100?'bg-success':rate>=70?'bg-warning text-dark':'bg-danger';
+        return `<tr>
+          <td><strong>${s.label}</strong><br><small class="text-muted">${s.original_filename||''}</small></td>
+          <td class="small">${s.date_from||'—'} → ${s.date_to||'—'}</td>
+          <td><span class="badge ${rateCls}">${s.lines_matched}/${s.lines_total}</span></td>
+          <td><button class="btn btn-sm btn-outline-primary" onclick="openBankStatement('${s.id}')">View</button></td>
+        </tr>`;
+      }).join('');
+    }catch(e){ if(e.message!=='Unauth') document.getElementById('bsListLoading').textContent='Failed to load.'; }
+  }
+
+  document.getElementById('bsUploadBtn').onclick=async()=>{
+    const fileInput=document.getElementById('bsFile');
+    const resultEl=document.getElementById('bsUploadResult');
+    if(!fileInput.files.length){ resultEl.innerHTML='<span class="text-danger">Choose a CSV file first.</span>'; return; }
+    const fd=new FormData();
+    fd.append('file', fileInput.files[0]);
+    fd.append('label', document.getElementById('bsLabel').value.trim());
+    const btn=document.getElementById('bsUploadBtn');
+    const orig=btn.innerHTML;
+    btn.disabled=true;
+    btn.innerHTML='<span class="spinner-border spinner-border-sm me-1"></span>Reconciling…';
+    try{
+      // FormData upload — must NOT set Content-Type (browser adds the boundary)
+      const r=await fetch('/portal/api/bank-statements/',{method:'POST',headers:{'Authorization':'Bearer '+token},body:fd});
+      if(r.status===401){ localStorage.clear(); window.location.href='/portal/login/'; return; }
+      const d=await r.json();
+      if(r.ok){
+        const su=d.summary;
+        resultEl.innerHTML=`<span class="text-success">Imported ${su.lines_total} lines — ${su.lines_matched} matched (${su.match_rate_pct}%).</span>`;
+        fileInput.value=''; document.getElementById('bsLabel').value='';
+        loadBankStatements();
+        openBankStatement(d.id);
+      } else {
+        resultEl.innerHTML='<span class="text-danger">'+(d.detail||'Upload failed.')+'</span>';
+      }
+    }catch(e){ resultEl.innerHTML='<span class="text-danger">Network error.</span>'; }
+    btn.disabled=false;
+    btn.innerHTML=orig;
+    if(window.feather)feather.replace();
+  };
+
+  window.openBankStatement=async function(id){
+    bsCurrentId=id;
+    try{
+      const r=await api(`/portal/api/bank-statements/${id}/`);
+      const d=await r.json();
+      if(!r.ok){ showAlert('pageAlert',d.detail||'Failed to load statement.'); return; }
+      document.getElementById('bsDetailEmpty').style.display='none';
+      document.getElementById('bsDetail').style.display='';
+      document.getElementById('bsDetailTitle').textContent=d.label;
+
+      const su=d.summary;
+      const rateEl=document.getElementById('bs-match-rate');
+      rateEl.textContent=su.match_rate_pct+'%';
+      rateEl.className='mb-0 '+(su.match_rate_pct===100?'text-success':su.match_rate_pct>=70?'text-warning':'text-danger');
+      document.getElementById('bs-money-in').textContent=R(su.bank_money_in);
+      document.getElementById('bs-money-out').textContent=R(su.bank_money_out);
+      const discrepancies=su.unmatched_bank_lines.length+su.unmatched_ledger_entries.length;
+      const discEl=document.getElementById('bs-discrepancies');
+      discEl.textContent=discrepancies;
+      discEl.className='mb-0 '+(discrepancies===0?'text-success':'text-danger');
+      document.getElementById('bsCleanBanner').style.display=su.is_clean?'':'none';
+
+      const ubCard=document.getElementById('bsUnmatchedBankCard');
+      if(su.unmatched_bank_lines.length){
+        ubCard.style.display='';
+        document.getElementById('bsUnmatchedBankTbody').innerHTML=su.unmatched_bank_lines.map(l=>`
+          <tr class="table-danger">
+            <td>${l.date}</td><td>${l.description||'—'}</td>
+            <td class="text-end fw-semibold">${l.amount>=0?'+':''}${R(l.amount)}</td>
+          </tr>`).join('');
+      } else ubCard.style.display='none';
+
+      const ulCard=document.getElementById('bsUnmatchedLedgerCard');
+      if(su.unmatched_ledger_entries.length){
+        ulCard.style.display='';
+        document.getElementById('bsUnmatchedLedgerTbody').innerHTML=su.unmatched_ledger_entries.map(l=>`
+          <tr class="table-warning">
+            <td>${l.date}</td><td>${l.description}${l.memo?` <small class="text-muted">(${l.memo})</small>`:''}</td>
+            <td class="text-end fw-semibold">${l.amount>=0?'+':''}${R(l.amount)}</td>
+          </tr>`).join('');
+      } else ulCard.style.display='none';
+
+      const stBadge=s=>({matched:'<span class="badge bg-success">Matched</span>',manual:'<span class="badge bg-info text-dark">Manual</span>',unmatched:'<span class="badge bg-danger">Unmatched</span>'}[s]||s);
+      document.getElementById('bsLinesTbody').innerHTML=d.lines.map(l=>`
+        <tr>
+          <td>${l.date}</td>
+          <td>${l.description||'—'}</td>
+          <td class="text-end ${l.amount>=0?'text-success':'text-danger'}">${l.amount>=0?'+':''}${R(l.amount)}</td>
+          <td>${stBadge(l.match_status)}</td>
+          <td class="small text-muted">${l.matched_description?`${l.matched_description} (${l.matched_date})`:'—'}</td>
+        </tr>`).join('');
+      if(window.feather)feather.replace();
+    }catch(e){ if(e.message!=='Unauth') showAlert('pageAlert','Failed to load statement detail.'); }
+  };
+
+  document.getElementById('bsRematchBtn').onclick=async()=>{
+    if(!bsCurrentId) return;
+    try{
+      const r=await api(`/portal/api/bank-statements/${bsCurrentId}/`,{method:'POST'});
+      if(r.ok){ openBankStatement(bsCurrentId); loadBankStatements(); }
+    }catch{}
+  };
+
+  document.getElementById('bsDeleteBtn').onclick=async()=>{
+    if(!bsCurrentId||!confirm('Delete this imported statement? The bank\'s records and your ledger are untouched — only the import is removed.')) return;
+    try{
+      const r=await api(`/portal/api/bank-statements/${bsCurrentId}/`,{method:'DELETE'});
+      if(r.ok||r.status===204){
+        bsCurrentId=null;
+        document.getElementById('bsDetail').style.display='none';
+        document.getElementById('bsDetailEmpty').style.display='';
+        loadBankStatements();
+      } else { const d=await r.json(); showAlert('pageAlert',d.detail||'Delete failed.'); }
+    }catch{}
+  };
+
+  // ── Init: load dashboard data, honour a #tab hash from old bookmarks ────────
   loadIntelligence();
   loadMonthly();
+  loadAccountsIntoSelects();
+  const hash=(location.hash||'').replace('#','');
+  if(TABS.includes(hash) && hash!=='dashboard') switchMainTab(hash);
+  if(window.feather) feather.replace();
 })();
 </script>
 </body>

@@ -1,4 +1,5 @@
 from django.http import HttpResponse
+from django.shortcuts import redirect
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -75,11 +76,14 @@ def portal_cash_management_view(request):
 
 
 def portal_financial_analytics_view(request):
-    return _serve('hq-financial-analytics.html')
+    # Financial Analytics was merged into the Business Intelligence hub —
+    # its Statements tab lives on at #statements. Old bookmarks land there.
+    return redirect('/portal/dashboard/revenue-intelligence/#statements')
 
 
 def portal_expenses_view(request):
-    return _serve('hq-expenses.html')
+    # Expenses were folded into the Business Intelligence hub (#expenses tab).
+    return redirect('/portal/dashboard/revenue-intelligence/#expenses')
 
 
 def portal_pos_view(request):

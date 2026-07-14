@@ -79,6 +79,7 @@ class InvoiceStatusChoices(models.TextChoices):
     """Invoice billing status"""
     DRAFT = 'draft', _('Draft')
     SENT = 'sent', _('Sent')
+    PARTIALLY_PAID = 'partially_paid', _('Partially Paid')
     PAID = 'paid', _('Paid')
     OVERDUE = 'overdue', _('Overdue')
     CANCELLED = 'cancelled', _('Cancelled')
@@ -716,7 +717,15 @@ class Invoice(models.Model):
         decimal_places=2,
         validators=[MinValueValidator(0)]
     )
-    
+    # Running total of payments received against this invoice (full or partial).
+    # Kept in sync by InvoicePayment records — see record_payment().
+    amount_paid = models.DecimalField(
+        max_digits=15,
+        decimal_places=2,
+        default=0,
+        validators=[MinValueValidator(0)]
+    )
+
     # Incident Summary
     ticket_count = models.IntegerField(validators=[MinValueValidator(0)])
     hours_worked = models.DecimalField(
@@ -739,17 +748,22 @@ class Invoice(models.Model):
         ('sla', 'SLA Monthly Retainer'),
         ('callout', 'SLA Call-Out'),
         ('adhoc', 'Ad-Hoc / Project'),
+        ('subscription', 'Other Subscription (Email/Hosting/etc.)'),
     ]
     invoice_type = models.CharField(max_length=20, choices=INVOICE_TYPE_CHOICES, default='adhoc', db_index=True)
 
-    # Subscriber/contract references (set when invoice_type is wifi/sla/callout)
+    # Subscriber/contract references (set when invoice_type is wifi/sla/callout/subscription)
     wifi_subscriber = models.ForeignKey(
         'WifiSubscriber', null=True, blank=True, on_delete=models.SET_NULL, related_name='invoices',
     )
     sla_contract = models.ForeignKey(
         'SLAContract', null=True, blank=True, on_delete=models.SET_NULL, related_name='invoices',
     )
-    # Axxess wholesale cost at time of invoice — locked so history is accurate even if rate changes
+    subscription = models.ForeignKey(
+        'Subscription', null=True, blank=True, on_delete=models.SET_NULL, related_name='invoices',
+    )
+    # Supplier/wholesale cost at time of invoice (Axxess for wifi, supplier for
+    # generic subscriptions) — locked so history is accurate even if rate changes
     wholesale_cost = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
 
     # Description (short human-readable label — used in print/email)
@@ -775,6 +789,44 @@ class Invoice(models.Model):
     
     def __str__(self):
         return f"INV-{self.invoice_number} ({self.company.name if self.company else 'No company'})"
+
+    @property
+    def balance_due(self):
+        total = self.total_amount or 0
+        paid = self.amount_paid or 0
+        remaining = total - paid
+        return remaining if remaining > 0 else 0
+
+
+class InvoicePayment(models.Model):
+    """
+    A single payment received against an invoice. An invoice can have many of
+    these (e.g. two partial payments that together settle it). Each one posts
+    its own ledger transaction, keyed by this record's id — so, unlike the
+    invoice-keyed posting used for one-shot 'mark as paid' flows, multiple
+    payments against the same invoice each get their own entry.
+    """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    invoice = models.ForeignKey(
+        Invoice, on_delete=models.CASCADE, related_name='payment_records', db_index=True,
+    )
+    amount = models.DecimalField(
+        max_digits=15, decimal_places=2, validators=[MinValueValidator(0.01)],
+    )
+    payment_date = models.DateField()
+    payment_method = models.CharField(max_length=50, blank=True)
+    notes = models.CharField(max_length=255, blank=True)
+    recorded_by = models.ForeignKey(
+        'User', on_delete=models.SET_NULL, null=True, blank=True, related_name='invoice_payments_recorded',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'invoice_payments'
+        ordering = ['-payment_date', '-created_at']
+
+    def __str__(self):
+        return f"Payment of {self.amount} for INV-{self.invoice.invoice_number}"
 
 
 class InvoiceItem(models.Model):
@@ -2035,6 +2087,72 @@ class SLAContract(models.Model):
         return f"{self.client_name} SLA — R{self.monthly_retainer}/month"
 
 
+class SubscriptionTypeChoices(models.TextChoices):
+    """Service types for generic recurring subscriptions. WiFi and SLA keep
+    their dedicated models (WifiSubscriber/SLAContract); everything else a
+    client can subscribe to monthly lives here. Add new types by adding a
+    choice — no new table needed."""
+    EMAIL = 'email', _('Email Hosting')
+    HOSTING = 'hosting', _('Website Hosting')
+    DOMAIN = 'domain', _('Domain Registration')
+    BACKUP = 'backup', _('Cloud Backup')
+    SOFTWARE = 'software', _('Software License')
+    OTHER = 'other', _('Other Subscription')
+
+
+class Subscription(models.Model):
+    """
+    Generic recurring subscription (email hosting, website hosting, domains,
+    backups, software, …). Auto-invoiced monthly alongside WiFi and SLA.
+    """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    subscription_type = models.CharField(
+        max_length=20, choices=SubscriptionTypeChoices.choices,
+        default=SubscriptionTypeChoices.OTHER, db_index=True,
+    )
+    service_name = models.CharField(
+        max_length=255, blank=True,
+        help_text='e.g. "Microsoft 365 Business Basic", "cPanel hosting — rehumile.co.za"',
+    )
+    client_name = models.CharField(max_length=255, db_index=True)
+    contact_name = models.CharField(max_length=255, blank=True)
+    contact_email = models.EmailField(blank=True)
+    contact_phone = models.CharField(max_length=20, blank=True)
+    company = models.ForeignKey(
+        Company, null=True, blank=True, on_delete=models.SET_NULL,
+        related_name='subscriptions',
+    )
+    monthly_price = models.DecimalField(
+        max_digits=10, decimal_places=2, help_text='What you charge the client per month',
+    )
+    monthly_cost = models.DecimalField(
+        max_digits=10, decimal_places=2, default=0,
+        help_text='What the supplier charges you per month (0 if none)',
+    )
+    billing_day = models.IntegerField(default=1, help_text='Day of month invoice is generated')
+    start_date = models.DateField(null=True, blank=True)
+    end_date = models.DateField(null=True, blank=True)
+    status = models.CharField(max_length=20, choices=SubscriberStatusChoices.choices, default='active', db_index=True)
+    notes = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'subscriptions'
+        ordering = ['client_name']
+
+    def __str__(self):
+        return f"{self.client_name} — {self.get_subscription_type_display()} (R{self.monthly_price}/month)"
+
+    @property
+    def gross_margin(self):
+        return float(self.monthly_price) - float(self.monthly_cost)
+
+    @property
+    def is_loss_making(self):
+        return self.monthly_cost >= self.monthly_price
+
+
 class RevenueAllocation(models.Model):
     """
     Profit allocation percentages — mirrors the Setup tab of the Excel ledger.
@@ -2050,6 +2168,68 @@ class RevenueAllocation(models.Model):
 
     def __str__(self):
         return f"Allocation: {float(self.reinvestment_pct)*100:.0f}% / {float(self.opex_pct)*100:.0f}% / {float(self.owner_pct)*100:.0f}%"
+
+
+# ============================================================================
+# BANK RECONCILIATION — imported bank statements matched against the ledger
+# ============================================================================
+
+class BankStatement(models.Model):
+    """
+    One imported bank statement (CSV export from the bank). Its lines are
+    auto-matched against BANK_CASH ledger entries so money in/out of the real
+    bank account can be compared with what the books say — the month-end
+    "am I misusing business money?" check.
+    """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    label = models.CharField(max_length=200, help_text='e.g. "FNB Business — July 2026"')
+    original_filename = models.CharField(max_length=255, blank=True)
+    date_from = models.DateField(null=True, blank=True)
+    date_to = models.DateField(null=True, blank=True)
+    uploaded_by = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, related_name='bank_statements',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'bank_statements'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return self.label
+
+
+class BankStatementLine(models.Model):
+    """One transaction row on a bank statement. amount > 0 = money in,
+    amount < 0 = money out."""
+    MATCH_STATUS_CHOICES = [
+        ('matched', 'Matched Automatically'),
+        ('manual', 'Matched Manually'),
+        ('unmatched', 'Unmatched'),
+    ]
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    statement = models.ForeignKey(
+        BankStatement, on_delete=models.CASCADE, related_name='lines', db_index=True,
+    )
+    line_date = models.DateField(db_index=True)
+    description = models.CharField(max_length=500, blank=True)
+    amount = models.DecimalField(max_digits=14, decimal_places=2)
+    balance = models.DecimalField(max_digits=14, decimal_places=2, null=True, blank=True)
+    match_status = models.CharField(
+        max_length=12, choices=MATCH_STATUS_CHOICES, default='unmatched', db_index=True,
+    )
+    matched_entry = models.ForeignKey(
+        'LedgerEntry', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='bank_lines',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'bank_statement_lines'
+        ordering = ['line_date', 'created_at']
+
+    def __str__(self):
+        return f"{self.line_date} {self.description[:40]} R{self.amount}"
 
 
 class CompanySettings(models.Model):

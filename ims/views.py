@@ -245,7 +245,7 @@ def _send_ticket_notification(incident, user):
 
 from .models import (
     Company, UserProfile, Incident, IncidentComment,
-    SLAConfig, StatusChoices, Invoice,
+    SLAConfig, StatusChoices, Invoice, InvoicePayment, InvoiceStatusChoices,
     Notification, AuditLog, SLABreach, IncidentAttachment,
     JobCard, JobCardStatusChoices,
     InventoryItem, StockTransaction,
@@ -803,6 +803,51 @@ class InvoiceViewSet(viewsets.ModelViewSet):
             post_invoice_sent(instance, self.request.user)
         if old_status != 'paid' and instance.status == 'paid':
             post_invoice_paid(instance, self.request.user)
+            if instance.amount_paid != instance.total_amount:
+                instance.amount_paid = instance.total_amount
+                instance.save(update_fields=['amount_paid'])
+
+    @action(detail=True, methods=['post'], url_path='record-payment')
+    def record_payment(self, request, pk=None):
+        """Records a full or partial payment against this invoice, posts it to
+        the ledger, and updates the invoice's amount_paid/status accordingly."""
+        from decimal import Decimal, InvalidOperation
+        from .ledger import post_invoice_payment
+
+        invoice = self.get_object()
+        raw_amount = request.data.get('amount')
+        try:
+            amount = Decimal(str(raw_amount))
+        except (InvalidOperation, TypeError):
+            return Response({'detail': 'A valid amount is required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if amount <= 0:
+            return Response({'detail': 'Amount must be greater than zero.'}, status=status.HTTP_400_BAD_REQUEST)
+        if amount > invoice.balance_due:
+            return Response(
+                {'detail': f'Amount exceeds the outstanding balance of {invoice.balance_due}.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        payment = InvoicePayment.objects.create(
+            invoice=invoice,
+            amount=amount,
+            payment_date=request.data.get('payment_date') or timezone.now().date(),
+            payment_method=request.data.get('payment_method', ''),
+            notes=request.data.get('notes', ''),
+            recorded_by=request.user if request.user.is_authenticated else None,
+        )
+        post_invoice_payment(payment, request.user)
+
+        invoice.amount_paid = (invoice.amount_paid or 0) + amount
+        if invoice.amount_paid >= invoice.total_amount:
+            invoice.status = InvoiceStatusChoices.PAID
+            invoice.payment_date = payment.payment_date
+        else:
+            invoice.status = InvoiceStatusChoices.PARTIALLY_PAID
+        invoice.save(update_fields=['amount_paid', 'status', 'payment_date'])
+
+        return Response(InvoiceSerializer(invoice).data, status=status.HTTP_201_CREATED)
 
 
 # ============================================================================
@@ -1945,9 +1990,13 @@ class IncomeStatementView(APIView):
         import calendar as _calendar
         from . import reports as _reports
         today = _date.today()
-        date_from = request.query_params.get("date_from") or today.replace(day=1).isoformat()
-        date_to = request.query_params.get("date_to") or today.replace(day=_calendar.monthrange(today.year, today.month)[1]).isoformat()
-        return Response(_reports.income_statement(date_from, date_to))
+        try:
+            date_from = _date.fromisoformat(request.query_params.get("date_from") or today.replace(day=1).isoformat())
+            date_to = _date.fromisoformat(request.query_params.get("date_to") or today.replace(day=_calendar.monthrange(today.year, today.month)[1]).isoformat())
+        except ValueError:
+            return Response({"detail": "Invalid date format — use YYYY-MM-DD."}, status=status.HTTP_400_BAD_REQUEST)
+        compare = request.query_params.get("compare") in ("1", "true", "yes")
+        return Response(_reports.income_statement(date_from, date_to, compare_previous=compare))
 
 
 class BalanceSheetView(APIView):
@@ -3103,8 +3152,8 @@ Questions? Call 068 397 3484 or email infor@rehumile.co.za
 # REVENUE INTELLIGENCE — WiFi Subscribers, SLA Contracts, Auto-Invoicing
 # ============================================================================
 
-from .models import WifiSubscriber, SLAContract, RevenueAllocation
-from .serializers import WifiSubscriberSerializer, SLAContractSerializer, RevenueAllocationSerializer
+from .models import WifiSubscriber, SLAContract, Subscription, SubscriptionTypeChoices, RevenueAllocation
+from .serializers import WifiSubscriberSerializer, SLAContractSerializer, SubscriptionSerializer, RevenueAllocationSerializer
 from django.db.models import Sum, Q, F, OuterRef, Exists
 from datetime import date, timedelta
 import calendar as cal_module
@@ -3138,7 +3187,7 @@ def _send_subscriber_invoice_email(invoice, to_email, base_url):
     amount = float(invoice.total_amount)
     due = invoice.due_date.strftime("%d %B %Y") if invoice.due_date else "Upon receipt"
     desc = invoice.description or "Monthly Service"
-    type_label = {"wifi": "WiFi Subscription", "sla": "SLA Monthly Retainer", "callout": "SLA Call-Out", "adhoc": "Service Invoice"}.get(invoice.invoice_type, "Invoice")
+    type_label = {"wifi": "WiFi Subscription", "sla": "SLA Monthly Retainer", "callout": "SLA Call-Out", "adhoc": "Service Invoice", "subscription": "Subscription Invoice"}.get(invoice.invoice_type, "Invoice")
 
     html_body = f"""<!DOCTYPE html>
 <html><head><meta charset="UTF-8"></head>
@@ -3338,6 +3387,222 @@ class SLAContractDetailView(APIView):
         return Response(status=204)
 
 
+# ── Generic Subscription CRUD (email, hosting, domains, backups, software…) ──
+
+class SubscriptionListView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        if request.user.role not in ('admin', 'finance', 'agent'):
+            return Response({'detail': 'HQ access required.'}, status=403)
+        qs = Subscription.objects.all().order_by('status', 'client_name')
+        status_param = request.query_params.get('status')
+        if status_param:
+            qs = qs.filter(status=status_param)
+        type_param = request.query_params.get('subscription_type')
+        if type_param:
+            qs = qs.filter(subscription_type=type_param)
+        search = request.query_params.get('search')
+        if search:
+            qs = qs.filter(
+                Q(client_name__icontains=search) |
+                Q(service_name__icontains=search)
+            )
+        return Response(SubscriptionSerializer(qs, many=True).data)
+
+    def post(self, request):
+        if request.user.role not in ('admin', 'finance'):
+            return Response({'detail': 'Admin/Finance access required.'}, status=403)
+        ser = SubscriptionSerializer(data=request.data)
+        if ser.is_valid():
+            ser.save()
+            return Response(ser.data, status=201)
+        return Response(ser.errors, status=400)
+
+
+class SubscriptionDetailView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def _get(self, pk):
+        try:
+            return Subscription.objects.get(pk=pk)
+        except Subscription.DoesNotExist:
+            return None
+
+    def get(self, request, pk):
+        obj = self._get(pk)
+        if not obj:
+            return Response({'detail': 'Not found.'}, status=404)
+        return Response(SubscriptionSerializer(obj).data)
+
+    def patch(self, request, pk):
+        if request.user.role not in ('admin', 'finance'):
+            return Response({'detail': 'Admin/Finance access required.'}, status=403)
+        obj = self._get(pk)
+        if not obj:
+            return Response({'detail': 'Not found.'}, status=404)
+        ser = SubscriptionSerializer(obj, data=request.data, partial=True)
+        if ser.is_valid():
+            ser.save()
+            return Response(ser.data)
+        return Response(ser.errors, status=400)
+
+    def delete(self, request, pk):
+        if request.user.role != 'admin':
+            return Response({'detail': 'Admin access required.'}, status=403)
+        obj = self._get(pk)
+        if not obj:
+            return Response({'detail': 'Not found.'}, status=404)
+        obj.delete()
+        return Response(status=204)
+
+
+# ── Bank Reconciliation ───────────────────────────────────────────────────────
+
+class BankStatementListView(APIView):
+    """GET: list uploaded statements. POST (multipart): upload + parse + auto-match a CSV."""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        if request.user.role not in ('admin', 'finance'):
+            return Response({'detail': 'Admin/Finance access required.'}, status=403)
+        from .models import BankStatement
+        data = []
+        for s in BankStatement.objects.all()[:50]:
+            lines = s.lines.all()
+            matched = lines.filter(match_status__in=('matched', 'manual')).count()
+            data.append({
+                'id': str(s.id),
+                'label': s.label,
+                'original_filename': s.original_filename,
+                'date_from': str(s.date_from) if s.date_from else None,
+                'date_to': str(s.date_to) if s.date_to else None,
+                'lines_total': lines.count(),
+                'lines_matched': matched,
+                'uploaded_by': s.uploaded_by.email if s.uploaded_by else None,
+                'created_at': s.created_at.isoformat(),
+            })
+        return Response(data)
+
+    def post(self, request):
+        if request.user.role not in ('admin', 'finance'):
+            return Response({'detail': 'Admin/Finance access required.'}, status=403)
+        from .models import BankStatement, BankStatementLine
+        from .reconciliation import parse_statement_csv, auto_match, StatementParseError
+
+        uploaded = request.FILES.get('file')
+        if not uploaded:
+            return Response({'detail': 'No file provided.'}, status=status.HTTP_400_BAD_REQUEST)
+        if uploaded.size > 5 * 1024 * 1024:
+            return Response({'detail': 'File size exceeds 5 MB limit.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            parsed = parse_statement_csv(uploaded.read(), uploaded.name)
+        except StatementParseError as exc:
+            return Response({'detail': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+        label = (request.data.get('label') or '').strip() or f"Bank statement — {uploaded.name}"
+        statement = BankStatement.objects.create(
+            label=label,
+            original_filename=uploaded.name[:255],
+            uploaded_by=request.user,
+        )
+        BankStatementLine.objects.bulk_create([
+            BankStatementLine(statement=statement, **row) for row in parsed
+        ])
+        summary = auto_match(statement)
+        return Response({'id': str(statement.id), 'label': statement.label, 'summary': summary}, status=201)
+
+
+class BankStatementDetailView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def _get(self, pk):
+        from .models import BankStatement
+        try:
+            return BankStatement.objects.get(pk=pk)
+        except BankStatement.DoesNotExist:
+            return None
+
+    def get(self, request, pk):
+        if request.user.role not in ('admin', 'finance'):
+            return Response({'detail': 'Admin/Finance access required.'}, status=403)
+        from .reconciliation import summarize
+        s = self._get(pk)
+        if not s:
+            return Response({'detail': 'Not found.'}, status=404)
+        lines = [{
+            'id': str(l.id),
+            'date': str(l.line_date),
+            'description': l.description,
+            'amount': float(l.amount),
+            'balance': float(l.balance) if l.balance is not None else None,
+            'match_status': l.match_status,
+            'matched_description': l.matched_entry.transaction.description if l.matched_entry else None,
+            'matched_date': str(l.matched_entry.transaction.transaction_date) if l.matched_entry else None,
+        } for l in s.lines.select_related('matched_entry', 'matched_entry__transaction')]
+        return Response({
+            'id': str(s.id),
+            'label': s.label,
+            'original_filename': s.original_filename,
+            'date_from': str(s.date_from) if s.date_from else None,
+            'date_to': str(s.date_to) if s.date_to else None,
+            'created_at': s.created_at.isoformat(),
+            'lines': lines,
+            'summary': summarize(s),
+        })
+
+    def post(self, request, pk):
+        """Re-run auto-matching (e.g. after recording missing expenses/income)."""
+        if request.user.role not in ('admin', 'finance'):
+            return Response({'detail': 'Admin/Finance access required.'}, status=403)
+        from .reconciliation import auto_match
+        s = self._get(pk)
+        if not s:
+            return Response({'detail': 'Not found.'}, status=404)
+        return Response({'summary': auto_match(s)})
+
+    def delete(self, request, pk):
+        if request.user.role != 'admin':
+            return Response({'detail': 'Admin access required.'}, status=403)
+        s = self._get(pk)
+        if not s:
+            return Response({'detail': 'Not found.'}, status=404)
+        s.delete()
+        return Response(status=204)
+
+
+class BankStatementLineMatchView(APIView):
+    """POST with {"entry_id": ...} to match a line by hand; empty body to unmatch."""
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pk, line_id):
+        if request.user.role not in ('admin', 'finance'):
+            return Response({'detail': 'Admin/Finance access required.'}, status=403)
+        from .models import BankStatementLine, LedgerEntry as LE
+        try:
+            line = BankStatementLine.objects.get(pk=line_id, statement_id=pk)
+        except BankStatementLine.DoesNotExist:
+            return Response({'detail': 'Not found.'}, status=404)
+
+        entry_id = request.data.get('entry_id')
+        if not entry_id:
+            line.match_status, line.matched_entry = 'unmatched', None
+            line.save(update_fields=['match_status', 'matched_entry'])
+            return Response({'detail': 'Line unmatched.'})
+
+        try:
+            entry = LE.objects.get(pk=entry_id, account__system_key='BANK_CASH')
+        except LE.DoesNotExist:
+            return Response({'detail': 'Ledger entry not found (must be a Bank & Cash entry).'}, status=400)
+        if BankStatementLine.objects.filter(matched_entry=entry).exclude(pk=line.pk).exists():
+            return Response({'detail': 'That ledger entry is already matched to another statement line.'}, status=400)
+
+        line.match_status, line.matched_entry = 'manual', entry
+        line.save(update_fields=['match_status', 'matched_entry'])
+        return Response({'detail': 'Line matched.'})
+
+
 # ── Revenue Allocation Settings ───────────────────────────────────────────────
 
 class RevenueAllocationView(APIView):
@@ -3366,6 +3631,8 @@ class GenerateMonthlyInvoicesView(APIView):
         if request.user.role not in ('admin', 'finance'):
             return Response({'detail': 'Admin/Finance access required.'}, status=403)
 
+        from .ledger import post_invoice_sent
+
         year = int(request.data.get('year', date.today().year))
         month = int(request.data.get('month', date.today().month))
         send_email = request.data.get('send_email', True)
@@ -3374,6 +3641,7 @@ class GenerateMonthlyInvoicesView(APIView):
         m_start, m_end = _month_bounds(year, month)
         created_wifi = 0
         created_sla = 0
+        created_subs = 0
         skipped = 0
 
         # WiFi Subscribers
@@ -3405,6 +3673,7 @@ class GenerateMonthlyInvoicesView(APIView):
                 status='sent',
                 sent_at=timezone.now(),
             )
+            post_invoice_sent(inv, request.user)
             created_wifi += 1
             if send_email and sub.contact_email:
                 _send_subscriber_invoice_email(inv, sub.contact_email, base_url)
@@ -3442,14 +3711,57 @@ class GenerateMonthlyInvoicesView(APIView):
                 status='sent',
                 sent_at=timezone.now(),
             )
+            post_invoice_sent(inv, request.user)
             created_sla += 1
             if send_email and contract.contact_email:
                 _send_subscriber_invoice_email(inv, contract.contact_email, base_url)
 
+        # Generic Subscriptions (email, hosting, domains, backups, software…)
+        for sub in Subscription.objects.filter(status='active'):
+            if sub.end_date and sub.end_date < m_start:
+                skipped += 1
+                continue
+            exists = Invoice.objects.filter(
+                subscription=sub,
+                billing_period_start=m_start,
+                billing_period_end=m_end,
+            ).exists()
+            if exists:
+                skipped += 1
+                continue
+            label = sub.get_subscription_type_display()
+            desc = f"{label} — {sub.client_name}"
+            if sub.service_name:
+                desc = f"{label} ({sub.service_name}) — {sub.client_name}"
+            inv = Invoice.objects.create(
+                invoice_number=_next_invoice_number(),
+                company=sub.company,
+                subscription=sub,
+                invoice_type='subscription',
+                billing_period_start=m_start,
+                billing_period_end=m_end,
+                due_date=date(year, month, min(sub.billing_day, cal_module.monthrange(year, month)[1])),
+                subtotal=sub.monthly_price,
+                tax_rate=0,
+                tax_amount=0,
+                total_amount=sub.monthly_price,
+                wholesale_cost=sub.monthly_cost if sub.monthly_cost else None,
+                ticket_count=0,
+                hours_worked=0,
+                description=desc,
+                status='sent',
+                sent_at=timezone.now(),
+            )
+            post_invoice_sent(inv, request.user)
+            created_subs += 1
+            if send_email and sub.contact_email:
+                _send_subscriber_invoice_email(inv, sub.contact_email, base_url)
+
         return Response({
-            'detail': f"Generated {created_wifi} WiFi and {created_sla} SLA invoices. {skipped} skipped (already exist).",
+            'detail': f"Generated {created_wifi} WiFi, {created_sla} SLA and {created_subs} subscription invoices. {skipped} skipped (already exist).",
             'wifi_created': created_wifi,
             'sla_created': created_sla,
+            'subscriptions_created': created_subs,
             'skipped': skipped,
             'period': f"{m_start} to {m_end}",
         })
@@ -3484,29 +3796,54 @@ class RevenueIntelligenceView(APIView):
         wifi_outstanding = outstanding_sum({**base, 'invoice_type': 'wifi'})
         wifi_expected = float(WifiSubscriber.objects.filter(status='active').aggregate(t=Sum('retail_price'))['t'] or 0)
 
-        sla_paid = paid_sum({**base, 'invoice_type__in': ['sla', 'callout']})
-        sla_outstanding = outstanding_sum({**base, 'invoice_type__in': ['sla', 'callout']})
+        sla_paid = paid_sum({**base, 'invoice_type': 'sla'})
+        sla_outstanding = outstanding_sum({**base, 'invoice_type': 'sla'})
         sla_expected = float(SLAContract.objects.filter(status='active').aggregate(t=Sum('monthly_retainer'))['t'] or 0)
 
-        adhoc_paid = paid_sum({**base, 'invoice_type': 'adhoc'})
+        # Other recurring subscriptions (email, hosting, domains, backups…)
+        subs_paid = paid_sum({**base, 'invoice_type': 'subscription'})
+        subs_outstanding = outstanding_sum({**base, 'invoice_type': 'subscription'})
+        subs_expected = float(Subscription.objects.filter(status='active').aggregate(t=Sum('monthly_price'))['t'] or 0)
+
+        # Per-type breakdown of the generic subscription stream
+        subs_by_type = []
+        for type_key, type_label in SubscriptionTypeChoices.choices:
+            t_paid = paid_sum({**base, 'invoice_type': 'subscription', 'subscription__subscription_type': type_key})
+            t_outstanding = outstanding_sum({**base, 'invoice_type': 'subscription', 'subscription__subscription_type': type_key})
+            t_expected = float(Subscription.objects.filter(
+                status='active', subscription_type=type_key,
+            ).aggregate(t=Sum('monthly_price'))['t'] or 0)
+            t_count = Subscription.objects.filter(status='active', subscription_type=type_key).count()
+            if t_paid or t_outstanding or t_expected or t_count:
+                subs_by_type.append({
+                    'type': type_key, 'label': type_label, 'active_count': t_count,
+                    'paid': t_paid, 'outstanding': t_outstanding, 'expected': t_expected,
+                })
+
+        # Ad-hoc / Projects — irregular income lane (call-outs merged in)
+        adhoc_paid = paid_sum({**base, 'invoice_type__in': ['adhoc', 'callout']})
+        adhoc_outstanding = outstanding_sum({**base, 'invoice_type__in': ['adhoc', 'callout']})
 
         axxess_costs = float(Invoice.objects.filter(
             **base, invoice_type='wifi', wholesale_cost__isnull=False, status='paid',
         ).aggregate(t=Sum('wholesale_cost'))['t'] or 0)
+        subscription_costs = float(Invoice.objects.filter(
+            **base, invoice_type='subscription', wholesale_cost__isnull=False, status='paid',
+        ).aggregate(t=Sum('wholesale_cost'))['t'] or 0)
 
-        total_revenue = wifi_paid + sla_paid + adhoc_paid
-        net_profit = total_revenue - axxess_costs
+        total_revenue = wifi_paid + sla_paid + subs_paid + adhoc_paid
+        net_profit = total_revenue - axxess_costs - subscription_costs
 
         # ── Intelligence flags ─────────────────────────────────────────────────
         flags = []
 
         if adhoc_paid == 0:
-            floor_income = wifi_paid + sla_paid
+            floor_income = wifi_paid + sla_paid + subs_paid
             flags.append({
                 'type': 'floor_month',
                 'level': 'warning',
-                'title': 'No Ad-Hoc Income This Month',
-                'detail': f'Floor income only: R {floor_income:,.2f} from WiFi + SLA. No ad-hoc/project income recorded yet.',
+                'title': 'No Ad-Hoc / Project Income This Month',
+                'detail': f'Floor income only: R {floor_income:,.2f} from recurring subscriptions (WiFi + SLA + other). No ad-hoc/project income recorded yet.',
             })
 
         loss_makers = list(WifiSubscriber.objects.filter(
@@ -3520,6 +3857,20 @@ class RevenueIntelligenceView(APIView):
                 'level': 'danger',
                 'title': f"Loss-Making Line: {lm['client_name']}",
                 'detail': f"Billed R {lm['retail_price']:,.2f} but Axxess costs R {lm['wholesale_cost']:,.2f}. Review pricing.",
+                'data': lm,
+            })
+
+        sub_loss_makers = list(Subscription.objects.filter(
+            status='active', monthly_cost__gte=F('monthly_price'),
+        ).values('id', 'client_name', 'subscription_type', 'monthly_price', 'monthly_cost'))
+        for lm in sub_loss_makers:
+            lm['monthly_price'] = float(lm['monthly_price'])
+            lm['monthly_cost'] = float(lm['monthly_cost'])
+            flags.append({
+                'type': 'loss_making',
+                'level': 'danger',
+                'title': f"Loss-Making Subscription: {lm['client_name']} ({lm['subscription_type']})",
+                'detail': f"Billed R {lm['monthly_price']:,.2f} but supplier costs R {lm['monthly_cost']:,.2f}. Review pricing.",
                 'data': lm,
             })
 
@@ -3589,16 +3940,50 @@ class RevenueIntelligenceView(APIView):
                 'gross_margin': billed,
                 'is_loss_making': False,
             })
+        for sub in Subscription.objects.filter(status='active').order_by('client_name'):
+            billed = float(Invoice.objects.filter(subscription=sub).aggregate(t=Sum('total_amount'))['t'] or 0)
+            costs = float(Invoice.objects.filter(subscription=sub, wholesale_cost__isnull=False).aggregate(t=Sum('wholesale_cost'))['t'] or 0)
+            client_prof.append({
+                'id': str(sub.id),
+                'client_name': sub.client_name,
+                'type': sub.subscription_type,
+                'type_label': sub.get_subscription_type_display(),
+                'revenue': billed,
+                'cost': costs,
+                'gross_margin': billed - costs,
+                'is_loss_making': sub.is_loss_making,
+            })
         client_prof.sort(key=lambda x: x['gross_margin'], reverse=True)
+
+        # ── Growth: month-over-month net profit from the ledger (source of
+        #    truth — same numbers as the Income Statement) ────────────────────
+        from . import reports as _reports
+        prev_year, prev_month = (today.year - 1, 12) if today.month == 1 else (today.year, today.month - 1)
+        p_start, p_end = _month_bounds(prev_year, prev_month)
+        cur_stmt = _reports.income_statement(m_start, m_end)
+        prev_stmt = _reports.income_statement(p_start, p_end)
+        growth = {
+            'current_month': {'label': m_start.strftime('%B %Y'), 'revenue': cur_stmt['revenue']['total'], 'net_profit': cur_stmt['net_profit']},
+            'previous_month': {'label': p_start.strftime('%B %Y'), 'revenue': prev_stmt['revenue']['total'], 'net_profit': prev_stmt['net_profit']},
+            'net_profit_pct': _reports._growth_pct(Decimal(str(cur_stmt['net_profit'])), Decimal(str(prev_stmt['net_profit']))),
+            'revenue_pct': _reports._growth_pct(Decimal(str(cur_stmt['revenue']['total'])), Decimal(str(prev_stmt['revenue']['total']))),
+            'net_profit_change': round(cur_stmt['net_profit'] - prev_stmt['net_profit'], 2),
+            'is_growing': cur_stmt['net_profit'] > prev_stmt['net_profit'],
+        }
 
         return Response({
             'period': {'start': m_start, 'end': m_end, 'label': m_start.strftime('%B %Y')},
             'streams': {
                 'wifi': {'paid': wifi_paid, 'outstanding': wifi_outstanding, 'expected': wifi_expected},
                 'sla': {'paid': sla_paid, 'outstanding': sla_outstanding, 'expected': sla_expected},
-                'adhoc': {'paid': adhoc_paid},
+                'subscriptions': {
+                    'paid': subs_paid, 'outstanding': subs_outstanding, 'expected': subs_expected,
+                    'by_type': subs_by_type,
+                },
+                'adhoc': {'paid': adhoc_paid, 'outstanding': adhoc_outstanding},
             },
-            'costs': {'axxess': axxess_costs},
+            'costs': {'axxess': axxess_costs, 'subscriptions': subscription_costs},
+            'growth': growth,
             'totals': {
                 'revenue': total_revenue,
                 'net_profit': net_profit,
@@ -3646,17 +4031,18 @@ class RevenueMonthlyView(APIView):
 
             base = dict(billing_period_start__gte=m_start, billing_period_start__lte=m_end, status='paid')
             wifi_rev = _s({**base, 'invoice_type': 'wifi'})
-            sla_rev = _s({**base, 'invoice_type__in': ['sla', 'callout']})
-            adhoc_rev = _s({**base, 'invoice_type': 'adhoc'})
+            sla_rev = _s({**base, 'invoice_type': 'sla'})
+            subs_rev = _s({**base, 'invoice_type': 'subscription'})
+            adhoc_rev = _s({**base, 'invoice_type__in': ['adhoc', 'callout']})
             ax_costs = float(Invoice.objects.filter(
                 billing_period_start__gte=m_start,
                 billing_period_start__lte=m_end,
-                invoice_type='wifi',
+                invoice_type__in=['wifi', 'subscription'],
                 wholesale_cost__isnull=False,
                 status='paid',
             ).aggregate(t=Sum('wholesale_cost'))['t'] or 0)
 
-            total = wifi_rev + sla_rev + adhoc_rev
+            total = wifi_rev + sla_rev + subs_rev + adhoc_rev
             net = total - ax_costs
 
             months.append({
@@ -3665,6 +4051,7 @@ class RevenueMonthlyView(APIView):
                 'year': y,
                 'wifi_revenue': wifi_rev,
                 'sla_revenue': sla_rev,
+                'subscription_revenue': subs_rev,
                 'adhoc_revenue': adhoc_rev,
                 'total_revenue': total,
                 'axxess_costs': ax_costs,
@@ -3672,7 +4059,7 @@ class RevenueMonthlyView(APIView):
                 'reinvestment': round(net * r_pct, 2),
                 'opex': round(net * o_pct, 2),
                 'owner_draw': round(net * w_pct, 2),
-                'floor_pct': round((wifi_rev + sla_rev) / total * 100, 1) if total > 0 else 0,
+                'floor_pct': round((wifi_rev + sla_rev + subs_rev) / total * 100, 1) if total > 0 else 0,
                 'growth_pct': round(adhoc_rev / total * 100, 1) if total > 0 else 0,
             })
 
@@ -3715,7 +4102,7 @@ class InvoicePrintView(APIView):
     def get(self, request, pk):
         from .models import InvoiceItem
         try:
-            inv = Invoice.objects.select_related('company', 'wifi_subscriber', 'sla_contract', 'incident').get(pk=pk)
+            inv = Invoice.objects.select_related('company', 'wifi_subscriber', 'sla_contract', 'subscription', 'incident').get(pk=pk)
         except Invoice.DoesNotExist:
             return Response({'detail': 'Not found.'}, status=404)
 
@@ -3740,16 +4127,19 @@ class InvoicePrintView(APIView):
         client_name = (
             inv.wifi_subscriber.client_name if inv.wifi_subscriber else
             inv.sla_contract.client_name if inv.sla_contract else
+            inv.subscription.client_name if inv.subscription else
             inv.company.name if inv.company else ''
         )
         client_email = (
             inv.wifi_subscriber.contact_email if inv.wifi_subscriber else
             inv.sla_contract.contact_email if inv.sla_contract else
+            inv.subscription.contact_email if inv.subscription else
             inv.company.contact_email if inv.company else ''
         )
         client_phone = (
             inv.wifi_subscriber.contact_phone if inv.wifi_subscriber else
             inv.sla_contract.contact_phone if inv.sla_contract else
+            inv.subscription.contact_phone if inv.subscription else
             inv.company.contact_phone if inv.company else ''
         )
         client_address = (

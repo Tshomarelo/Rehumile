@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from django.utils.text import slugify
-from .models import Company, UserProfile, Incident, IncidentComment, Invoice, WifiSubscriber, SLAContract, RevenueAllocation, CompanySettings
+from .models import Company, UserProfile, Incident, IncidentComment, Invoice, InvoicePayment, WifiSubscriber, SLAContract, Subscription, RevenueAllocation, CompanySettings
 
 User = get_user_model()
 
@@ -153,10 +153,19 @@ class IncidentCreateSerializer(serializers.ModelSerializer):
         ]
 
 
+class InvoicePaymentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = InvoicePayment
+        fields = ['id', 'amount', 'payment_date', 'payment_method', 'notes', 'created_at']
+        read_only_fields = fields
+
+
 class InvoiceSerializer(serializers.ModelSerializer):
     company_name = serializers.SerializerMethodField()
     incident_ticket_id = serializers.SerializerMethodField()
     incident_title = serializers.SerializerMethodField()
+    balance_due = serializers.SerializerMethodField()
+    payments = InvoicePaymentSerializer(source='payment_records', many=True, read_only=True)
 
     class Meta:
         model = Invoice
@@ -165,12 +174,16 @@ class InvoiceSerializer(serializers.ModelSerializer):
             'incident', 'incident_ticket_id', 'incident_title',
             'billing_period_start', 'billing_period_end',
             'subtotal', 'tax_rate', 'tax_amount', 'total_amount',
+            'amount_paid', 'balance_due', 'payments',
             'ticket_count', 'hours_worked', 'status', 'notes',
             'due_date', 'payment_date', 'created_at', 'updated_at',
             'invoice_type', 'description',
         ]
-        read_only_fields = ['id', 'tax_amount', 'total_amount', 'created_at', 'updated_at',
+        read_only_fields = ['id', 'tax_amount', 'total_amount', 'amount_paid', 'created_at', 'updated_at',
                             'incident_ticket_id', 'incident_title']
+
+    def get_balance_due(self, obj):
+        return obj.balance_due
 
     def get_company_name(self, obj):
         return obj.company.name if obj.company else None
@@ -187,6 +200,7 @@ class InvoiceSerializer(serializers.ModelSerializer):
         data['wholesale_cost'] = float(instance.wholesale_cost) if instance.wholesale_cost is not None else None
         data['wifi_subscriber_name'] = instance.wifi_subscriber.client_name if instance.wifi_subscriber else None
         data['sla_contract_name'] = instance.sla_contract.client_name if instance.sla_contract else None
+        data['subscription_name'] = instance.subscription.client_name if instance.subscription else None
         return data
 
     def _calc_totals(self, data):
@@ -240,6 +254,29 @@ class SLAContractSerializer(serializers.ModelSerializer):
 
     def get_company_name(self, obj):
         return obj.company.name if obj.company else None
+
+
+class SubscriptionSerializer(serializers.ModelSerializer):
+    gross_margin = serializers.ReadOnlyField()
+    is_loss_making = serializers.ReadOnlyField()
+    company_name = serializers.SerializerMethodField()
+    type_label = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Subscription
+        fields = [
+            'id', 'subscription_type', 'type_label', 'service_name', 'client_name',
+            'contact_name', 'contact_email', 'contact_phone', 'company', 'company_name',
+            'monthly_price', 'monthly_cost', 'billing_day', 'start_date', 'end_date',
+            'status', 'notes', 'gross_margin', 'is_loss_making', 'created_at', 'updated_at',
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at']
+
+    def get_company_name(self, obj):
+        return obj.company.name if obj.company else None
+
+    def get_type_label(self, obj):
+        return obj.get_subscription_type_display()
 
 
 class RevenueAllocationSerializer(serializers.ModelSerializer):

@@ -5,6 +5,7 @@ data. Because every ledger.post_transaction() call is balance-checked at
 write time, Assets == Liabilities + Equity is an invariant of the Balance
 Sheet, not something these functions have to force to agree.
 """
+from datetime import timedelta
 from decimal import Decimal
 
 from django.db.models import Sum, Q
@@ -47,7 +48,15 @@ def account_balances(account_type=None, account_subtype=None, date_from=None, da
     return results
 
 
-def income_statement(date_from, date_to):
+def _growth_pct(current, previous):
+    """% change vs the previous period. None when the previous period is zero
+    (a percentage against zero is meaningless — the UI shows 'new' instead)."""
+    if previous == 0:
+        return None
+    return round(float((current - previous) / abs(previous) * 100), 1)
+
+
+def income_statement(date_from, date_to, compare_previous=False):
     revenue_accounts = account_balances(account_type='revenue', date_from=date_from, date_to=date_to)
     cogs_accounts = account_balances(account_type='expense', account_subtype='cogs', date_from=date_from, date_to=date_to)
     opex_accounts = account_balances(account_type='expense', account_subtype='operating_expense', date_from=date_from, date_to=date_to)
@@ -61,7 +70,7 @@ def income_statement(date_from, date_to):
     def _rows(d):
         return [{'code': a.code, 'name': a.name, 'amount': float(v)} for a, v in sorted(d.items(), key=lambda kv: kv[0].code)]
 
-    return {
+    result = {
         'period': {'date_from': str(date_from), 'date_to': str(date_to)},
         'revenue': {'total': float(revenue), 'accounts': _rows(revenue_accounts)},
         'cogs': {'total': float(cogs), 'accounts': _rows(cogs_accounts)},
@@ -71,6 +80,33 @@ def income_statement(date_from, date_to):
         'net_profit': float(net_profit),
         'net_profit_margin_pct': round(float(net_profit / revenue * 100), 2) if revenue else 0,
     }
+
+    if compare_previous:
+        # The period of equal length immediately before date_from — for a
+        # calendar month this is the previous month, answering "am I growing?"
+        period_days = (date_to - date_from).days
+        prev_to = date_from - timedelta(days=1)
+        prev_from = prev_to - timedelta(days=period_days)
+        prev = income_statement(prev_from, prev_to, compare_previous=False)
+        prev_revenue = Decimal(str(prev['revenue']['total']))
+        prev_net = Decimal(str(prev['net_profit']))
+        prev_opex = Decimal(str(prev['operating_expenses']['total'])) + Decimal(str(prev['cogs']['total']))
+        expenses = cogs + opex
+        result['previous_period'] = {
+            'date_from': str(prev_from), 'date_to': str(prev_to),
+            'revenue': float(prev_revenue),
+            'expenses': float(prev_opex),
+            'net_profit': float(prev_net),
+        }
+        result['growth'] = {
+            'revenue_pct': _growth_pct(revenue, prev_revenue),
+            'expenses_pct': _growth_pct(expenses, prev_opex),
+            'net_profit_pct': _growth_pct(net_profit, prev_net),
+            'net_profit_change': float(net_profit - prev_net),
+            'is_growing': net_profit > prev_net,
+        }
+
+    return result
 
 
 def balance_sheet(as_of_date):
