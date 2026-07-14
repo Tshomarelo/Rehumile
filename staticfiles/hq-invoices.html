@@ -70,6 +70,7 @@
               <option value="">All Statuses</option>
               <option value="draft">Draft</option>
               <option value="sent">Sent</option>
+              <option value="partially_paid">Partially Paid</option>
               <option value="paid">Paid</option>
               <option value="overdue">Overdue</option>
               <option value="cancelled">Cancelled</option>
@@ -199,6 +200,65 @@
         <button class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
         <button class="btn btn-warning text-dark fw-bold" id="sendReminderBtn">
           <i data-feather="send" style="width:14px;height:14px"></i> Send Reminder
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Record Payment Modal -->
+<div class="modal fade" id="paymentModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header" style="background:#50181E;color:white">
+        <h5 class="modal-title">
+          <i data-feather="credit-card" style="width:18px;height:18px;margin-right:8px;vertical-align:middle"></i>
+          Record Payment
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="payInvId">
+        <div class="alert alert-info py-2 small mb-3">
+          Recording a payment for invoice <strong id="payInvNum"></strong>
+        </div>
+        <div class="row mb-3">
+          <div class="col-4"><div class="small text-muted">Total</div><div class="fw-bold" id="payTotalDisplay">R 0.00</div></div>
+          <div class="col-4"><div class="small text-muted">Already Paid</div><div class="fw-bold text-success" id="payAlreadyPaidDisplay">R 0.00</div></div>
+          <div class="col-4"><div class="small text-muted">Balance Due</div><div class="fw-bold text-danger" id="payBalanceDisplay">R 0.00</div></div>
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-semibold">Amount Received</label>
+          <input type="number" min="0.01" step="0.01" class="form-control" id="payAmountInput" placeholder="0.00">
+          <div class="form-text">Enter the full balance to mark this invoice as fully paid, or a lesser amount to record a partial payment.</div>
+        </div>
+        <div class="row">
+          <div class="col-md-6 mb-3">
+            <label class="form-label fw-semibold">Payment Date</label>
+            <input type="date" class="form-control" id="payDateInput">
+          </div>
+          <div class="col-md-6 mb-3">
+            <label class="form-label fw-semibold">Method</label>
+            <select class="form-select" id="payMethodInput">
+              <option value="">Select…</option>
+              <option value="eft">EFT / Bank Transfer</option>
+              <option value="cash">Cash</option>
+              <option value="card">Card</option>
+              <option value="payfast">PayFast</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-semibold">Notes <span class="text-muted fw-normal">(optional)</span></label>
+          <input type="text" class="form-control" id="payNotesInput" placeholder="Reference number, cheque number, etc.">
+        </div>
+        <div id="payResult" class="mt-2 small"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button class="btn btn-success fw-bold" id="savePaymentBtn">
+          <i data-feather="check" style="width:14px;height:14px"></i> Record Payment
         </button>
       </div>
     </div>
@@ -344,7 +404,7 @@ window.calcTotal = function(){
   function showAlert(id, msg, type='danger'){
     document.getElementById(id).innerHTML=`<div class="alert alert-${type} alert-dismissible"><button type="button" class="btn-close" data-bs-dismiss="alert"></button>${msg}</div>`;
   }
-  const statusBadge=s=>({'draft':'<span class="badge bg-secondary">Draft</span>','sent':'<span class="badge bg-primary">Sent</span>','paid':'<span class="badge bg-success">Paid</span>','overdue':'<span class="badge bg-danger">Overdue</span>','cancelled':'<span class="badge bg-dark">Cancelled</span>'}[s]||`<span class="badge bg-secondary">${s}</span>`);
+  const statusBadge=s=>({'draft':'<span class="badge bg-secondary">Draft</span>','sent':'<span class="badge bg-primary">Sent</span>','partially_paid':'<span class="badge bg-info text-dark">Partially Paid</span>','paid':'<span class="badge bg-success">Paid</span>','overdue':'<span class="badge bg-danger">Overdue</span>','cancelled':'<span class="badge bg-dark">Cancelled</span>'}[s]||`<span class="badge bg-secondary">${s}</span>`);
   const fmtDate=d=>d?new Date(d).toLocaleDateString('en-ZA',{year:'numeric',month:'short',day:'numeric'}):'—';
   const fmtPeriod=(s,e)=>`${fmtDate(s)} – ${fmtDate(e)}`;
 
@@ -399,13 +459,14 @@ window.calcTotal = function(){
           <td class="d-none d-md-table-cell">${inv.incident_ticket_id?`<code class="text-danger">${inv.incident_ticket_id}</code>`:'<span class="text-muted">—</span>'}</td>
           <td class="d-none d-md-table-cell">${fmtPeriod(inv.billing_period_start,inv.billing_period_end)}</td>
           <td class="d-none d-md-table-cell">${inv.hours_worked||0}h</td>
-          <td><strong>R ${parseFloat(inv.total_amount||0).toFixed(2)}</strong></td>
+          <td><strong>R ${parseFloat(inv.total_amount||0).toFixed(2)}</strong>${parseFloat(inv.amount_paid||0)>0 && inv.status!=='paid' ? `<div class="small text-success">R ${parseFloat(inv.amount_paid||0).toFixed(2)} paid</div><div class="small text-danger">R ${parseFloat(inv.balance_due!=null?inv.balance_due:inv.total_amount).toFixed(2)} due</div>` : ''}</td>
           <td>${statusBadge(inv.status)}</td>
           <td class="d-none d-lg-table-cell">${fmtDate(inv.due_date)}</td>
           <td class="d-flex gap-1 flex-wrap">
             <button class="btn btn-sm btn-outline-primary" onclick='openEdit(${JSON.stringify(inv)})'>Edit</button>
             <a class="btn btn-sm btn-outline-secondary" href="/portal/invoices/print/${inv.id}/" target="_blank" title="Print / Save PDF"><i data-feather="printer" style="width:13px;height:13px"></i></a>
             ${['sent','overdue','draft'].includes(inv.status) ? `<button class="btn btn-sm btn-outline-warning remind-btn" data-id="${inv.id}" data-num="${inv.invoice_number||'INV-'+inv.id.slice(0,8)}" title="Send email reminder"><i data-feather="mail" style="width:13px;height:13px"></i> Remind</button>` : ''}
+            ${['sent','overdue','partially_paid'].includes(inv.status) ? `<button class="btn btn-sm btn-outline-success" onclick='openRecordPayment(${JSON.stringify(inv)})' title="Record a full or partial payment"><i data-feather="credit-card" style="width:13px;height:13px"></i> Pay</button>` : ''}
           </td>
         </tr>`).join('');
     }catch(e){ if(e.message!=='Unauth') showAlert('pageAlert','Failed to load invoices.'); }
@@ -547,6 +608,59 @@ window.calcTotal = function(){
       resultEl.className = 'text-danger mt-2 small';
     }
     btn.disabled = false; btn.innerHTML = '<i data-feather="send" style="width:14px;height:14px"></i> Send Reminder';
+    if(window.feather) feather.replace();
+  };
+
+  // ── Record Payment ───────────────────────────────────────────
+  window.openRecordPayment = function(inv){
+    document.getElementById('payInvId').value = inv.id;
+    document.getElementById('payInvNum').textContent = inv.invoice_number || ('INV-'+inv.id.slice(0,8));
+    const total = parseFloat(inv.total_amount||0);
+    const paid = parseFloat(inv.amount_paid||0);
+    const balance = inv.balance_due!=null ? parseFloat(inv.balance_due) : (total-paid);
+    document.getElementById('payTotalDisplay').textContent = 'R ' + total.toFixed(2);
+    document.getElementById('payAlreadyPaidDisplay').textContent = 'R ' + paid.toFixed(2);
+    document.getElementById('payBalanceDisplay').textContent = 'R ' + balance.toFixed(2);
+    document.getElementById('payAmountInput').value = balance.toFixed(2);
+    document.getElementById('payAmountInput').max = balance.toFixed(2);
+    document.getElementById('payDateInput').value = new Date().toISOString().slice(0,10);
+    document.getElementById('payMethodInput').value = '';
+    document.getElementById('payNotesInput').value = '';
+    document.getElementById('payResult').innerHTML = '';
+    new bootstrap.Modal(document.getElementById('paymentModal')).show();
+    if(window.feather) feather.replace();
+  };
+
+  document.getElementById('savePaymentBtn').onclick = async () => {
+    const btn = document.getElementById('savePaymentBtn');
+    const invId = document.getElementById('payInvId').value;
+    const amount = parseFloat(document.getElementById('payAmountInput').value);
+    const payment_date = document.getElementById('payDateInput').value;
+    const payment_method = document.getElementById('payMethodInput').value;
+    const notes = document.getElementById('payNotesInput').value.trim();
+    const resultEl = document.getElementById('payResult');
+    if(!amount || amount<=0){
+      resultEl.innerHTML = '<span class="text-danger">Enter a valid amount.</span>';
+      return;
+    }
+    btn.disabled = true; btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Saving…';
+    try {
+      const r = await api(`/portal/api/invoices/${invId}/record-payment/`, {
+        method: 'POST',
+        body: JSON.stringify({ amount, payment_date, payment_method, notes }),
+      });
+      const d = await r.json();
+      if (r.ok) {
+        bootstrap.Modal.getInstance(document.getElementById('paymentModal')).hide();
+        showAlert('pageAlert', `Payment of R ${amount.toFixed(2)} recorded. Invoice is now ${d.status==='paid'?'fully paid':'partially paid — R '+parseFloat(d.balance_due).toFixed(2)+' still due'}.`, 'success');
+        loadInvoices();
+      } else {
+        resultEl.innerHTML = '<span class="text-danger">' + (d.detail || 'Failed to record payment.') + '</span>';
+      }
+    } catch(e) {
+      if(e.message!=='Unauth') resultEl.innerHTML = '<span class="text-danger">Network error.</span>';
+    }
+    btn.disabled = false; btn.innerHTML = '<i data-feather="check" style="width:14px;height:14px"></i> Record Payment';
     if(window.feather) feather.replace();
   };
 

@@ -245,7 +245,7 @@ def _send_ticket_notification(incident, user):
 
 from .models import (
     Company, UserProfile, Incident, IncidentComment,
-    SLAConfig, StatusChoices, Invoice,
+    SLAConfig, StatusChoices, Invoice, InvoicePayment, InvoiceStatusChoices,
     Notification, AuditLog, SLABreach, IncidentAttachment,
     JobCard, JobCardStatusChoices,
     InventoryItem, StockTransaction,
@@ -803,6 +803,51 @@ class InvoiceViewSet(viewsets.ModelViewSet):
             post_invoice_sent(instance, self.request.user)
         if old_status != 'paid' and instance.status == 'paid':
             post_invoice_paid(instance, self.request.user)
+            if instance.amount_paid != instance.total_amount:
+                instance.amount_paid = instance.total_amount
+                instance.save(update_fields=['amount_paid'])
+
+    @action(detail=True, methods=['post'], url_path='record-payment')
+    def record_payment(self, request, pk=None):
+        """Records a full or partial payment against this invoice, posts it to
+        the ledger, and updates the invoice's amount_paid/status accordingly."""
+        from decimal import Decimal, InvalidOperation
+        from .ledger import post_invoice_payment
+
+        invoice = self.get_object()
+        raw_amount = request.data.get('amount')
+        try:
+            amount = Decimal(str(raw_amount))
+        except (InvalidOperation, TypeError):
+            return Response({'detail': 'A valid amount is required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if amount <= 0:
+            return Response({'detail': 'Amount must be greater than zero.'}, status=status.HTTP_400_BAD_REQUEST)
+        if amount > invoice.balance_due:
+            return Response(
+                {'detail': f'Amount exceeds the outstanding balance of {invoice.balance_due}.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        payment = InvoicePayment.objects.create(
+            invoice=invoice,
+            amount=amount,
+            payment_date=request.data.get('payment_date') or timezone.now().date(),
+            payment_method=request.data.get('payment_method', ''),
+            notes=request.data.get('notes', ''),
+            recorded_by=request.user if request.user.is_authenticated else None,
+        )
+        post_invoice_payment(payment, request.user)
+
+        invoice.amount_paid = (invoice.amount_paid or 0) + amount
+        if invoice.amount_paid >= invoice.total_amount:
+            invoice.status = InvoiceStatusChoices.PAID
+            invoice.payment_date = payment.payment_date
+        else:
+            invoice.status = InvoiceStatusChoices.PARTIALLY_PAID
+        invoice.save(update_fields=['amount_paid', 'status', 'payment_date'])
+
+        return Response(InvoiceSerializer(invoice).data, status=status.HTTP_201_CREATED)
 
 
 # ============================================================================

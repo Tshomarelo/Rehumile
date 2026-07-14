@@ -9,7 +9,7 @@ from django.db.models import Count, Q
 from django.utils.html import format_html
 from .models import (
     Company, User, UserProfile, Incident, IncidentComment, IncidentAttachment,
-    IncidentTimeline, SLABreach, SLAConfig, Invoice, InvoiceItem, Notification,
+    IncidentTimeline, SLABreach, SLAConfig, Invoice, InvoiceItem, InvoicePayment, Notification,
     AuditLog, DashboardMetric, CompanyBillingInfo
 )
 
@@ -96,6 +96,14 @@ class InvoiceItemInline(admin.TabularInline):
     model = InvoiceItem
     extra = 1
     fields = ('description', 'item_type', 'quantity', 'unit_price', 'amount')
+
+
+class InvoicePaymentInline(admin.TabularInline):
+    """Inline payment history for invoices (full or partial payments)"""
+    model = InvoicePayment
+    extra = 0
+    fields = ('amount', 'payment_date', 'payment_method', 'notes', 'recorded_by')
+    readonly_fields = ('recorded_by',)
 
 
 class CompanyBillingInfoInline(admin.StackedInline):
@@ -245,9 +253,9 @@ class InvoiceAdmin(admin.ModelAdmin):
                    'status', 'payment_status', 'created_at')
     list_filter = ('status', 'company', 'billing_period_start', 'created_at')
     search_fields = ('invoice_number', 'company__name')
-    readonly_fields = ('id', 'invoice_number', 'created_at', 'updated_at', 'sent_at')
-    inlines = [InvoiceItemInline]
-    
+    readonly_fields = ('id', 'invoice_number', 'created_at', 'updated_at', 'sent_at', 'amount_paid')
+    inlines = [InvoiceItemInline, InvoicePaymentInline]
+
     fieldsets = (
         ('Invoice Information', {
             'fields': ('id', 'invoice_number', 'company')
@@ -256,7 +264,7 @@ class InvoiceAdmin(admin.ModelAdmin):
             'fields': ('billing_period_start', 'billing_period_end')
         }),
         ('Financial Details', {
-            'fields': ('subtotal', 'tax_rate', 'tax_amount', 'total_amount')
+            'fields': ('subtotal', 'tax_rate', 'tax_amount', 'total_amount', 'amount_paid')
         }),
         ('Summary', {
             'fields': ('ticket_count', 'hours_worked')

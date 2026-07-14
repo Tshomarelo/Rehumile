@@ -191,6 +191,29 @@ def post_invoice_paid(invoice, user=None):
     )
 
 
+def post_invoice_payment(payment, user=None):
+    """Posts a single InvoicePayment record — full or partial. Keyed by the
+    payment's own id (not the invoice's), so an invoice can receive several
+    of these over time without colliding with post_invoice_paid's one-shot,
+    invoice-keyed posting."""
+    invoice = payment.invoice
+    amount = Decimal(payment.amount or 0)
+    if amount <= 0:
+        return None
+    if not LedgerTransaction.objects.filter(source_model='Invoice', source_id=str(invoice.id)).exists():
+        post_invoice_sent(invoice, user)
+
+    return post_transaction(
+        'InvoicePayment', payment.id, payment.payment_date,
+        f"Payment received for invoice {invoice.invoice_number}",
+        [
+            ('BANK_CASH', amount, Decimal('0'), f"Invoice {invoice.invoice_number}"),
+            ('ACCOUNTS_RECEIVABLE', Decimal('0'), amount, f"Invoice {invoice.invoice_number}"),
+        ],
+        cash_flow_stream='ocf', user=user,
+    )
+
+
 def post_expense(expense):
     amount = Decimal(expense.amount or 0)
     if amount <= 0:

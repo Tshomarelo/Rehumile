@@ -79,6 +79,7 @@ class InvoiceStatusChoices(models.TextChoices):
     """Invoice billing status"""
     DRAFT = 'draft', _('Draft')
     SENT = 'sent', _('Sent')
+    PARTIALLY_PAID = 'partially_paid', _('Partially Paid')
     PAID = 'paid', _('Paid')
     OVERDUE = 'overdue', _('Overdue')
     CANCELLED = 'cancelled', _('Cancelled')
@@ -716,7 +717,15 @@ class Invoice(models.Model):
         decimal_places=2,
         validators=[MinValueValidator(0)]
     )
-    
+    # Running total of payments received against this invoice (full or partial).
+    # Kept in sync by InvoicePayment records — see record_payment().
+    amount_paid = models.DecimalField(
+        max_digits=15,
+        decimal_places=2,
+        default=0,
+        validators=[MinValueValidator(0)]
+    )
+
     # Incident Summary
     ticket_count = models.IntegerField(validators=[MinValueValidator(0)])
     hours_worked = models.DecimalField(
@@ -775,6 +784,44 @@ class Invoice(models.Model):
     
     def __str__(self):
         return f"INV-{self.invoice_number} ({self.company.name if self.company else 'No company'})"
+
+    @property
+    def balance_due(self):
+        total = self.total_amount or 0
+        paid = self.amount_paid or 0
+        remaining = total - paid
+        return remaining if remaining > 0 else 0
+
+
+class InvoicePayment(models.Model):
+    """
+    A single payment received against an invoice. An invoice can have many of
+    these (e.g. two partial payments that together settle it). Each one posts
+    its own ledger transaction, keyed by this record's id — so, unlike the
+    invoice-keyed posting used for one-shot 'mark as paid' flows, multiple
+    payments against the same invoice each get their own entry.
+    """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    invoice = models.ForeignKey(
+        Invoice, on_delete=models.CASCADE, related_name='payment_records', db_index=True,
+    )
+    amount = models.DecimalField(
+        max_digits=15, decimal_places=2, validators=[MinValueValidator(0.01)],
+    )
+    payment_date = models.DateField()
+    payment_method = models.CharField(max_length=50, blank=True)
+    notes = models.CharField(max_length=255, blank=True)
+    recorded_by = models.ForeignKey(
+        'User', on_delete=models.SET_NULL, null=True, blank=True, related_name='invoice_payments_recorded',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'invoice_payments'
+        ordering = ['-payment_date', '-created_at']
+
+    def __str__(self):
+        return f"Payment of {self.amount} for INV-{self.invoice.invoice_number}"
 
 
 class InvoiceItem(models.Model):
