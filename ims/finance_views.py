@@ -373,10 +373,33 @@ class QuotationDetailView(APIView):
         return Response(status=204)
 
 
+def quote_pdf_bytes(quote):
+    from .quote_pdf import build_quote_pdf
+    from .views import _company_settings
+    return build_quote_pdf(quote, _company_settings())
+
+
+class QuotationPdfView(APIView):
+    """GET -> the printable quotation as a PDF (?download=1 forces a download instead of opening inline)."""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, pk):
+        from django.http import HttpResponse
+        if request.user.role not in FINANCE_ROLES + ('agent',):
+            return _denied()
+        q = Quotation.objects.select_related('company').filter(pk=pk).first()
+        if not q:
+            return Response({'detail': 'Not found.'}, status=404)
+        disposition = 'attachment' if request.query_params.get('download') else 'inline'
+        resp = HttpResponse(quote_pdf_bytes(q), content_type='application/pdf')
+        resp['Content-Disposition'] = f'{disposition}; filename="{q.quote_number}.pdf"'
+        return resp
+
+
 def _email_quote(quote, base_url):
     if not quote.client_email:
         return False
-    from django.core.mail import send_mail
+    from django.core.mail import EmailMessage
     from django.conf import settings
     lines = '\n'.join(f"  - {i.description}: {i.quantity:g} x R{i.unit_price:,.2f} = R{i.line_total:,.2f}" for i in quote.items.all())
     body = (
@@ -385,8 +408,9 @@ def _email_quote(quote, base_url):
         f"Valid until {quote.valid_until:%d %B %Y}.\n\n{quote.notes}\n\nRegards,\nRehumile TMW"
     )
     try:
-        send_mail(f"Quotation {quote.quote_number} — Rehumile TMW", body, settings.DEFAULT_FROM_EMAIL,
-                  [quote.client_email], fail_silently=False)
+        msg = EmailMessage(f"Quotation {quote.quote_number} — Rehumile TMW", body, settings.DEFAULT_FROM_EMAIL, [quote.client_email])
+        msg.attach(f"{quote.quote_number}.pdf", quote_pdf_bytes(quote), 'application/pdf')
+        msg.send(fail_silently=False)
         return True
     except Exception:
         return False

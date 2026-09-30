@@ -96,6 +96,7 @@ urlpatterns = [
     path('expense-categories/<uuid:pk>/', finance_views.ExpenseCategoryView.as_view(), name='expense-category-detail'),
     path('quotations/', finance_views.QuotationListView.as_view(), name='quotation-list'),
     path('quotations/<uuid:pk>/', finance_views.QuotationDetailView.as_view(), name='quotation-detail'),
+    path('quotations/<uuid:pk>/pdf/', finance_views.QuotationPdfView.as_view(), name='quotation-pdf'),
     path('quotations/<uuid:pk>/action/', finance_views.QuotationActionView.as_view(), name='quotation-action'),
     path('', include(router.urls)),
 ]

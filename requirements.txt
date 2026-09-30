@@ -36,3 +36,6 @@ pytz==2023.3
 
 # HR system — encrypts ID numbers, bank accounts and salaries at rest
 cryptography>=42.0
+
+# Printable PDF quotations
+reportlab>=4.0

@@ -312,7 +312,7 @@
       ${canEdit?`<a class="btn btn-sm btn-outline-primary" href="/portal/dashboard/expenses/?quotation=${q.id}">+ Log an expense for this quote</a>`:''}
       ${q.invoice_number?`<div class="mt-3">Invoice: <a href="/portal/invoices/?search=${encodeURIComponent(q.invoice_number)}"><b>${esc(q.invoice_number)}</b></a></div>`:''}
       ${q.notes?`<div class="mt-3"><div class="small text-muted">Notes to client</div>${esc(q.notes)}</div>`:''}`;
-    const b=[]; const act=(a,label,cls,extra='')=>b.push(`<button class="btn ${cls}" onclick="doAction('${q.id}','${a}'${extra})">${label}</button>`);
+    const b=[`<button class="btn btn-outline-secondary" onclick="quotePdf('${q.id}',false)">Print / View PDF</button>`,`<button class="btn btn-outline-secondary" onclick="quotePdf('${q.id}',true)">Download PDF</button>`]; const act=(a,label,cls,extra='')=>b.push(`<button class="btn ${cls}" onclick="doAction('${q.id}','${a}'${extra})">${label}</button>`);
     if(canEdit){
       if(['draft','sent','expired','declined'].includes(q.status)) b.push(`<button class="btn btn-outline-primary" onclick="HQ.hideDrawer('detailModal');openEditorPublic('${q.id}')">Edit</button>`);
       if(['draft','sent','expired'].includes(q.status)){ act('send','Mark as sent','btn-outline-secondary'); if(q.client_email) act('send','Send by email','btn-outline-info',',true'); }
@@ -325,6 +325,17 @@
     HQ.showDrawer('detailModal');
   };
   window.openEditorPublic=openEditor;
+  // The PDF endpoint needs the login token, so fetch it as a file and hand it to the browser.
+  window.quotePdf=async function(id,download){
+    const win = download ? null : window.open('', '_blank');   // open the tab first so pop-up blockers allow it
+    try{
+      const r=await api('/portal/api/quotations/'+id+'/pdf/'+(download?'?download=1':''));
+      if(!r.ok){ if(win) win.close(); alertBox('pageAlert','Could not create the PDF.'); return; }
+      const url=URL.createObjectURL(await r.blob());
+      if(download){ const a=document.createElement('a'); a.href=url; a.download=(document.getElementById('dTitle').textContent.split(' — ')[0]||'quotation')+'.pdf'; a.click(); }
+      else win.location=url;
+    }catch(e){ if(win) win.close(); if(e.message!=='Unauth') alertBox('pageAlert','Could not create the PDF.'); }
+  };
   window.doAction=async function(id,action,email){
     if(action==='convert' && !confirm('Create a draft invoice from this quotation?')) return;
     try{

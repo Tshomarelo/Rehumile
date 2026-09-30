@@ -336,3 +336,62 @@ def test_leave_cannot_be_approved_twice(db, api):
                                            'end_date': '2026-10-02', 'days_requested': 2}, format='json').data
     assert api.patch(f"/api/leave-requests/{lr['id']}/", {'action': 'approve'}, format='json').status_code == 200
     assert api.patch(f"/api/leave-requests/{lr['id']}/", {'action': 'approve'}, format='json').status_code == 400
+
+
+# ── Quotation PDF ────────────────────────────────────────────────────────────
+
+def _make_quote(api, **kw):
+    body = {'client_name': 'Acme <Traders> & Sons', 'title': 'Shop network', 'vat_rate': 15, 'notes': 'Thanks!\nSecond line',
+            'items': [{'description': 'Switch install', 'quantity': 2, 'unit_price': 500, 'unit_cost': 321.5},
+                      {'description': 'Labour', 'quantity': 4.5, 'unit_price': 250, 'unit_cost': 99}]}
+    body.update(kw)
+    return api.post('/api/quotations/', body, format='json').data
+
+
+def test_quote_pdf_endpoint(db, api, cashier):
+    q = _make_quote(api)
+    r = api.get(f"/api/quotations/{q['id']}/pdf/")
+    assert r.status_code == 200 and r['Content-Type'] == 'application/pdf'
+    assert r.content.startswith(b'%PDF') and b'inline' in r['Content-Disposition'].encode() and q['quote_number'] in r['Content-Disposition']
+    d = api.get(f"/api/quotations/{q['id']}/pdf/?download=1")
+    assert 'attachment' in d['Content-Disposition']
+    assert client_for(cashier).get(f"/api/quotations/{q['id']}/pdf/").status_code == 403
+    import uuid
+    assert api.get(f"/api/quotations/{uuid.uuid4()}/pdf/").status_code == 404
+
+
+def test_quote_pdf_content_is_client_safe(db, api):
+    from ims.quote_pdf import build_quote_pdf
+    from ims.views import _company_settings
+    q = Quotation.objects.get(pk=_make_quote(api)['id'])
+    cs = _company_settings(); cs.account_number = '123456789'; cs.vat_number = '4455667788'; cs.save()
+    pdf = build_quote_pdf(q, cs, compress=False)
+    text = pdf.decode('latin-1')
+    for must in (q.quote_number, 'QUOTATION', 'Switch install', 'Labour', '(Acme <)', '(Traders)', '(> & Sons)',
+                 'R 1 000.00', 'R 1 125.00', 'R 2 125.00', 'R 318.75', 'R 2 443.75', '123456789', 'ACCEPTANCE', 'DRAFT'):
+        assert must in text, must
+    assert '&lt;' not in text and '&amp;' not in text     # user text is escaped, not leaked as entities
+    # internal costs / margin must never appear
+    for secret in ('321.50', '99.00', 'margin', 'Margin', 'estimated', 'Expected'):
+        assert secret not in text, secret
+
+
+def test_quote_pdf_many_lines_and_status_stamp(db, api):
+    from ims.quote_pdf import build_quote_pdf
+    from ims.views import _company_settings
+    items = [{'description': f'Line {i} ' + 'long description ' * 8, 'quantity': 1, 'unit_price': 10 + i} for i in range(60)]
+    q = Quotation.objects.get(pk=_make_quote(api, items=items)['id'])
+    Quotation.objects.filter(pk=q.pk).update(status='accepted')
+    q.refresh_from_db()
+    pdf = build_quote_pdf(q, _company_settings(), compress=False)
+    assert pdf.count(b'/Type /Page\n') >= 2 or pdf.count(b'/Type /Page ') >= 2 or pdf.count(b'/Page') >= 3
+    assert b'DRAFT' not in pdf     # accepted quotes carry no draft stamp
+
+
+def test_quote_email_attaches_pdf(db, api):
+    from django.core import mail
+    q = _make_quote(api, client_email='client@example.com')
+    r = api.post(f"/api/quotations/{q['id']}/action/", {'action': 'send', 'email': True}, format='json')
+    assert r.data['emailed'] is True
+    assert mail.outbox[-1].attachments[0][0] == f"{q['quote_number']}.pdf"
+    assert mail.outbox[-1].attachments[0][1].startswith(b'%PDF')
