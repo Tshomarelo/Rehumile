@@ -165,6 +165,8 @@ REST_FRAMEWORK = {
         'django_filters.rest_framework.DjangoFilterBackend',
     ),
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+    # Public quotation links: slow down guessing / abuse (per IP)
+    'DEFAULT_THROTTLE_RATES': {'quote_public': '60/min', 'quote_respond': '10/min'},
 }
 
 # ── JWT ───────────────────────────────────────────────────────────────────────

@@ -212,7 +212,11 @@ def _quote_summary(q):
     }
 
 
-def _quote_detail(q):
+def public_url(q, request):
+    return request.build_absolute_uri(f"/quote/{q.public_token}/") if q.public_token else None
+
+
+def _quote_detail(q, request=None):
     data = _quote_summary(q)
     expenses = list(q.expenses.select_related('expense_category', 'account').order_by('-expense_date'))
     actual = sum((e.amount for e in expenses), Decimal('0'))
@@ -220,6 +224,12 @@ def _quote_detail(q):
         'client_email': q.client_email, 'client_phone': q.client_phone, 'vat_rate': float(q.vat_rate),
         'notes': q.notes, 'terms': q.terms,
         'sent_at': q.sent_at.isoformat() if q.sent_at else None,
+        'public_url': public_url(q, request) if request is not None else None,
+        'view_count': q.view_count,
+        'first_viewed_at': q.first_viewed_at.isoformat() if q.first_viewed_at else None,
+        'decided_at': q.decided_at.isoformat() if q.decided_at else None,
+        'decided_online': q.decided_online, 'accepted_by_name': q.accepted_by_name,
+        'decision_note': q.decision_note, 'decision_ip': q.decision_ip,
         'items': [{
             'id': str(i.id), 'service_price': str(i.service_price_id) if i.service_price_id else None,
             'description': i.description, 'quantity': float(i.quantity), 'unit_price': float(i.unit_price),
@@ -326,7 +336,7 @@ class QuotationListView(APIView):
             transaction.set_rollback(True)
             return Response({'detail': str(exc)}, status=400)
         q.recalculate()
-        return Response(_quote_detail(q), status=201)
+        return Response(_quote_detail(q, request), status=201)
 
 
 class QuotationDetailView(APIView):
@@ -339,7 +349,7 @@ class QuotationDetailView(APIView):
         if request.user.role not in FINANCE_ROLES + ('agent',):
             return _denied()
         q = self._get(pk)
-        return Response(_quote_detail(q)) if q else Response({'detail': 'Not found.'}, status=404)
+        return Response(_quote_detail(q, request)) if q else Response({'detail': 'Not found.'}, status=404)
 
     @transaction.atomic
     def patch(self, request, pk):
@@ -359,7 +369,7 @@ class QuotationDetailView(APIView):
             transaction.set_rollback(True)
             return Response({'detail': str(exc)}, status=400)
         q.recalculate()
-        return Response(_quote_detail(q))
+        return Response(_quote_detail(q, request))
 
     def delete(self, request, pk):
         if request.user.role not in FINANCE_ROLES:
@@ -405,7 +415,9 @@ def _email_quote(quote, base_url):
     body = (
         f"Hi {quote.client_name},\n\nThank you for your interest in Rehumile TMW. Quotation {quote.quote_number}:\n\n{lines}\n\n"
         f"Subtotal: R{quote.subtotal:,.2f}\nVAT: R{quote.tax_amount:,.2f}\nTotal: R{quote.total_amount:,.2f}\n\n"
-        f"Valid until {quote.valid_until:%d %B %Y}.\n\n{quote.notes}\n\nRegards,\nRehumile TMW"
+        f"Valid until {quote.valid_until:%d %B %Y}.\n\n"
+        + (f"View and accept this quotation online: {base_url}\n\n" if base_url else '')
+        + f"{quote.notes}\n\nRegards,\nRehumile TMW"
     )
     try:
         msg = EmailMessage(f"Quotation {quote.quote_number} — Rehumile TMW", body, settings.DEFAULT_FROM_EMAIL, [quote.client_email])
@@ -437,14 +449,20 @@ class QuotationActionView(APIView):
             if q.status not in ('draft', 'sent', 'expired'):
                 return Response({'detail': f'Cannot send a {q.status} quotation.'}, status=400)
             q.status, q.sent_at = 'sent', now
-            q.save(update_fields=['status', 'sent_at', 'updated_at'])
+            if not q.valid_until or q.valid_until < date.today():
+                q.valid_until = date.today() + timedelta(days=30)   # re-sending an expired quote gives it a fresh window
+            q.save(update_fields=['status', 'sent_at', 'valid_until', 'updated_at'])
+            q.ensure_public_token()
             if request.data.get('email'):
-                emailed = _email_quote(q, f"{request.scheme}://{request.get_host()}")
+                emailed = _email_quote(q, public_url(q, request))
+        elif action == 'regenerate_link':
+            q.ensure_public_token(regenerate=True)     # the old link stops working immediately
         elif action == 'accept':
             if q.status not in ('draft', 'sent'):
                 return Response({'detail': f'Cannot accept a {q.status} quotation.'}, status=400)
-            q.status, q.decided_at = 'accepted', now
-            q.save(update_fields=['status', 'decided_at', 'updated_at'])
+            q.status, q.decided_at, q.decided_online = 'accepted', now, False
+            q.accepted_by_name = q.accepted_by_name or f"{request.user.get_full_name() or request.user.email} (recorded by staff)"
+            q.save(update_fields=['status', 'decided_at', 'decided_online', 'accepted_by_name', 'updated_at'])
         elif action == 'decline':
             if q.status not in ('draft', 'sent', 'accepted'):
                 return Response({'detail': f'Cannot decline a {q.status} quotation.'}, status=400)
@@ -459,7 +477,7 @@ class QuotationActionView(APIView):
         else:
             return Response({'detail': 'action must be send, accept, decline or convert.'}, status=400)
 
-        data = _quote_detail(Quotation.objects.select_related('invoice').get(pk=q.pk))
+        data = _quote_detail(Quotation.objects.select_related('invoice').get(pk=q.pk), request)
         if emailed is not None:
             data['emailed'] = emailed
         return Response(data)
@@ -482,3 +500,134 @@ class QuotationActionView(APIView):
                 unit_price=it.unit_price, amount=it.line_total, item_type='service')
         q.invoice, q.status = inv, 'invoiced'
         q.save(update_fields=['invoice', 'status', 'updated_at'])
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Public (no login) quotation page — the client's accept link
+# ─────────────────────────────────────────────────────────────────────────────
+
+from rest_framework.throttling import ScopedRateThrottle  # noqa: E402
+
+
+def _public_quote(token):
+    if not token or len(token) < 20:
+        return None
+    return Quotation.objects.select_related('company').exclude(status='draft').filter(public_token=token).first()
+
+
+def _effective_status(q):
+    """A sent quote past its validity date can no longer be accepted, even before the nightly status sweep."""
+    if q.status == 'sent' and q.valid_until and q.valid_until < date.today():
+        return 'expired'
+    return q.status
+
+
+def _client_ip(request):
+    fwd = request.META.get('HTTP_X_FORWARDED_FOR')
+    return (fwd.split(',')[0].strip() if fwd else request.META.get('REMOTE_ADDR')) or None
+
+
+class PublicQuoteMixin:
+    authentication_classes = []          # a stale/foreign login token must never block a client
+    permission_classes = []
+    throttle_classes = [ScopedRateThrottle]
+
+
+class PublicQuoteView(PublicQuoteMixin, APIView):
+    throttle_scope = 'quote_public'
+
+    def get(self, request, token):
+        from .views import _company_settings
+        q = _public_quote(token)
+        if not q:
+            return Response({'detail': 'This quotation link is not valid.'}, status=404)
+        Quotation.objects.filter(pk=q.pk).update(
+            view_count=q.view_count + 1, first_viewed_at=q.first_viewed_at or timezone.now())
+        status_now = _effective_status(q)
+        cs = _company_settings()
+        return Response({
+            'quote_number': q.quote_number, 'client_name': q.client_name, 'title': q.title, 'status': status_now,
+            'can_respond': status_now == 'sent',
+            'issue_date': q.issue_date.isoformat(), 'valid_until': q.valid_until.isoformat() if q.valid_until else None,
+            'items': [{'description': i.description, 'quantity': float(i.quantity), 'unit_price': float(i.unit_price),
+                       'line_total': float(i.line_total)} for i in q.items.all()],
+            'subtotal': float(q.subtotal), 'vat_rate': float(q.vat_rate), 'tax_amount': float(q.tax_amount),
+            'total_amount': float(q.total_amount), 'notes': q.notes, 'terms': q.terms or cs.payment_terms,
+            'accepted_by_name': q.accepted_by_name if q.status in ('accepted', 'invoiced') else '',
+            'decided_at': q.decided_at.isoformat() if q.decided_at else None,
+            'company': {'name': cs.company_name, 'phone': cs.phone, 'email': cs.email},
+        })
+
+
+class PublicQuotePdfView(PublicQuoteMixin, APIView):
+    throttle_scope = 'quote_public'
+
+    def get(self, request, token):
+        from django.http import HttpResponse
+        q = _public_quote(token)
+        if not q:
+            return Response({'detail': 'This quotation link is not valid.'}, status=404)
+        resp = HttpResponse(quote_pdf_bytes(q), content_type='application/pdf')
+        resp['Content-Disposition'] = f'inline; filename="{q.quote_number}.pdf"'
+        return resp
+
+
+class PublicQuoteRespondView(PublicQuoteMixin, APIView):
+    """POST {action: 'accept'|'decline', name, agree, note} — the client's decision."""
+    throttle_scope = 'quote_respond'
+
+    @transaction.atomic
+    def post(self, request, token):
+        q = _public_quote(token)
+        if not q:
+            return Response({'detail': 'This quotation link is not valid.'}, status=404)
+        q = Quotation.objects.select_for_update().get(pk=q.pk)
+        current = _effective_status(q)
+        if current != 'sent':
+            msg = {'accepted': 'This quotation has already been accepted.', 'invoiced': 'This quotation has already been accepted.',
+                   'declined': 'This quotation was declined.', 'expired': 'This quotation has expired. Please contact us for an updated one.'}
+            return Response({'detail': msg.get(current, 'This quotation can no longer be answered.'), 'status': current}, status=409)
+        d = request.data
+        action = d.get('action')
+        name = str(d.get('name') or '').strip()[:200]
+        note = str(d.get('note') or '').strip()[:2000]
+        if action == 'accept':
+            if len(name) < 2:
+                return Response({'detail': 'Please type your full name to accept.'}, status=400)
+            if d.get('agree') is not True:
+                return Response({'detail': 'Please tick the box to confirm you accept this quotation.'}, status=400)
+            q.status, q.accepted_by_name = 'accepted', name
+        elif action == 'decline':
+            q.status, q.accepted_by_name = 'declined', name
+        else:
+            return Response({'detail': 'action must be accept or decline.'}, status=400)
+        q.decided_at, q.decided_online, q.decision_note, q.decision_ip = timezone.now(), True, note, _client_ip(request)
+        q.save(update_fields=['status', 'accepted_by_name', 'decided_at', 'decided_online', 'decision_note', 'decision_ip', 'updated_at'])
+        _notify_staff_of_decision(q, request)
+        return Response({'status': q.status, 'quote_number': q.quote_number})
+
+
+def _notify_staff_of_decision(q, request):
+    """In-app notification for every admin/finance user, an audit entry, and an email to the company inbox."""
+    from .models import AuditLog, Notification, User
+    verb = 'accepted' if q.status == 'accepted' else 'declined'
+    who = q.accepted_by_name or q.client_name
+    title = f"Quotation {q.quote_number} {verb} online"
+    msg = f"{who} ({q.client_name}) {verb} quotation {q.quote_number} for R{q.total_amount:,.2f}." + (f" Note: {q.decision_note}" if q.decision_note else '')
+    for u in User.objects.filter(role__in=FINANCE_ROLES, is_active=True):
+        Notification.objects.create(user=u, notification_type='general', title=title, message=msg,
+                                    metadata={'quotation_id': str(q.id), 'quote_number': q.quote_number, 'url': f'/portal/dashboard/quotations/?open={q.id}'})
+    AuditLog.objects.create(
+        user=None, action=f'quotation_{verb}_online', model_name='Quotation', object_id=str(q.id),
+        new_values={'quote_number': q.quote_number, 'by': who, 'note': q.decision_note, 'total': str(q.total_amount)},
+        ip_address=q.decision_ip, user_agent=request.META.get('HTTP_USER_AGENT', '')[:500])
+    try:
+        from django.conf import settings
+        from django.core.mail import send_mail
+        from .views import _company_settings
+        to = _company_settings().email or settings.DEFAULT_FROM_EMAIL
+        if to:
+            send_mail(title, msg + f"\n\nOpen it: {request.build_absolute_uri('/portal/dashboard/quotations/?open=' + str(q.id))}",
+                      settings.DEFAULT_FROM_EMAIL, [to], fail_silently=True)
+    except Exception:
+        pass

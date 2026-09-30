@@ -307,6 +307,13 @@
         </div>
         ${q.actual_cost? `<div class="small mt-2 ${over?'neg':''}">${over?'Over the estimate by '+fmtR(q.cost_variance):'Within the estimate — '+fmtR(-q.cost_variance)+' to spare'}.</div>`:'<div class="small mt-2 text-muted">No expenses linked yet.</div>'}
       </div>
+      ${q.public_url?`<div class="mb-3 p-2" style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px">
+        <div class="fw-bold small mb-1">Client accept link</div>
+        <div class="input-group input-group-sm mb-1"><input class="form-control" id="pubLink" readonly value="${esc(q.public_url)}" onclick="this.select()"><button class="btn btn-outline-primary" onclick="copyLink()">Copy</button></div>
+        <div class="small text-muted">${q.view_count?`Viewed ${q.view_count} time${q.view_count>1?'s':''}${q.first_viewed_at?', first on '+new Date(q.first_viewed_at).toLocaleString('en-ZA'):''}.`:'Not opened by the client yet.'}
+          ${canEdit&&['sent','accepted','declined','expired'].includes(q.status)?` <a href="#" onclick="regenLink('${q.id}');return false">Replace link</a> (the old one stops working)`:''}</div>
+        ${q.decided_online?`<div class="small mt-1 ${q.status==='accepted'?'pos':'neg'}"><b>${q.status==='accepted'?'Accepted online':'Declined online'}</b> by ${esc(q.accepted_by_name||'the client')} on ${new Date(q.decided_at).toLocaleString('en-ZA')}${q.decision_ip?' · IP '+esc(q.decision_ip):''}${q.decision_note?`<br>“${esc(q.decision_note)}”`:''}</div>`:''}
+      </div>`:(q.status==='draft'?'<div class="small text-muted mb-3">Mark the quote as sent (or send it by email) to create the client accept link.</div>':'')}
       <h6>Expenses linked to this quote</h6>
       ${q.expenses.length?`<table class="table table-sm"><tbody>${q.expenses.map(e=>`<tr><td>${fmtD(e.expense_date)}</td><td>${esc(e.vendor)}<div class="text-muted small">${esc(e.category)}${e.description?' — '+esc(e.description):''}</div></td><td>${e.payment_status==='unpaid'?'<span class="badge bg-warning text-dark">unpaid</span>':''}</td><td class="text-end">${fmtR(e.amount)}</td></tr>`).join('')}</tbody></table>`:'<div class="text-muted small mb-2">None.</div>'}
       ${canEdit?`<a class="btn btn-sm btn-outline-primary" href="/portal/dashboard/expenses/?quotation=${q.id}">+ Log an expense for this quote</a>`:''}
@@ -316,7 +323,7 @@
     if(canEdit){
       if(['draft','sent','expired','declined'].includes(q.status)) b.push(`<button class="btn btn-outline-primary" onclick="HQ.hideDrawer('detailModal');openEditorPublic('${q.id}')">Edit</button>`);
       if(['draft','sent','expired'].includes(q.status)){ act('send','Mark as sent','btn-outline-secondary'); if(q.client_email) act('send','Send by email','btn-outline-info',',true'); }
-      if(['draft','sent'].includes(q.status)) act('accept','Client accepted','btn-success');
+      if(['draft','sent'].includes(q.status)) act('accept','Record acceptance (phone/email)','btn-success');
       if(['draft','sent','accepted'].includes(q.status)) act('decline','Declined','btn-outline-danger');
       if(q.status==='accepted') act('convert','Convert to invoice','btn-primary');
       if(['draft','declined','expired'].includes(q.status)) b.push(`<button class="btn btn-outline-danger" onclick="delQuote('${q.id}')">Delete</button>`);
@@ -325,6 +332,12 @@
     HQ.showDrawer('detailModal');
   };
   window.openEditorPublic=openEditor;
+  window.copyLink=function(){ const i=document.getElementById('pubLink'); i.select(); (navigator.clipboard?navigator.clipboard.writeText(i.value):Promise.reject()).catch(()=>document.execCommand('copy')); alertBox('pageAlert','Link copied. Paste it into WhatsApp or an email to your client.','success'); };
+  window.regenLink=async function(id){
+    if(!confirm('Replace the client link? Anyone holding the old link will no longer be able to open it.')) return;
+    const r=await api('/portal/api/quotations/'+id+'/action/',{method:'POST',body:JSON.stringify({action:'regenerate_link'})});
+    if(r.ok){ openDetail(id); alertBox('pageAlert','New link created.','success'); } else alertBox('pageAlert','Could not replace the link.');
+  };
   // The PDF endpoint needs the login token, so fetch it as a file and hand it to the browser.
   window.quotePdf=async function(id,download){
     const win = download ? null : window.open('', '_blank');   // open the tab first so pop-up blockers allow it

@@ -1592,6 +1592,14 @@ class Quotation(models.Model):
     )
     sent_at = models.DateTimeField(null=True, blank=True)
     decided_at = models.DateTimeField(null=True, blank=True)
+    # Online acceptance: the client opens /quote/<public_token>/ — no login needed.
+    public_token = models.CharField(max_length=64, unique=True, null=True, blank=True, db_index=True)
+    first_viewed_at = models.DateTimeField(null=True, blank=True)
+    view_count = models.PositiveIntegerField(default=0)
+    accepted_by_name = models.CharField(max_length=200, blank=True)
+    decision_note = models.TextField(blank=True)
+    decision_ip = models.GenericIPAddressField(null=True, blank=True)
+    decided_online = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -1601,6 +1609,14 @@ class Quotation(models.Model):
 
     def __str__(self):
         return f"{self.quote_number} — {self.client_name}"
+
+    def ensure_public_token(self, regenerate=False):
+        """The unguessable part of the client's accept link (192 bits of randomness)."""
+        import secrets
+        if regenerate or not self.public_token:
+            self.public_token = secrets.token_urlsafe(24)
+            self.save(update_fields=['public_token', 'updated_at'])
+        return self.public_token
 
     def recalculate(self):
         """Recompute subtotal / VAT / total / estimated cost from line items."""

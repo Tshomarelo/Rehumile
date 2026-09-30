@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <title>Quotation | Rehumile TMW</title>
+  <link rel="shortcut icon" href="/portal/static/img/icons/icon-48x48.png"/>
+  <style>
+    :root{--brand:#50181E;--tint:#fdf5f5;--ink:#1f2937;--mute:#6b7280;--line:#e5e7eb;--ok:#15803d;--bad:#b91c1c}
+    *{box-sizing:border-box}
+    body{margin:0;font-family:system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif;color:var(--ink);background:#f3f4f6;line-height:1.45}
+    .wrap{max-width:760px;margin:0 auto;padding:16px}
+    header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 4px 16px}
+    header img{height:44px;object-fit:contain}
+    header .co{font-size:.8rem;color:var(--mute);text-align:right}
+    .card{background:#fff;border-radius:14px;box-shadow:0 1px 4px rgba(0,0,0,.08);padding:20px;margin-bottom:14px}
+    h1{font-size:1.35rem;margin:0 0 2px;color:var(--brand)}
+    .sub{color:var(--mute);font-size:.9rem}
+    .banner{border-radius:10px;padding:12px 14px;margin-bottom:14px;font-size:.95rem;font-weight:600}
+    .banner.sent{background:#eff6ff;color:#1e3a8a}.banner.accepted,.banner.invoiced{background:#dcfce7;color:#14532d}
+    .banner.declined{background:#fee2e2;color:#7f1d1d}.banner.expired{background:#fef3c7;color:#78350f}
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px 18px;margin-top:12px;font-size:.9rem}
+    .grid b{display:block;font-size:.72rem;letter-spacing:.05em;text-transform:uppercase;color:var(--mute);font-weight:600}
+    table{width:100%;border-collapse:collapse;font-size:.92rem}
+    th{background:var(--brand);color:#fff;text-align:left;padding:8px 10px;font-size:.72rem;letter-spacing:.05em;text-transform:uppercase}
+    th.r,td.r{text-align:right}
+    td{padding:10px;border-bottom:1px solid var(--line);vertical-align:top}
+    tbody tr:nth-child(even){background:var(--tint)}
+    .tot{margin-left:auto;width:min(100%,300px);margin-top:12px}
+    .tot div{display:flex;justify-content:space-between;padding:5px 10px;font-size:.95rem}
+    .tot .grand{background:var(--brand);color:#fff;font-weight:700;font-size:1.05rem;border-radius:8px;margin-top:4px;padding:9px 10px}
+    h2{font-size:.78rem;letter-spacing:.06em;text-transform:uppercase;color:var(--brand);margin:0 0 6px}
+    .pre{white-space:pre-wrap;font-size:.9rem}.small{font-size:.82rem;color:var(--mute);white-space:pre-wrap}
+    label{display:block;font-size:.85rem;font-weight:600;margin:12px 0 4px}
+    input[type=text],textarea{width:100%;padding:12px;border:1px solid #d1d5db;border-radius:10px;font:inherit}
+    input[type=text]:focus,textarea:focus{outline:2px solid var(--brand);border-color:var(--brand)}
+    .agree{display:flex;gap:10px;align-items:flex-start;margin:14px 0;font-size:.9rem;font-weight:400}
+    .agree input{width:22px;height:22px;margin-top:1px;flex:none;accent-color:var(--brand)}
+    .btn{display:block;width:100%;border:0;border-radius:12px;padding:15px;font:inherit;font-weight:700;font-size:1rem;cursor:pointer}
+    .btn.primary{background:var(--brand);color:#fff}.btn.primary:disabled{opacity:.5;cursor:not-allowed}
+    .btn.ghost{background:#fff;color:var(--brand);border:2px solid var(--brand);margin-top:10px}
+    .btn.link{background:none;color:var(--mute);font-weight:500;font-size:.9rem;margin-top:6px;text-decoration:underline}
+    .err{background:#fee2e2;color:#7f1d1d;border-radius:10px;padding:10px 12px;margin-top:12px;font-size:.9rem;display:none}
+    .center{text-align:center;padding:40px 10px}
+    .tick{font-size:3rem}
+    footer{text-align:center;color:var(--mute);font-size:.75rem;padding:10px 0 30px}
+    @media(max-width:560px){
+      .wrap{padding:10px}.card{padding:16px}
+      thead{display:none}
+      table,tbody,tr,td{display:block;width:100%}
+      tr{padding:10px 4px;border-bottom:1px solid var(--line)} td{border:0;padding:2px 6px}
+      td.r{text-align:left}
+      td[data-l]:before{content:attr(data-l) ': ';color:var(--mute);font-size:.8rem}
+      td.d{font-weight:600}
+      .grid{grid-template-columns:1fr}
+    }
+    @media print{body{background:#fff}.noprint{display:none!important}.card{box-shadow:none}}
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <img src="/portal/static/img/rehumile-logo.jpeg" alt="Rehumile TMW" onerror="this.style.display='none'">
+    <div class="co" id="coInfo"></div>
+  </header>
+  <div id="app"><div class="card center">Loading your quotation…</div></div>
+  <footer>Secure quotation link · please do not forward it to people outside your organisation</footer>
+</div>
+<script>
+(function(){
+  const token = location.pathname.split('/').filter(Boolean).pop();
+  const API = '/portal/api/public/quotes/' + encodeURIComponent(token) + '/';
+  const app = document.getElementById('app');
+  const esc = s => String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  const R = n => 'R ' + (parseFloat(n)||0).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,' ');
+  const D = d => d ? new Date(d).toLocaleDateString('en-ZA',{day:'numeric',month:'long',year:'numeric'}) : '—';
+  const BANNER = {
+    sent:(q)=>['sent','Please review this quotation and let us know below. It is valid until '+D(q.valid_until)+'.'],
+    accepted:(q)=>['accepted','Accepted'+(q.accepted_by_name?' by '+esc(q.accepted_by_name):'')+(q.decided_at?' on '+D(q.decided_at):'')+'. Thank you — we will be in touch shortly.'],
+    invoiced:(q)=>['invoiced','Accepted'+(q.accepted_by_name?' by '+esc(q.accepted_by_name):'')+'. An invoice has been raised for this quotation.'],
+    declined:()=>['declined','This quotation was declined.'],
+    expired:(q)=>['expired','This quotation expired on '+D(q.valid_until)+'. Please contact us and we will send an updated one.'],
+  };
+  async function load(){
+    let r; try{ r = await fetch(API); }catch(e){ app.innerHTML='<div class="card center">We could not reach the server. Please check your connection and try again.</div>'; return; }
+    if(r.status===429){ app.innerHTML='<div class="card center">Too many requests. Please wait a minute and refresh.</div>'; return; }
+    if(!r.ok){ app.innerHTML='<div class="card center"><h1>Link not valid</h1><p class="sub">This quotation link is invalid or has been replaced. Please contact us for a new one.</p></div>'; return; }
+    render(await r.json());
+  }
+  function render(q){
+    document.title = 'Quotation '+q.quote_number+' | '+(q.company.name||'Rehumile TMW');
+    document.getElementById('coInfo').innerHTML = esc(q.company.name||'')+(q.company.phone?'<br>'+esc(q.company.phone):'')+(q.company.email?'<br>'+esc(q.company.email):'');
+    const b = (BANNER[q.status]||BANNER.sent)(q);
+    app.innerHTML = `
+      <div class="banner ${b[0]}">${b[1]}</div>
+      <div class="card">
+        <h1>Quotation ${esc(q.quote_number)}</h1>
+        <div class="sub">${q.title?esc(q.title):'Prepared for '+esc(q.client_name)}</div>
+        <div class="grid"><div><b>Prepared for</b>${esc(q.client_name)}</div><div><b>Quote date</b>${D(q.issue_date)}</div>
+          <div><b>Valid until</b>${D(q.valid_until)}</div><div><b>Total (incl. VAT)</b><span style="font-weight:700;color:var(--brand)">${R(q.total_amount)}</span></div></div>
+      </div>
+      <div class="card">
+        <table><thead><tr><th>Description</th><th class="r">Qty</th><th class="r">Price</th><th class="r">Amount</th></tr></thead><tbody>
+          ${q.items.map(i=>`<tr><td class="d">${esc(i.description)}</td><td class="r" data-l="Qty">${i.quantity}</td><td class="r" data-l="Price">${R(i.unit_price)}</td><td class="r" data-l="Amount">${R(i.line_total)}</td></tr>`).join('')}
+        </tbody></table>
+        <div class="tot"><div><span>Subtotal</span><span>${R(q.subtotal)}</span></div><div><span>VAT (${q.vat_rate}%)</span><span>${R(q.tax_amount)}</span></div><div class="grand"><span>Total</span><span>${R(q.total_amount)}</span></div></div>
+      </div>
+      ${q.notes?`<div class="card"><h2>Notes</h2><div class="pre">${esc(q.notes)}</div></div>`:''}
+      ${q.terms?`<div class="card"><h2>Terms &amp; conditions</h2><div class="small">${esc(q.terms)}</div></div>`:''}
+      <div class="noprint">
+        <a class="btn ghost" style="text-decoration:none;text-align:center" href="${API}pdf/" target="_blank" rel="noopener">Download / print PDF</a>
+      </div>
+      ${q.can_respond?`
+      <div class="card noprint" style="margin-top:14px" id="respond">
+        <h2>Your decision</h2>
+        <label for="nm">Your full name</label><input type="text" id="nm" autocomplete="name" placeholder="Type your full name">
+        <label class="agree"><input type="checkbox" id="ag"><span>I, the person named above, accept quotation <b>${esc(q.quote_number)}</b> for <b>${R(q.total_amount)}</b> (incl. VAT) on the terms shown.</span></label>
+        <button class="btn primary" id="acc" disabled>Accept quotation</button>
+        <div class="err" id="err"></div>
+        <button class="btn link" id="decBtn">I'd like to decline this quotation</button>
+        <div id="decBox" style="display:none">
+          <label for="nt">Reason (optional)</label><textarea id="nt" rows="3" placeholder="Anything you'd like us to know, or what would change your mind"></textarea>
+          <button class="btn ghost" id="dec">Decline quotation</button>
+        </div>
+      </div>`:''}`;
+    if(q.can_respond) wire(q);
+  }
+  function wire(q){
+    const nm=document.getElementById('nm'), ag=document.getElementById('ag'), acc=document.getElementById('acc'), err=document.getElementById('err');
+    const sync=()=>{ acc.disabled = !(nm.value.trim().length>=2 && ag.checked); };
+    nm.oninput=sync; ag.onchange=sync;
+    document.getElementById('decBtn').onclick=()=>{ document.getElementById('decBox').style.display='block'; document.getElementById('decBtn').style.display='none'; };
+    async function send(body, btn){
+      err.style.display='none'; btn.disabled=true; const t=btn.textContent; btn.textContent='Please wait…';
+      try{
+        const r = await fetch(API+'respond/',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+        const d = await r.json().catch(()=>({}));
+        if(r.ok){ await done(body.action); return; }
+        if(r.status===409){ await load(); return; }
+        err.textContent = d.detail || (r.status===429?'Too many attempts — please wait a minute.':'Something went wrong. Please try again.'); err.style.display='block';
+      }catch(e){ err.textContent='We could not reach the server. Please try again.'; err.style.display='block'; }
+      btn.disabled=false; btn.textContent=t; sync();
+    }
+    acc.onclick=()=>send({action:'accept',name:nm.value.trim(),agree:ag.checked},acc);
+    document.getElementById('dec').onclick=()=>{ if(confirm('Decline this quotation?')) send({action:'decline',name:nm.value.trim(),note:document.getElementById('nt').value.trim()},document.getElementById('dec')); };
+  }
+  async function done(action){
+    const accepted = action==='accept';
+    app.innerHTML = `<div class="card center"><div class="tick">${accepted?'✅':'👋'}</div><h1>${accepted?'Thank you — quotation accepted':'Quotation declined'}</h1>
+      <p class="sub">${accepted?'We have let the team know and will be in touch shortly to get started. A copy of the details stays available on this page.':'We have let the team know. If anything changes, just get in touch and we will gladly update the quote.'}</p>
+      <p><a href="" onclick="location.reload();return false" class="sub">View this quotation</a></p></div>`;
+    window.scrollTo(0,0);
+  }
+  load();
+})();
+</script>
+</body>
+</html>

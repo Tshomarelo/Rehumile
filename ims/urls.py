@@ -96,6 +96,10 @@ urlpatterns = [
     path('expense-categories/<uuid:pk>/', finance_views.ExpenseCategoryView.as_view(), name='expense-category-detail'),
     path('quotations/', finance_views.QuotationListView.as_view(), name='quotation-list'),
     path('quotations/<uuid:pk>/', finance_views.QuotationDetailView.as_view(), name='quotation-detail'),
+    # Public quotation page (client accept link) — no login
+    path('public/quotes/<str:token>/', finance_views.PublicQuoteView.as_view(), name='public-quote'),
+    path('public/quotes/<str:token>/pdf/', finance_views.PublicQuotePdfView.as_view(), name='public-quote-pdf'),
+    path('public/quotes/<str:token>/respond/', finance_views.PublicQuoteRespondView.as_view(), name='public-quote-respond'),
     path('quotations/<uuid:pk>/pdf/', finance_views.QuotationPdfView.as_view(), name='quotation-pdf'),
     path('quotations/<uuid:pk>/action/', finance_views.QuotationActionView.as_view(), name='quotation-action'),
     path('', include(router.urls)),

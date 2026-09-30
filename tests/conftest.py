@@ -36,3 +36,11 @@ def client_for(user):
 @pytest.fixture
 def api(admin):
     return client_for(admin)
+
+
+@pytest.fixture(autouse=True)
+def _clear_throttle_cache():
+    from django.core.cache import cache
+    cache.clear()
+    yield
+    cache.clear()
