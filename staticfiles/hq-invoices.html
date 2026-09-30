@@ -70,6 +70,7 @@
               <option value="">All Statuses</option>
               <option value="draft">Draft</option>
               <option value="sent">Sent</option>
+              <option value="partially_paid">Partially Paid</option>
               <option value="paid">Paid</option>
               <option value="overdue">Overdue</option>
               <option value="cancelled">Cancelled</option>
@@ -387,7 +388,7 @@ window.collectItems = function(){
   function showAlert(id, msg, type='danger'){
     document.getElementById(id).innerHTML=`<div class="alert alert-${type} alert-dismissible"><button type="button" class="btn-close" data-bs-dismiss="alert"></button>${msg}</div>`;
   }
-  const statusBadge=s=>({'draft':'<span class="badge bg-secondary">Draft</span>','sent':'<span class="badge bg-primary">Sent</span>','paid':'<span class="badge bg-success">Paid</span>','overdue':'<span class="badge bg-danger">Overdue</span>','cancelled':'<span class="badge bg-dark">Cancelled</span>'}[s]||`<span class="badge bg-secondary">${s}</span>`);
+  const statusBadge=s=>({'draft':'<span class="badge bg-secondary">Draft</span>','sent':'<span class="badge bg-primary">Sent</span>','partially_paid':'<span class="badge bg-info text-dark">Partially Paid</span>','paid':'<span class="badge bg-success">Paid</span>','overdue':'<span class="badge bg-danger">Overdue</span>','cancelled':'<span class="badge bg-dark">Cancelled</span>'}[s]||`<span class="badge bg-secondary">${s}</span>`);
   const fmtDate=d=>d?new Date(d).toLocaleDateString('en-ZA',{year:'numeric',month:'short',day:'numeric'}):'—';
   const fmtPeriod=(s,e)=>`${fmtDate(s)} – ${fmtDate(e)}`;
 
@@ -442,13 +443,13 @@ window.collectItems = function(){
           <td class="d-none d-md-table-cell">${inv.incident_ticket_id?`<code class="text-danger">${inv.incident_ticket_id}</code>`:'<span class="text-muted">—</span>'}</td>
           <td class="d-none d-md-table-cell">${fmtPeriod(inv.billing_period_start,inv.billing_period_end)}</td>
           <td class="d-none d-md-table-cell">${inv.hours_worked||0}h</td>
-          <td><strong>R ${parseFloat(inv.total_amount||0).toFixed(2)}</strong></td>
+          <td><strong>R ${parseFloat(inv.total_amount||0).toFixed(2)}</strong>${parseFloat(inv.amount_paid||0)>0 && inv.status!=='paid' ? `<div class="small text-success">R ${parseFloat(inv.amount_paid||0).toFixed(2)} paid</div><div class="small text-danger">R ${parseFloat(inv.balance_due!=null?inv.balance_due:inv.total_amount).toFixed(2)} due</div>` : ''}</td>
           <td>${statusBadge(inv.status)}</td>
           <td class="d-none d-lg-table-cell">${fmtDate(inv.due_date)}</td>
           <td class="d-flex gap-1 flex-wrap">
             <button class="btn btn-sm btn-outline-primary" onclick='openEdit(${JSON.stringify(inv)})'>Edit</button>
             <a class="btn btn-sm btn-outline-secondary" href="/portal/invoices/print/${inv.id}/" target="_blank" title="Print / Save PDF"><i data-feather="printer" style="width:13px;height:13px"></i></a>
-            ${['sent','overdue'].includes(inv.status) ? `<button class="btn btn-sm btn-success" title="Record that the client has paid" onclick='recordPay(${JSON.stringify({id:inv.id,invoice_number:inv.invoice_number,client:inv.company_name||inv.bill_to_name||'',total:inv.total_amount}).replace(/'/g,'&#39;')})'>Record payment</button>` : ''}
+            ${['sent','overdue','partially_paid'].includes(inv.status) ? `<button class="btn btn-sm btn-success" title="Record money received (full or part payment)" onclick='recordPay(${JSON.stringify({id:inv.id,invoice_number:inv.invoice_number,client:inv.company_name||inv.bill_to_name||'',total:(inv.balance_due!=null?inv.balance_due:inv.total_amount)}).replace(/'/g,'&#39;')})'>Record payment</button>` : ''}
             ${['sent','overdue','draft'].includes(inv.status) ? `<button class="btn btn-sm btn-outline-warning remind-btn" data-id="${inv.id}" data-num="${inv.invoice_number||'INV-'+inv.id.slice(0,8)}" title="Send email reminder"><i data-feather="mail" style="width:13px;height:13px"></i> Remind</button>` : ''}
           </td>
         </tr>`).join('');
@@ -520,7 +521,7 @@ window.collectItems = function(){
     HQ.showDrawer('invoiceModal');
   };
 
-  window.recordPay=function(inv){ RecordPayment.open(inv,()=>{ showAlert('pageAlert','Payment recorded — the invoice is now paid.','success'); loadInvoices(); }); };
+  window.recordPay=function(inv){ RecordPayment.open(inv,()=>{ showAlert('pageAlert','Payment recorded.','success'); loadInvoices(); }); };
 
   document.getElementById('saveInvoiceBtn').onclick=async()=>{
     const id=document.getElementById('editId').value;
@@ -618,6 +619,7 @@ window.collectItems = function(){
     btn.disabled = false; btn.innerHTML = '<i data-feather="send" style="width:14px;height:14px"></i> Send Reminder';
     if(window.feather) feather.replace();
   };
+
 
   // ── Tab switching ─────────────────────────────────────────────
   window.showTab = function(tab) {

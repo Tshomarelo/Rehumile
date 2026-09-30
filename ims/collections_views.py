@@ -173,14 +173,14 @@ class CollectionsView(APIView):
         if request.user.role not in ROLES:
             return _denied()
         coll.mark_overdue()                      # cheap; keeps the list honest even if the daily job has not run
-        today = date.today()
-        qs = Invoice.objects.filter(status__in=('sent', 'overdue')).select_related('company', 'wifi_subscriber', 'sla_contract')
+        today = coll._today()
+        qs = Invoice.objects.filter(status__in=('sent', 'partially_paid', 'overdue')).select_related('company', 'wifi_subscriber', 'sla_contract')
         rows = []
         for inv in qs:
             late = coll.days_overdue(inv, today)
             rows.append({
                 'id': str(inv.id), 'invoice_number': inv.invoice_number, 'client': coll.client_name(inv) or '—',
-                'description': inv.description, 'total': float(inv.total_amount),
+                'description': inv.description, 'total': float(inv.balance_due), 'invoice_total': float(inv.total_amount), 'amount_paid': float(inv.amount_paid or 0),
                 'due_date': inv.due_date.isoformat() if inv.due_date else None, 'days_overdue': late, 'status': inv.status,
                 'emails': coll.recipients_for(inv), 'phone': coll.phone_for(inv),
                 'reminder_count': inv.reminder_count, 'last_reminder_at': inv.last_reminder_at.isoformat() if inv.last_reminder_at else None,
@@ -198,7 +198,7 @@ class CollectionsView(APIView):
 
 
 class RecordPaymentView(APIView):
-    """POST {paid_on?, method: eft|cash|card, reference?, note?} — full payment of an invoice."""
+    """POST {amount?, paid_on?, method: eft|cash|card|payfast|other, reference?, note?} — a full payment, or a part payment when amount is less than the balance."""
     permission_classes = [IsAuthenticated]
 
     def post(self, request, pk):
@@ -208,19 +208,17 @@ class RecordPaymentView(APIView):
         if not inv:
             return Response({'detail': 'Invoice not found.'}, status=404)
         d = request.data
-        if d.get('amount') not in (None, ''):
-            try:
-                if Decimal(str(d['amount'])) != inv.total_amount:
-                    return Response({'detail': f"Only full payments can be recorded for now (R {inv.total_amount:,.2f}). "
-                                               "For a part payment, note it on the invoice and record the rest when it arrives."}, status=400)
-            except InvalidOperation:
-                return Response({'detail': 'Amount must be a number.'}, status=400)
         try:
-            paid_on = date.fromisoformat(str(d['paid_on'])[:10]) if d.get('paid_on') else None
-            coll.record_payment(inv, request.user, paid_on, d.get('method', 'eft'), (d.get('reference') or '').strip()[:100], (d.get('note') or '').strip()[:200])
-        except ValueError as exc:
-            return Response({'detail': str(exc)}, status=400)
-        return Response({'id': str(inv.id), 'status': inv.status, 'payment_date': inv.payment_date.isoformat()})
+            raw = d.get('paid_on') or d.get('payment_date')
+            paid_on = date.fromisoformat(str(raw)[:10]) if raw else None
+            method = d.get('method') or d.get('payment_method') or 'eft'
+            reference = (d.get('reference') or '').strip()[:100]
+            note = (d.get('note') or d.get('notes') or '').strip()[:200]
+            coll.record_payment(inv, request.user, paid_on, method, reference, note, amount=d.get('amount'))
+        except (ValueError, InvalidOperation) as exc:
+            return Response({'detail': str(exc) if isinstance(exc, ValueError) else 'Amount must be a number.'}, status=400)
+        return Response({'id': str(inv.id), 'status': inv.status, 'payment_date': inv.payment_date.isoformat() if inv.payment_date else None,
+                         'amount_paid': float(inv.amount_paid), 'balance_due': float(inv.balance_due)}, status=201)
 
 
 class InvoiceReminderView(APIView):
@@ -233,7 +231,7 @@ class InvoiceReminderView(APIView):
         inv = Invoice.objects.select_related('company', 'wifi_subscriber', 'sla_contract').filter(pk=invoice_id).first()
         if not inv:
             return Response({'detail': 'Invoice not found.'}, status=404)
-        if inv.status not in ('sent', 'overdue'):
+        if inv.status not in ('sent', 'partially_paid', 'overdue'):
             return Response({'detail': f'Only unpaid invoices can be chased (this one is {inv.status}).'}, status=400)
         if not coll.recipients_for(inv):
             return Response({'detail': 'There is no email address on file for this client. Add one on the subscription or company.'}, status=400)
@@ -266,7 +264,7 @@ class PublicInvoiceView(PublicMixin, APIView):
         if not inv:
             return Response({'detail': 'This invoice link is not valid.'}, status=404)
         cs = _company_settings()
-        late = coll.days_overdue(inv) if inv.status in ('sent', 'overdue') else 0
+        late = coll.days_overdue(inv) if inv.status in ('sent', 'partially_paid', 'overdue') else 0
         return Response({
             'invoice_number': inv.invoice_number, 'client_name': coll.client_name(inv), 'description': inv.description,
             'status': 'overdue' if (inv.status == 'sent' and late) else inv.status,

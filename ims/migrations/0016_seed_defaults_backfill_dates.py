@@ -37,7 +37,7 @@ def seed_and_backfill(apps, schema_editor):
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('ims', '0012_finance_quotations_payroll'),
+        ('ims', '0015_finance_quotations_payroll'),
     ]
 
     operations = [

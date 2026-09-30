@@ -6,13 +6,13 @@ number as the payment reference -> money arrives -> staff record it ("Record pay
 anything unpaid past its due date becomes overdue and gets polite reminders.
 """
 from datetime import date, timedelta
+from decimal import Decimal
 
 from django.conf import settings as django_settings
 from django.core.mail import EmailMultiAlternatives
 from django.db import transaction
 from django.utils import timezone
 
-from .ledger import post_invoice_paid
 from .models import CashTransaction, Invoice
 
 REMINDER_GAP_DAYS = 7
@@ -20,8 +20,13 @@ MAX_REMINDERS = 3
 SUSPEND_AFTER_DAYS = 14
 
 
+def _today():
+    from . import billing
+    return billing._today()
+
+
 def days_overdue(inv, today=None):
-    today = today or date.today()
+    today = today or _today()
     return max((today - inv.due_date).days, 0) if inv.due_date else 0
 
 
@@ -62,23 +67,45 @@ def client_name(inv):
 
 
 @transaction.atomic
-def record_payment(inv, user, paid_on=None, method='eft', reference='', note=''):
-    """Mark an invoice paid: status, payment date, a cash record and the ledger entries."""
+def record_payment(inv, user, paid_on=None, method='eft', reference='', note='', amount=None):
+    """
+    Record money received for an invoice — the one payment path used by the UI, the API and admin.
+    Creates an InvoicePayment (full or part), a cash record and the ledger entries, then updates the
+    invoice's amount_paid and status (Partially Paid until the balance reaches zero, then Paid).
+    """
+    from .ledger import post_invoice_payment
+    from .models import InvoicePayment
     if inv.status in ('paid', 'cancelled'):
         raise ValueError(f'This invoice is already {inv.status}.')
-    if method not in ('eft', 'cash', 'card'):
-        raise ValueError('Payment method must be EFT, cash or card.')
-    paid_on = paid_on or date.today()
-    if paid_on > date.today():
+    method = (method or 'eft').lower()
+    if method not in ('eft', 'cash', 'card', 'payfast', 'other'):
+        raise ValueError('Payment method must be EFT, cash, card, PayFast or other.')
+    paid_on = paid_on or _today()
+    if paid_on > _today():
         raise ValueError('The payment date cannot be in the future.')
-    inv.status, inv.payment_date = 'paid', paid_on
+    balance = inv.balance_due
+    amount = Decimal(str(amount)) if amount not in (None, '') else balance
+    if amount <= 0:
+        raise ValueError('The amount must be greater than zero.')
+    if amount > balance:
+        raise ValueError(f'The amount is more than the outstanding balance (R {balance:,.2f}).')
+    note_text = (f"Paid {paid_on:%d %b %Y} by {method.upper()}" + (f" — ref {reference}" if reference else '') + (f" — {note}" if note else ''))
+    payment = InvoicePayment.objects.create(
+        invoice=inv, amount=amount, payment_date=paid_on, payment_method=method,
+        notes=(reference + (' — ' if reference and note else '') + note)[:255], recorded_by=user if getattr(user, 'is_authenticated', False) else None)
+    inv.amount_paid = (inv.amount_paid or 0) + amount
+    if inv.amount_paid >= inv.total_amount:
+        inv.status, inv.payment_date = 'paid', paid_on
+    else:
+        inv.status = 'partially_paid'
     if reference or note:
-        inv.notes = (inv.notes + '\n' if inv.notes else '') + f"Paid {paid_on:%d %b %Y} by {method.upper()}" + (f" — ref {reference}" if reference else '') + (f" — {note}" if note else '')
+        inv.notes = (inv.notes + '\n' if inv.notes else '') + note_text
     inv.save()
     CashTransaction.objects.create(
-        invoice=inv, amount=inv.total_amount, payment_method=method, cash_flow_stream='ocf', transaction_category='sale',
+        invoice=inv, amount=amount, payment_method=method if method in ('eft', 'cash', 'card') else 'eft', cash_flow_stream='ocf',
+        transaction_category='sale',
         description=f"Payment {inv.invoice_number} ({method.upper()})" + (f" ref {reference}" if reference else ''), performed_by=user)
-    post_invoice_paid(inv, user)
+    post_invoice_payment(payment, user)
     return inv
 
 
@@ -125,9 +152,9 @@ def send_reminder(inv, base_url, *, overdue=True):
 
 def mark_overdue(today=None):
     """Sent invoices whose due date has passed become Overdue. Returns how many changed."""
-    today = today or date.today()
+    today = today or _today()
     n = 0
-    for inv in Invoice.objects.filter(status='sent', due_date__lt=today):
+    for inv in Invoice.objects.filter(status__in=('sent', 'partially_paid'), due_date__lt=today):
         Invoice.objects.filter(pk=inv.pk).update(status='overdue', updated_at=timezone.now())
         n += 1
     return n
@@ -135,7 +162,7 @@ def mark_overdue(today=None):
 
 def send_due_reminders(base_url, today=None, send=True):
     """Overdue invoices: a reminder the day after the due date, then weekly, at most MAX_REMINDERS times."""
-    today = today or date.today()
+    today = today or _today()
     sent = 0
     for inv in Invoice.objects.select_related('company', 'wifi_subscriber', 'sla_contract').filter(status='overdue', due_date__lt=today, reminder_count__lt=MAX_REMINDERS):
         if inv.last_reminder_at and (timezone.now() - inv.last_reminder_at) < timedelta(days=REMINDER_GAP_DAYS):

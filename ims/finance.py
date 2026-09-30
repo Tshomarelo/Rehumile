@@ -28,7 +28,7 @@ from django.db.models import Q, Sum
 
 from .timeutils import since, until
 from .models import (
-    CashTransaction, Expense, ExpenseCategory, Invoice, PayrollEntry,
+    CashTransaction, Expense, ExpenseCategory, Invoice, InvoicePayment, PayrollEntry,
 )
 
 ZERO = Decimal('0')
@@ -90,23 +90,53 @@ def resolve_period(period='month', anchor=None, date_from=None, date_to=None, to
 # Querysets — each business rule lives in exactly one place
 # ─────────────────────────────────────────────────────────────────────────────
 
+class _Portion:
+    """One payment's share of an invoice: behaves like the invoice but with its money fields scaled by `frac`."""
+
+    def __init__(self, invoice, pay_date, frac, key):
+        self._inv, self.frac, self.id = invoice, frac, key
+        self.payment_date = pay_date
+        self.subtotal = invoice.subtotal * frac
+        self.tax_amount = invoice.tax_amount * frac
+        self.total_amount = invoice.total_amount * frac
+
+    def __getattr__(self, name):
+        return getattr(self._inv, name)
+
+
+def _paid_events(start, end):
+    """
+    Money received in the window as invoice portions. Each recorded payment (full or part) counts on its own
+    date for its share of the invoice; older invoices marked paid without payment records count in full on
+    their payment date.
+    """
+    events = []
+    pays = (InvoicePayment.objects.filter(payment_date__gte=start, payment_date__lte=end)
+            .exclude(invoice__status='cancelled').select_related('invoice', 'invoice__company', 'invoice__wifi_subscriber', 'invoice__sla_contract')
+            .prefetch_related('invoice__items'))
+    for p in pays:
+        total = p.invoice.total_amount
+        frac = (p.amount / total) if total else Decimal('1')
+        events.append(_Portion(p.invoice, p.payment_date, frac, p.id))
+    legacy = (Invoice.objects.filter(status='paid', payment_date__gte=start, payment_date__lte=end, payment_records__isnull=True)
+              .select_related('company', 'wifi_subscriber', 'sla_contract').prefetch_related('items'))
+    for inv in legacy:
+        events.append(_Portion(inv, inv.payment_date, Decimal('1'), inv.id))
+    events.sort(key=lambda e: e.payment_date, reverse=True)
+    return events
+
+
 def _invoiced_qs(start, end):
     return Invoice.objects.filter(
-        status__in=('sent', 'paid', 'overdue'),
+        status__in=('sent', 'partially_paid', 'paid', 'overdue'),
         **since('sent_at', start), **until('sent_at', end),
-    )
-
-
-def _paid_qs(start, end):
-    return Invoice.objects.filter(
-        status='paid', payment_date__gte=start, payment_date__lte=end,
     )
 
 
 def _unpaid_qs(as_of):
     """Issued but not paid, as at `as_of` (today for the live picture)."""
     return Invoice.objects.filter(
-        status__in=('sent', 'overdue'), **until('sent_at', as_of),
+        status__in=('sent', 'partially_paid', 'overdue'), **until('sent_at', as_of),
     )
 
 
@@ -148,6 +178,15 @@ def invoice_split(inv):
     Combined 'subscription' invoices are split line by line by service; older invoices by type.
     Returns {'streams': {'wifi'|'sla'|'adhoc'|'services': amount}, 'axxess': cost, 'services_cost': cost}.
     """
+    split = _raw_split(inv)
+    frac = getattr(inv, 'frac', None)
+    if frac is not None and frac != 1:
+        split = {'streams': {k: v * frac for k, v in split['streams'].items()},
+                 'axxess': split['axxess'] * frac, 'services_cost': split['services_cost'] * frac}
+    return split
+
+
+def _raw_split(inv):
     streams, axxess, svc_cost = {}, ZERO, ZERO
     if inv.invoice_type == 'subscription' and inv.items.all():
         for it in inv.items.all():
@@ -169,7 +208,7 @@ def invoice_split(inv):
 def paid_by_stream(start, end):
     """Money received in the window, ex VAT, split wifi / sla / adhoc / services."""
     out = {'wifi': ZERO, 'sla': ZERO, 'adhoc': ZERO, 'services': ZERO}
-    for inv in _paid_qs(start, end).prefetch_related('items'):
+    for inv in _paid_events(start, end):
         for k, v in invoice_split(inv)['streams'].items():
             out[k] += v
     return {k: float(v) for k, v in out.items()}
@@ -178,13 +217,14 @@ def paid_by_stream(start, end):
 def outstanding_by_stream(start, end):
     """Invoiced for the period but not yet paid (incl. VAT, apportioned by line), split by stream."""
     out = {'wifi': ZERO, 'sla': ZERO, 'adhoc': ZERO, 'services': ZERO}
-    qs = Invoice.objects.filter(status__in=('sent', 'overdue'), billing_period_start__gte=start,
+    qs = Invoice.objects.filter(status__in=('sent', 'partially_paid', 'overdue'), billing_period_start__gte=start,
                                 billing_period_start__lte=end).prefetch_related('items')
     for inv in qs:
         split = invoice_split(inv)['streams']
         base = sum(split.values(), ZERO) or ZERO
+        due = inv.balance_due
         for k, v in split.items():
-            out[k] += (inv.total_amount * v / base) if base else inv.total_amount
+            out[k] += (due * v / base) if base else due
     return {k: float(v) for k, v in out.items()}
 
 
@@ -209,7 +249,7 @@ def summary(start, end, today=None):
     today = today or date.today()
 
     # ── Invoices ────────────────────────────────────────────────────────────
-    paid_invoices = list(_paid_qs(start, end).select_related('company', 'wifi_subscriber', 'sla_contract').prefetch_related('items').order_by('-payment_date'))
+    paid_invoices = _paid_events(start, end)
     paid_sub = sum((i.subtotal for i in paid_invoices), ZERO)
     paid_vat = sum((i.tax_amount for i in paid_invoices), ZERO)
     paid_total = sum((i.total_amount for i in paid_invoices), ZERO)
@@ -219,9 +259,9 @@ def summary(start, end, today=None):
 
     unpaid_invoices = list(_unpaid_qs(min(end, today))
                            .select_related('company', 'wifi_subscriber', 'sla_contract').order_by('due_date', 'sent_at'))
-    unpaid_total = sum((i.total_amount for i in unpaid_invoices), ZERO)
+    unpaid_total = sum((i.balance_due for i in unpaid_invoices), ZERO)
     overdue = [i for i in unpaid_invoices if i.status == 'overdue' or (i.due_date and i.due_date < today)]
-    overdue_total = sum((i.total_amount for i in overdue), ZERO)
+    overdue_total = sum((i.balance_due for i in overdue), ZERO)
 
     # ── Direct sales ────────────────────────────────────────────────────────
     direct = list(_direct_sales_qs(start, end).order_by('-created_at'))
@@ -270,7 +310,7 @@ def summary(start, end, today=None):
     # ── Workings (the "how did we get here" trail) ─────────────────────────
     workings = [
         {'key': 'paid_invoices', 'label': 'Paid invoices (excl. VAT)', 'sign': '+', 'amount': _f(paid_sub),
-         'explain': f"{len(paid_invoices)} invoice(s) whose payment date is between {start:%d %b} and {end:%d %b %Y}. "
+         'explain': f"{len(paid_invoices)} payment(s) received between {start:%d %b} and {end:%d %b %Y} (part payments count for their share of the invoice). "
                     f"Total received was R {_f(paid_total):,.2f}; R {_f(paid_vat):,.2f} of that is VAT and is not our income.",
          'rows': [_invoice_row(i, i.payment_date) for i in paid_invoices[:ROW_LIMIT]]},
         {'key': 'direct_sales', 'label': 'Direct sales (POS / till, cash)', 'sign': '+', 'amount': _f(direct_total),
@@ -317,7 +357,7 @@ def summary(start, end, today=None):
                 'count': len(unpaid_invoices), 'total': _f(unpaid_total),
                 'overdue_count': len(overdue), 'overdue_total': _f(overdue_total),
                 'rows': [dict(_invoice_row(i, i.due_date or (i.sent_at.date() if i.sent_at else None), include_total=True),
-                              amount=_f(i.total_amount), overdue=(i in overdue))
+                              amount=_f(i.balance_due), overdue=(i in overdue))
                          for i in unpaid_invoices[:ROW_LIMIT]],
             },
         },
@@ -412,7 +452,7 @@ def trend(granularity='monthly', periods=None, today=None, anchor=None):
         if b is not None:
             b[key] += amount
 
-    for inv in _paid_qs(range_start, range_end).prefetch_related('items'):
+    for inv in _paid_events(range_start, range_end):
         sp = invoice_split(inv)
         for stream, amount in sp['streams'].items():
             add(inv.payment_date, 'rev_' + stream, amount)

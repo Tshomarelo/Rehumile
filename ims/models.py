@@ -79,6 +79,7 @@ class InvoiceStatusChoices(models.TextChoices):
     """Invoice billing status"""
     DRAFT = 'draft', _('Draft')
     SENT = 'sent', _('Sent')
+    PARTIALLY_PAID = 'partially_paid', _('Partially Paid')
     PAID = 'paid', _('Paid')
     OVERDUE = 'overdue', _('Overdue')
     CANCELLED = 'cancelled', _('Cancelled')
@@ -716,7 +717,15 @@ class Invoice(models.Model):
         decimal_places=2,
         validators=[MinValueValidator(0)]
     )
-    
+    # Running total of payments received against this invoice (full or partial).
+    # Kept in sync by InvoicePayment records — see record_payment().
+    amount_paid = models.DecimalField(
+        max_digits=15,
+        decimal_places=2,
+        default=0,
+        validators=[MinValueValidator(0)]
+    )
+
     # Incident Summary
     ticket_count = models.IntegerField(validators=[MinValueValidator(0)])
     hours_worked = models.DecimalField(
@@ -743,14 +752,18 @@ class Invoice(models.Model):
     ]
     invoice_type = models.CharField(max_length=20, choices=INVOICE_TYPE_CHOICES, default='adhoc', db_index=True)
 
-    # Subscriber/contract references (set when invoice_type is wifi/sla/callout)
+    # Subscriber/contract references (set when invoice_type is wifi/sla/callout/subscription)
     wifi_subscriber = models.ForeignKey(
         'WifiSubscriber', null=True, blank=True, on_delete=models.SET_NULL, related_name='invoices',
     )
     sla_contract = models.ForeignKey(
         'SLAContract', null=True, blank=True, on_delete=models.SET_NULL, related_name='invoices',
     )
-    # Axxess wholesale cost at time of invoice — locked so history is accurate even if rate changes
+    subscription = models.ForeignKey(
+        'Subscription', null=True, blank=True, on_delete=models.SET_NULL, related_name='invoices',
+    )
+    # Supplier/wholesale cost at time of invoice (Axxess for wifi, supplier for
+    # generic subscriptions) — locked so history is accurate even if rate changes
     wholesale_cost = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
 
     # Who is billed when there is no registered Company (direct-pay client)
@@ -804,7 +817,7 @@ class Invoice(models.Model):
         """
         from django.utils import timezone
         touched = set()
-        if self.status in ('sent', 'paid', 'overdue') and not self.sent_at:
+        if self.status in ('sent', 'partially_paid', 'paid', 'overdue') and not self.sent_at:
             self.sent_at = timezone.now()
             touched.add('sent_at')
         if self.status == 'paid' and not self.payment_date:
@@ -814,6 +827,44 @@ class Invoice(models.Model):
         if touched and update_fields is not None:
             kwargs['update_fields'] = set(update_fields) | touched
         super().save(*args, **kwargs)
+
+    @property
+    def balance_due(self):
+        total = self.total_amount or 0
+        paid = self.amount_paid or 0
+        remaining = total - paid
+        return remaining if remaining > 0 else 0
+
+
+class InvoicePayment(models.Model):
+    """
+    A single payment received against an invoice. An invoice can have many of
+    these (e.g. two partial payments that together settle it). Each one posts
+    its own ledger transaction, keyed by this record's id — so, unlike the
+    invoice-keyed posting used for one-shot 'mark as paid' flows, multiple
+    payments against the same invoice each get their own entry.
+    """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    invoice = models.ForeignKey(
+        Invoice, on_delete=models.CASCADE, related_name='payment_records', db_index=True,
+    )
+    amount = models.DecimalField(
+        max_digits=15, decimal_places=2, validators=[MinValueValidator(0.01)],
+    )
+    payment_date = models.DateField()
+    payment_method = models.CharField(max_length=50, blank=True)
+    notes = models.CharField(max_length=255, blank=True)
+    recorded_by = models.ForeignKey(
+        'User', on_delete=models.SET_NULL, null=True, blank=True, related_name='invoice_payments_recorded',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'invoice_payments'
+        ordering = ['-payment_date', '-created_at']
+
+    def __str__(self):
+        return f"Payment of {self.amount} for INV-{self.invoice.invoice_number}"
 
 
 class InvoiceItem(models.Model):
@@ -2404,6 +2455,18 @@ class Subscription(models.Model):
         return (self.quantity or 0) * (self.unit_cost or 0)
 
     @property
+    def monthly_price(self):
+        return self.monthly_total
+
+    @property
+    def gross_margin(self):
+        return float(self.monthly_total) - float(self.monthly_cost)
+
+    @property
+    def is_loss_making(self):
+        return self.monthly_cost >= self.monthly_total
+
+    @property
     def is_managed_by_legacy(self):
         return bool(self.legacy_wifi_id or self.legacy_sla_id)
 
@@ -2430,6 +2493,68 @@ class RevenueAllocation(models.Model):
 
     def __str__(self):
         return f"Allocation: {float(self.reinvestment_pct)*100:.0f}% / {float(self.opex_pct)*100:.0f}% / {float(self.owner_pct)*100:.0f}%"
+
+
+# ============================================================================
+# BANK RECONCILIATION — imported bank statements matched against the ledger
+# ============================================================================
+
+class BankStatement(models.Model):
+    """
+    One imported bank statement (CSV export from the bank). Its lines are
+    auto-matched against BANK_CASH ledger entries so money in/out of the real
+    bank account can be compared with what the books say — the month-end
+    "am I misusing business money?" check.
+    """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    label = models.CharField(max_length=200, help_text='e.g. "FNB Business — July 2026"')
+    original_filename = models.CharField(max_length=255, blank=True)
+    date_from = models.DateField(null=True, blank=True)
+    date_to = models.DateField(null=True, blank=True)
+    uploaded_by = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, related_name='bank_statements',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'bank_statements'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return self.label
+
+
+class BankStatementLine(models.Model):
+    """One transaction row on a bank statement. amount > 0 = money in,
+    amount < 0 = money out."""
+    MATCH_STATUS_CHOICES = [
+        ('matched', 'Matched Automatically'),
+        ('manual', 'Matched Manually'),
+        ('unmatched', 'Unmatched'),
+    ]
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    statement = models.ForeignKey(
+        BankStatement, on_delete=models.CASCADE, related_name='lines', db_index=True,
+    )
+    line_date = models.DateField(db_index=True)
+    description = models.CharField(max_length=500, blank=True)
+    amount = models.DecimalField(max_digits=14, decimal_places=2)
+    balance = models.DecimalField(max_digits=14, decimal_places=2, null=True, blank=True)
+    match_status = models.CharField(
+        max_length=12, choices=MATCH_STATUS_CHOICES, default='unmatched', db_index=True,
+    )
+    matched_entry = models.ForeignKey(
+        'LedgerEntry', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='bank_lines',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'bank_statement_lines'
+        ordering = ['line_date', 'created_at']
+
+    def __str__(self):
+        return f"{self.line_date} {self.description[:40]} R{self.amount}"
 
 
 class CompanySettings(models.Model):

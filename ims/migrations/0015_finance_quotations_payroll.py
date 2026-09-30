@@ -9,7 +9,7 @@ import uuid
 class Migration(migrations.Migration):
 
     dependencies = [
-        ("ims", "0011_accounting_engine"),
+        ("ims", "0014_bank_reconciliation"),
     ]
 
     operations = [

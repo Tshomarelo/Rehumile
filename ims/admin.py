@@ -9,7 +9,7 @@ from django.db.models import Count, Q
 from django.utils.html import format_html
 from .models import (
     Company, User, UserProfile, Incident, IncidentComment, IncidentAttachment,
-    IncidentTimeline, SLABreach, SLAConfig, Invoice, InvoiceItem, Notification,
+    IncidentTimeline, SLABreach, SLAConfig, Invoice, InvoiceItem, InvoicePayment, Notification,
     AuditLog, DashboardMetric, CompanyBillingInfo,
     Account, ExpenseCategory, Expense, Quotation, QuotationItem,
 )
@@ -97,6 +97,14 @@ class InvoiceItemInline(admin.TabularInline):
     model = InvoiceItem
     extra = 1
     fields = ('description', 'item_type', 'quantity', 'unit_price', 'amount')
+
+
+class InvoicePaymentInline(admin.TabularInline):
+    """Inline payment history for invoices (full or partial payments)"""
+    model = InvoicePayment
+    extra = 0
+    fields = ('amount', 'payment_date', 'payment_method', 'notes', 'recorded_by')
+    readonly_fields = ('recorded_by',)
 
 
 class CompanyBillingInfoInline(admin.StackedInline):
@@ -246,9 +254,9 @@ class InvoiceAdmin(admin.ModelAdmin):
                    'status', 'payment_status', 'created_at')
     list_filter = ('status', 'company', 'billing_period_start', 'created_at')
     search_fields = ('invoice_number', 'company__name')
-    readonly_fields = ('id', 'invoice_number', 'created_at', 'updated_at', 'sent_at')
-    inlines = [InvoiceItemInline]
-    
+    readonly_fields = ('id', 'invoice_number', 'created_at', 'updated_at', 'sent_at', 'amount_paid')
+    inlines = [InvoiceItemInline, InvoicePaymentInline]
+
     fieldsets = (
         ('Invoice Information', {
             'fields': ('id', 'invoice_number', 'company')
@@ -257,7 +265,7 @@ class InvoiceAdmin(admin.ModelAdmin):
             'fields': ('billing_period_start', 'billing_period_end')
         }),
         ('Financial Details', {
-            'fields': ('subtotal', 'tax_rate', 'tax_amount', 'total_amount')
+            'fields': ('subtotal', 'tax_rate', 'tax_amount', 'total_amount', 'amount_paid')
         }),
         ('Summary', {
             'fields': ('ticket_count', 'hours_worked')
@@ -396,6 +404,143 @@ class DashboardMetricAdmin(admin.ModelAdmin):
     metric_value_display.short_description = 'Value'
 
 
+# ============================================================================
+# FINANCE & REVENUE ADMIN
+# ============================================================================
+
+from .models import (
+    WifiSubscriber, SLAContract, Subscription, RevenueAllocation,
+    Account, LedgerTransaction, LedgerEntry, Expense,
+    CashTransaction, ShiftLog, PurchaseSlip, Payment,
+    Employee, PayrollEntry, CompanySettings,
+)
+
+
+@admin.register(InvoicePayment)
+class InvoicePaymentAdmin(admin.ModelAdmin):
+    list_display = ('invoice', 'amount', 'payment_date', 'payment_method', 'recorded_by', 'created_at')
+    list_filter = ('payment_method', 'payment_date')
+    search_fields = ('invoice__invoice_number', 'notes')
+    readonly_fields = ('id', 'created_at')
+
+
+@admin.register(WifiSubscriber)
+class WifiSubscriberAdmin(admin.ModelAdmin):
+    list_display = ('client_name', 'axxess_id', 'retail_price', 'wholesale_cost', 'billing_day', 'status')
+    list_filter = ('status',)
+    search_fields = ('client_name', 'axxess_id', 'contact_email')
+    readonly_fields = ('id', 'created_at', 'updated_at')
+
+
+@admin.register(SLAContract)
+class SLAContractAdmin(admin.ModelAdmin):
+    list_display = ('client_name', 'monthly_retainer', 'contract_start', 'contract_end', 'billing_day', 'status')
+    list_filter = ('status',)
+    search_fields = ('client_name', 'contact_email')
+    readonly_fields = ('id', 'created_at', 'updated_at')
+
+
+@admin.register(Subscription)
+class SubscriptionAdmin(admin.ModelAdmin):
+    list_display = ('client_name', 'company', 'site', 'service_type', 'description', 'quantity', 'unit_price', 'unit_cost', 'billing_day', 'status')
+    list_filter = ('service_type', 'status')
+    search_fields = ('client_name', 'description', 'contact_email', 'company__name')
+    readonly_fields = ('id', 'created_at', 'updated_at')
+
+
+@admin.register(RevenueAllocation)
+class RevenueAllocationAdmin(admin.ModelAdmin):
+    list_display = ('__str__', 'reinvestment_pct', 'opex_pct', 'owner_pct', 'updated_at')
+
+
+class LedgerEntryInline(admin.TabularInline):
+    model = LedgerEntry
+    extra = 0
+    can_delete = False
+    readonly_fields = ('account', 'debit', 'credit', 'memo')
+
+    def has_add_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(LedgerTransaction)
+class LedgerTransactionAdmin(admin.ModelAdmin):
+    """Read-only: the journal is append-only and only ims/ledger.py may write
+    it. Corrections are made by posting reversing entries, never by editing."""
+    list_display = ('transaction_date', 'description', 'source_model', 'source_id', 'cash_flow_stream', 'created_by')
+    list_filter = ('cash_flow_stream', 'source_model', 'transaction_date')
+    search_fields = ('description', 'source_id')
+    inlines = [LedgerEntryInline]
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(LedgerEntry)
+class LedgerEntryAdmin(admin.ModelAdmin):
+    """Read-only — see LedgerTransactionAdmin."""
+    list_display = ('transaction', 'account', 'debit', 'credit', 'memo')
+    list_filter = ('account',)
+    search_fields = ('memo', 'transaction__description')
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(CashTransaction)
+class CashTransactionAdmin(admin.ModelAdmin):
+    list_display = ('description', 'amount', 'payment_method', 'transaction_category', 'cash_flow_stream', 'performed_by', 'created_at')
+    list_filter = ('payment_method', 'transaction_category', 'cash_flow_stream')
+    search_fields = ('description',)
+    readonly_fields = ('id', 'created_at')
+
+
+@admin.register(ShiftLog)
+class ShiftLogAdmin(admin.ModelAdmin):
+    list_display = ('date', 'opened_by', 'opening_float', 'closed_by', 'system_total', 'variance', 'is_closed')
+    list_filter = ('is_closed', 'date')
+    readonly_fields = ('id',)
+
+
+@admin.register(PurchaseSlip)
+class PurchaseSlipAdmin(admin.ModelAdmin):
+    list_display = ('supplier_name', 'amount', 'purchase_date', 'cash_flow_stream', 'uploaded_by')
+    list_filter = ('cash_flow_stream', 'purchase_date')
+    search_fields = ('supplier_name', 'reference_number')
+
+
+@admin.register(Payment)
+class PaymentAdmin(admin.ModelAdmin):
+    list_display = ('reference', 'amount', 'item_name', 'status', 'invoice', 'created_at')
+    list_filter = ('status',)
+    search_fields = ('reference', 'pf_payment_id', 'item_name', 'email_address')
+    readonly_fields = ('id', 'raw_itn', 'created_at', 'updated_at')
+
+
+@admin.register(PayrollEntry)
+class PayrollEntryAdmin(admin.ModelAdmin):
+    list_display = ('employee', 'compliance_period', 'total_gross', 'paye_amount', 'net_pay', 'is_frozen')
+    list_filter = ('is_frozen',)
+    readonly_fields = ('id', 'calculated_at')
+
+
+@admin.register(CompanySettings)
+class CompanySettingsAdmin(admin.ModelAdmin):
+    list_display = ('company_name', 'phone', 'email')
+
+
 # Custom Admin Site Configuration
 admin.site.site_header = "Rehumile Portal IMS Administration"
 admin.site.site_title = "IMS Admin"
@@ -464,3 +609,14 @@ class QuotationAdmin(admin.ModelAdmin):
     def save_related(self, request, form, formsets, change):
         super().save_related(request, form, formsets, change)
         form.instance.recalculate()
+
+
+# ── Catch-all: register every remaining ims model with a default admin so
+#    nothing (present or future) is ever missing from the admin site. ─────────
+from django.apps import apps as django_apps
+
+for _model in django_apps.get_app_config('ims').get_models():
+    try:
+        admin.site.register(_model)
+    except admin.sites.AlreadyRegistered:
+        pass

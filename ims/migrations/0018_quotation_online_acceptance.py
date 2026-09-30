@@ -6,7 +6,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ("ims", "0014_remove_voucher"),
+        ("ims", "0017_remove_voucher"),
     ]
 
     operations = [

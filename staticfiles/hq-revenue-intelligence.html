@@ -127,6 +127,17 @@
           </div>
         </div>
 
+        <!-- ── Growth vs last month ───────────────────────────────────────── -->
+        <div class="card mb-3" id="growthCard" style="display:none">
+          <div class="card-body d-flex flex-wrap align-items-center justify-content-between gap-3">
+            <div>
+              <div class="small text-muted">Are we growing? (this month vs last month, from the books)</div>
+              <div class="h5 mb-0" id="growthHeadline">—</div>
+            </div>
+            <div class="small text-muted" id="growthDetail"></div>
+          </div>
+        </div>
+
         <!-- ── Intelligence Flags ─────────────────────────────────────────── -->
         <div class="card mb-3">
           <div class="card-header d-flex align-items-center justify-content-between">
@@ -296,6 +307,18 @@
       document.getElementById('live-profit').textContent=R(netProfit);
       document.getElementById('live-margin-pct').textContent=totalRev>0?((netProfit/totalRev)*100).toFixed(1)+'% margin':'';
       document.getElementById('liveCards').style.display='';
+
+      const esc=x=>String(x==null?'':x).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+      // Growth vs last month
+      const g=d.growth;
+      if(g){
+        const p=g.net_profit_pct, up=g.is_growing;
+        document.getElementById('growthHeadline').innerHTML=(up?'<span class="text-success">▲ Growing</span>':'<span class="text-danger">▼ Not growing</span>')
+          +' &nbsp;<span class="small text-muted">net profit '+(p==null?'new':(p>0?'+':'')+p+'%')+'</span>';
+        document.getElementById('growthDetail').innerHTML=esc(g.current_month.label)+': revenue '+R(g.current_month.revenue)+', net profit '+R(g.current_month.net_profit)
+          +'<br>'+esc(g.previous_month.label)+': revenue '+R(g.previous_month.revenue)+', net profit '+R(g.previous_month.net_profit);
+        document.getElementById('growthCard').style.display='';
+      }
 
       // Allocation
       const alloc=d.allocation||{};

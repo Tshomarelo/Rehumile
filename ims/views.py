@@ -246,7 +246,7 @@ def _send_ticket_notification(incident, user):
 
 from .models import (
     Company, UserProfile, Incident, IncidentComment,
-    SLAConfig, StatusChoices, Invoice,
+    SLAConfig, StatusChoices, Invoice, InvoicePayment, InvoiceStatusChoices,
     Notification, AuditLog, SLABreach, IncidentAttachment,
     JobCard, JobCardStatusChoices,
     InventoryItem, StockTransaction,
@@ -818,10 +818,13 @@ class InvoiceViewSet(viewsets.ModelViewSet):
 
     def _post_ledger_for_status_change(self, instance, old_status):
         from .ledger import post_invoice_sent, post_invoice_paid
-        if old_status not in ('sent', 'paid') and instance.status in ('sent', 'paid'):
+        if old_status not in ('sent', 'partially_paid', 'paid') and instance.status in ('sent', 'partially_paid', 'paid'):
             post_invoice_sent(instance, self.request.user)
         if old_status != 'paid' and instance.status == 'paid':
             post_invoice_paid(instance, self.request.user)
+            if instance.amount_paid != instance.total_amount:
+                instance.amount_paid = instance.total_amount
+                instance.save(update_fields=['amount_paid'])
 
 
 # ============================================================================
@@ -1999,9 +2002,13 @@ class IncomeStatementView(APIView):
         import calendar as _calendar
         from . import reports as _reports
         today = _date.today()
-        date_from = request.query_params.get("date_from") or today.replace(day=1).isoformat()
-        date_to = request.query_params.get("date_to") or today.replace(day=_calendar.monthrange(today.year, today.month)[1]).isoformat()
-        return Response(_reports.income_statement(date_from, date_to))
+        try:
+            date_from = _date.fromisoformat(request.query_params.get("date_from") or today.replace(day=1).isoformat())
+            date_to = _date.fromisoformat(request.query_params.get("date_to") or today.replace(day=_calendar.monthrange(today.year, today.month)[1]).isoformat())
+        except ValueError:
+            return Response({"detail": "Invalid date format — use YYYY-MM-DD."}, status=status.HTTP_400_BAD_REQUEST)
+        compare = request.query_params.get("compare") in ("1", "true", "yes")
+        return Response(_reports.income_statement(date_from, date_to, compare_previous=compare))
 
 
 class BalanceSheetView(APIView):
@@ -3336,7 +3343,7 @@ def _send_subscriber_invoice_email(invoice, to_email, base_url):
     amount = float(invoice.total_amount)
     due = invoice.due_date.strftime("%d %B %Y") if invoice.due_date else "Upon receipt"
     desc = invoice.description or "Monthly Service"
-    type_label = {"wifi": "WiFi Subscription", "sla": "SLA Monthly Retainer", "callout": "SLA Call-Out", "adhoc": "Service Invoice"}.get(invoice.invoice_type, "Invoice")
+    type_label = {"wifi": "WiFi Subscription", "sla": "SLA Monthly Retainer", "callout": "SLA Call-Out", "adhoc": "Service Invoice", "subscription": "Subscription Invoice"}.get(invoice.invoice_type, "Invoice")
 
     html_body = f"""<!DOCTYPE html>
 <html><head><meta charset="UTF-8"></head>
@@ -3536,6 +3543,152 @@ class SLAContractDetailView(APIView):
         return Response(status=204)
 
 
+# ── Bank Reconciliation ───────────────────────────────────────────────────────
+
+class BankStatementListView(APIView):
+    """GET: list uploaded statements. POST (multipart): upload + parse + auto-match a CSV."""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        if request.user.role not in ('admin', 'finance'):
+            return Response({'detail': 'Admin/Finance access required.'}, status=403)
+        from .models import BankStatement
+        data = []
+        for s in BankStatement.objects.all()[:50]:
+            lines = s.lines.all()
+            matched = lines.filter(match_status__in=('matched', 'manual')).count()
+            data.append({
+                'id': str(s.id),
+                'label': s.label,
+                'original_filename': s.original_filename,
+                'date_from': str(s.date_from) if s.date_from else None,
+                'date_to': str(s.date_to) if s.date_to else None,
+                'lines_total': lines.count(),
+                'lines_matched': matched,
+                'uploaded_by': s.uploaded_by.email if s.uploaded_by else None,
+                'created_at': s.created_at.isoformat(),
+            })
+        return Response(data)
+
+    def post(self, request):
+        if request.user.role not in ('admin', 'finance'):
+            return Response({'detail': 'Admin/Finance access required.'}, status=403)
+        from .models import BankStatement, BankStatementLine
+        from .reconciliation import parse_statement_csv, auto_match, StatementParseError
+
+        uploaded = request.FILES.get('file')
+        if not uploaded:
+            return Response({'detail': 'No file provided.'}, status=status.HTTP_400_BAD_REQUEST)
+        if uploaded.size > 5 * 1024 * 1024:
+            return Response({'detail': 'File size exceeds 5 MB limit.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            parsed = parse_statement_csv(uploaded.read(), uploaded.name)
+        except StatementParseError as exc:
+            return Response({'detail': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+        label = (request.data.get('label') or '').strip() or f"Bank statement — {uploaded.name}"
+        statement = BankStatement.objects.create(
+            label=label,
+            original_filename=uploaded.name[:255],
+            uploaded_by=request.user,
+        )
+        BankStatementLine.objects.bulk_create([
+            BankStatementLine(statement=statement, **row) for row in parsed
+        ])
+        summary = auto_match(statement)
+        return Response({'id': str(statement.id), 'label': statement.label, 'summary': summary}, status=201)
+
+
+class BankStatementDetailView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def _get(self, pk):
+        from .models import BankStatement
+        try:
+            return BankStatement.objects.get(pk=pk)
+        except BankStatement.DoesNotExist:
+            return None
+
+    def get(self, request, pk):
+        if request.user.role not in ('admin', 'finance'):
+            return Response({'detail': 'Admin/Finance access required.'}, status=403)
+        from .reconciliation import summarize
+        s = self._get(pk)
+        if not s:
+            return Response({'detail': 'Not found.'}, status=404)
+        lines = [{
+            'id': str(l.id),
+            'date': str(l.line_date),
+            'description': l.description,
+            'amount': float(l.amount),
+            'balance': float(l.balance) if l.balance is not None else None,
+            'match_status': l.match_status,
+            'matched_description': l.matched_entry.transaction.description if l.matched_entry else None,
+            'matched_date': str(l.matched_entry.transaction.transaction_date) if l.matched_entry else None,
+        } for l in s.lines.select_related('matched_entry', 'matched_entry__transaction')]
+        return Response({
+            'id': str(s.id),
+            'label': s.label,
+            'original_filename': s.original_filename,
+            'date_from': str(s.date_from) if s.date_from else None,
+            'date_to': str(s.date_to) if s.date_to else None,
+            'created_at': s.created_at.isoformat(),
+            'lines': lines,
+            'summary': summarize(s),
+        })
+
+    def post(self, request, pk):
+        """Re-run auto-matching (e.g. after recording missing expenses/income)."""
+        if request.user.role not in ('admin', 'finance'):
+            return Response({'detail': 'Admin/Finance access required.'}, status=403)
+        from .reconciliation import auto_match
+        s = self._get(pk)
+        if not s:
+            return Response({'detail': 'Not found.'}, status=404)
+        return Response({'summary': auto_match(s)})
+
+    def delete(self, request, pk):
+        if request.user.role != 'admin':
+            return Response({'detail': 'Admin access required.'}, status=403)
+        s = self._get(pk)
+        if not s:
+            return Response({'detail': 'Not found.'}, status=404)
+        s.delete()
+        return Response(status=204)
+
+
+class BankStatementLineMatchView(APIView):
+    """POST with {"entry_id": ...} to match a line by hand; empty body to unmatch."""
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pk, line_id):
+        if request.user.role not in ('admin', 'finance'):
+            return Response({'detail': 'Admin/Finance access required.'}, status=403)
+        from .models import BankStatementLine, LedgerEntry as LE
+        try:
+            line = BankStatementLine.objects.get(pk=line_id, statement_id=pk)
+        except BankStatementLine.DoesNotExist:
+            return Response({'detail': 'Not found.'}, status=404)
+
+        entry_id = request.data.get('entry_id')
+        if not entry_id:
+            line.match_status, line.matched_entry = 'unmatched', None
+            line.save(update_fields=['match_status', 'matched_entry'])
+            return Response({'detail': 'Line unmatched.'})
+
+        try:
+            entry = LE.objects.get(pk=entry_id, account__system_key='BANK_CASH')
+        except LE.DoesNotExist:
+            return Response({'detail': 'Ledger entry not found (must be a Bank & Cash entry).'}, status=400)
+        if BankStatementLine.objects.filter(matched_entry=entry).exclude(pk=line.pk).exists():
+            return Response({'detail': 'That ledger entry is already matched to another statement line.'}, status=400)
+
+        line.match_status, line.matched_entry = 'manual', entry
+        line.save(update_fields=['match_status', 'matched_entry'])
+        return Response({'detail': 'Line matched.'})
+
+
 # ── Revenue Allocation Settings ───────────────────────────────────────────────
 
 class RevenueAllocationView(APIView):
@@ -3609,7 +3762,7 @@ class RevenueIntelligenceView(APIView):
             return float(Invoice.objects.filter(**paid_window, status='paid', **qfilter).aggregate(t=Sum('subtotal'))['t'] or 0)
 
         def outstanding_sum(qfilter):
-            return float(Invoice.objects.filter(**qfilter, status__in=['sent', 'overdue']).aggregate(t=Sum('total_amount'))['t'] or 0)
+            return float(Invoice.objects.filter(**qfilter, status__in=['sent', 'partially_paid', 'overdue']).aggregate(t=Sum('total_amount'))['t'] or 0)
 
         base = dict(billing_period_start__gte=m_start, billing_period_start__lte=m_end)
 
@@ -3684,7 +3837,7 @@ class RevenueIntelligenceView(APIView):
         overdue_threshold = today - timedelta(days=7)
         overdue_subs = list(Invoice.objects.filter(
             invoice_type__in=['wifi', 'subscription'],
-            status__in=['sent', 'overdue'],
+            status__in=['sent', 'partially_paid', 'overdue'],
             **until('sent_at', overdue_threshold),
         ).select_related('wifi_subscriber', 'company').values(
             'id', 'invoice_number', 'total_amount',
@@ -3726,6 +3879,22 @@ class RevenueIntelligenceView(APIView):
             })
         client_prof.sort(key=lambda x: x['gross_margin'], reverse=True)
 
+        # ── Growth: month-over-month net profit from the ledger (source of
+        #    truth — same numbers as the Income Statement) ────────────────────
+        from . import reports as _reports
+        prev_year, prev_month = (today.year - 1, 12) if today.month == 1 else (today.year, today.month - 1)
+        p_start, p_end = _month_bounds(prev_year, prev_month)
+        cur_stmt = _reports.income_statement(m_start, m_end)
+        prev_stmt = _reports.income_statement(p_start, p_end)
+        growth = {
+            'current_month': {'label': m_start.strftime('%B %Y'), 'revenue': cur_stmt['revenue']['total'], 'net_profit': cur_stmt['net_profit']},
+            'previous_month': {'label': p_start.strftime('%B %Y'), 'revenue': prev_stmt['revenue']['total'], 'net_profit': prev_stmt['net_profit']},
+            'net_profit_pct': _reports._growth_pct(Decimal(str(cur_stmt['net_profit'])), Decimal(str(prev_stmt['net_profit']))),
+            'revenue_pct': _reports._growth_pct(Decimal(str(cur_stmt['revenue']['total'])), Decimal(str(prev_stmt['revenue']['total']))),
+            'net_profit_change': round(cur_stmt['net_profit'] - prev_stmt['net_profit'], 2),
+            'is_growing': cur_stmt['net_profit'] > prev_stmt['net_profit'],
+        }
+
         return Response({
             'period': {'start': m_start, 'end': m_end, 'label': m_start.strftime('%B %Y')},
             'streams': {
@@ -3736,6 +3905,7 @@ class RevenueIntelligenceView(APIView):
                 'direct': {'paid': direct_sales},
             },
             'costs': {'axxess': axxess_costs, 'service_costs': fin['expenses']['service_costs'], 'total_expenses': fin['expenses']['total']},
+            'growth': growth,
             'totals': {
                 'revenue': total_revenue,
                 'expenses': fin['expenses']['total'],
@@ -3816,7 +3986,7 @@ class InvoicePrintView(APIView):
     def get(self, request, pk):
         from .models import InvoiceItem
         try:
-            inv = Invoice.objects.select_related('company', 'wifi_subscriber', 'sla_contract', 'incident').get(pk=pk)
+            inv = Invoice.objects.select_related('company', 'wifi_subscriber', 'sla_contract', 'subscription', 'incident').get(pk=pk)
         except Invoice.DoesNotExist:
             return Response({'detail': 'Not found.'}, status=404)
 
@@ -3846,11 +4016,13 @@ class InvoicePrintView(APIView):
         client_email = (
             inv.wifi_subscriber.contact_email if inv.wifi_subscriber else
             inv.sla_contract.contact_email if inv.sla_contract else
+            inv.subscription.contact_email if inv.subscription else
             inv.company.contact_email if inv.company else ''
         )
         client_phone = (
             inv.wifi_subscriber.contact_phone if inv.wifi_subscriber else
             inv.sla_contract.contact_phone if inv.sla_contract else
+            inv.subscription.contact_phone if inv.subscription else
             inv.company.contact_phone if inv.company else ''
         )
         client_address = (

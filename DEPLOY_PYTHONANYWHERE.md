@@ -322,14 +322,21 @@ Safe to run more than once; add `--no-email` to test without sending reminders.
 where no real money moves. To go live put `PAYFAST_SANDBOX=False`, `PAYFAST_MERCHANT_ID`, `PAYFAST_MERCHANT_KEY` and
 `PAYFAST_PASSPHRASE` (from your PayFast account) in `.env`, then reload the web app.
 
-## First-time upgrade to the redesigned system (MySQL)
+## Upgrading a server that runs the earlier "BI hub" branch (MySQL)
+
+If production was deployed from `claude/system-finance-discussion-c9v9t6`, its database already has migrations
+`ims 0012_invoice_partial_payments`, `0013_subscription_model` and `0014_bank_reconciliation`. This branch keeps those files
+unchanged and adds `0015`–`0022` after them. Migration `0019` converts the existing `subscriptions` table **in place** (your
+existing services are kept: name and contact move into the description/notes, domain/backup/software become "other").
 
 1. Back up first: `mysqldump -u <user> -h <host> '<db>' > backup_$(date +%F).sql`
-2. `git pull origin claude/gallant-hypatia-tgbx85` then `pip install -r requirements.txt`
+2. `git fetch origin && git checkout claude/gallant-hypatia-tgbx85 && git pull origin claude/gallant-hypatia-tgbx85`, then `pip install -r requirements.txt`
 3. Set `HR_FIELD_ENCRYPTION_KEY` in the environment **before any HR data is entered**, and never change it afterwards
    (generate with `python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"`).
-4. `python manage.py migrate --plan`, review, then `python manage.py migrate`, then `python manage.py hr_seed_defaults`.
+4. `python manage.py migrate --plan` (you should see `ims.0015` … `ims.0022` and the HR migrations, nothing earlier), then `python manage.py migrate`,
+   then `python manage.py hr_seed_defaults` and `python manage.py collectstatic --noinput`.
 5. Do **not** run `makemigrations` on the server (harmless historical drift would be written as new migrations).
 6. Reload the web app and schedule `python manage.py daily_jobs` daily.
 
 Date filters use explicit Africa/Johannesburg day boundaries (`ims/timeutils.py`), so MySQL time-zone tables are not required.
+`tests/test_upgrade_path.py` rebuilds the 0014 schema with sample data and proves the upgrade keeps it.

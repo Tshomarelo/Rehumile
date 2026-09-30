@@ -1,4 +1,4 @@
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from decimal import Decimal
 from io import StringIO
 
@@ -111,10 +111,11 @@ def home(name='Thabo Home', email='thabo@mail.co', phone='0683973484', price=399
 @pytest.fixture
 def unpaid(db, monkeypatch):
     """Two home clients invoiced for September, due 30 Sept."""
-    monkeypatch.setattr(billing, '_today', lambda: date(2026, 9, 25))
+    monkeypatch.setattr(billing, '_today', lambda: date(2026, 9, 30))
     home('Thabo Home'); home('Nomsa Home', 'nomsa@mail.co', '0711112222', 599, 350)
     invs = billing.generate(2026, 9)
-    return invs
+    Invoice.objects.update(sent_at=timezone.make_aware(datetime(2026, 9, 1, 9, 0)))     # issued on the 1st, whatever the real date is
+    return [Invoice.objects.get(pk=i.pk) for i in invs]
 
 
 def by_name(invs, name):
@@ -136,7 +137,7 @@ def test_mark_overdue_and_collections_list(api, unpaid):
     assert coll.mark_overdue(date(2026, 9, 30)) == 0                            # due today is not late yet
     assert coll.mark_overdue(date(2026, 10, 3)) == 2
     assert set(Invoice.objects.values_list('status', flat=True)) == {'overdue'}
-    Invoice.objects.filter(pk=unpaid[0].pk).update(due_date=date.today() - timedelta(days=20))
+    Invoice.objects.filter(pk=unpaid[0].pk).update(due_date=billing._today() - timedelta(days=20))
     r = api.get('/api/collections/').data
     assert r['count'] == 2 and r['total_owed'] == 399 + 599
     first = r['results'][0]
@@ -147,7 +148,7 @@ def test_mark_overdue_and_collections_list(api, unpaid):
 def test_record_payment_full_flow(api, unpaid):
     inv = by_name(unpaid, 'Thabo Home')
     r = api.post(f'/api/invoices/{inv.id}/record-payment/', {'paid_on': '2026-09-28', 'method': 'eft', 'reference': 'THABO SEP'}, format='json')
-    assert r.status_code == 200 and r.data['status'] == 'paid'
+    assert r.status_code == 201 and r.data['status'] == 'paid' and r.data['balance_due'] == 0
     inv.refresh_from_db()
     assert inv.status == 'paid' and inv.payment_date == date(2026, 9, 28) and 'THABO SEP' in inv.notes
     tx = CashTransaction.objects.get(invoice=inv)
@@ -163,12 +164,13 @@ def test_record_payment_full_flow(api, unpaid):
 def test_record_payment_validation_and_permissions(api, unpaid, cashier):
     inv = unpaid[1]
     url = f'/api/invoices/{inv.id}/record-payment/'
-    assert api.post(url, {'paid_on': (date.today() + timedelta(days=2)).isoformat()}, format='json').status_code == 400
+    assert api.post(url, {'paid_on': (billing._today() + timedelta(days=2)).isoformat()}, format='json').status_code == 400
     assert api.post(url, {'method': 'bitcoin'}, format='json').status_code == 400
-    assert api.post(url, {'amount': '100'}, format='json').status_code == 400                         # part payments are not supported yet
+    assert api.post(url, {'amount': '0'}, format='json').status_code == 400
+    assert api.post(url, {'amount': '99999'}, format='json').status_code == 400                       # more than the balance
     assert api.post(url, {'amount': 'abc'}, format='json').status_code == 400
     assert client_for(make_user('client')).post(url, {}, format='json').status_code == 403
-    assert client_for(cashier).post(url, {'method': 'cash'}, format='json').status_code == 200        # the till can take payments
+    assert client_for(cashier).post(url, {'method': 'cash'}, format='json').status_code == 201        # the till can take payments
     assert api.post('/api/invoices/00000000-0000-0000-0000-000000000000/record-payment/', {}, format='json').status_code == 404
 
 
@@ -238,7 +240,7 @@ def test_public_invoice_hides_drafts_and_bad_tokens(unpaid):
 
 
 def test_public_invoice_overdue_and_paid_states(unpaid, api):
-    inv = unpaid[0]; Invoice.objects.filter(pk=inv.pk).update(due_date=date.today() - timedelta(days=3))
+    inv = unpaid[0]; Invoice.objects.filter(pk=inv.pk).update(due_date=billing._today() - timedelta(days=3))
     d = Client().get(pubinv(inv.public_token)).json()
     assert d['status'] == 'overdue' and d['days_overdue'] == 3
     api.post(f'/api/invoices/{inv.id}/record-payment/', {}, format='json')
@@ -285,7 +287,7 @@ def test_daily_jobs_command(db, monkeypatch):
     monkeypatch.setattr(billing, '_today', lambda: date(2026, 9, 1))
     template(start_date=date(2026, 9, 1))
     home(); inv = billing.generate(2026, 9)[0]
-    Invoice.objects.filter(pk=inv.pk).update(due_date=date.today() - timedelta(days=2))
+    Invoice.objects.filter(pk=inv.pk).update(due_date=billing._today() - timedelta(days=2))
     out = StringIO()
     call_command('daily_jobs', '--no-email', stdout=out)
     text = out.getvalue()
@@ -305,3 +307,24 @@ def test_seed_adds_own_cost_categories_to_existing_installs(db):
     ExpenseCategory.objects.filter(name__in=['Domains, Email & Hosting (own use)', 'Internet & Axxess (own lines)']).delete()
     ensure_seeded()
     assert ExpenseCategory.objects.filter(name='Internet & Axxess (own lines)').exists()
+
+
+def test_part_payments_settle_an_invoice_in_steps(api, unpaid):
+    inv = by_name(unpaid, 'Nomsa Home')                                   # R599
+    url = f'/api/invoices/{inv.id}/record-payment/'
+    r = api.post(url, {'amount': '200', 'paid_on': '2026-09-20', 'method': 'eft'}, format='json')
+    assert r.status_code == 201 and r.data['status'] == 'partially_paid' and r.data['balance_due'] == 399
+    inv.refresh_from_db()
+    assert inv.status == 'partially_paid' and inv.payment_date is None
+    # the part payment counts as revenue on its own date (its share, ex VAT) and the balance stays outstanding
+    s = finance.summary(date(2026, 9, 1), date(2026, 9, 30), today=date(2026, 9, 30))
+    assert s['invoices']['paid']['subtotal'] == 200
+    assert any(row['ref'] == inv.invoice_number and row['amount'] == 399 for row in s['invoices']['unpaid']['rows'])
+    assert api.get('/api/collections/').data['count'] == 2                  # still chased for the balance
+    r = api.post(url, {'amount': '399', 'paid_on': '2026-09-28'}, format='json')
+    assert r.status_code == 201 and r.data['status'] == 'paid' and r.data['balance_due'] == 0
+    s = finance.summary(date(2026, 9, 1), date(2026, 9, 30), today=date(2026, 9, 30))
+    assert s['invoices']['paid']['subtotal'] == 599
+    agg = LedgerEntry.objects.aggregate(d=Sum('debit'), c=Sum('credit'))
+    assert agg['d'] == agg['c'] > 0
+    assert api.post(url, {'amount': '1'}, format='json').status_code == 400   # nothing left to pay

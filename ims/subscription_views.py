@@ -215,7 +215,7 @@ def _apply_sub(sub, d, editing_legacy=False):
             raise ValueError('status must be active, suspended or cancelled.')
         sub.status = d['status']
     if not sub.start_date:
-        sub.start_date = date.today()
+        sub.start_date = billing._today()
     if sub.end_date and sub.end_date < sub.start_date:
         raise ValueError('End date cannot be before the start date.')
     if sub.site_id and sub.site.company_id != sub.company_id:

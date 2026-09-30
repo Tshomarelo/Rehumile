@@ -12,5 +12,5 @@ def forward(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-    dependencies = [('ims', '0018_collections_recurring')]
+    dependencies = [('ims', '0021_collections_recurring')]
     operations = [migrations.RunPython(forward, migrations.RunPython.noop)]

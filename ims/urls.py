@@ -86,6 +86,10 @@ urlpatterns = [
     # Revenue Intelligence — SLA Contracts
     path('sla-contracts/', views.SLAContractListView.as_view(), name='sla-contract-list'),
     path('sla-contracts/<uuid:pk>/', views.SLAContractDetailView.as_view(), name='sla-contract-detail'),
+    # Bank Reconciliation
+    path('bank-statements/', views.BankStatementListView.as_view(), name='bank-statement-list'),
+    path('bank-statements/<uuid:pk>/', views.BankStatementDetailView.as_view(), name='bank-statement-detail'),
+    path('bank-statements/<uuid:pk>/lines/<uuid:line_id>/match/', views.BankStatementLineMatchView.as_view(), name='bank-statement-line-match'),
     # Revenue Intelligence — Settings & Auto-invoicing
     path('revenue-allocation/', views.RevenueAllocationView.as_view(), name='revenue-allocation'),
     # Clients & branches, recurring services and the combined billing run

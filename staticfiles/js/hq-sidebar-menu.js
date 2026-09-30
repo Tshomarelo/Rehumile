@@ -121,9 +121,11 @@
     ]),
     header('Finance'),
     submenu('nav-finance','dollar-sign','Finance',[
+      ['/portal/dashboard/revenue-intelligence/','Business Intelligence'],
       ['/portal/invoices/','Invoices'],
       ['/portal/dashboard/quotations/','Quotations'],
       ['/portal/dashboard/subscriptions/#collections','Collections (who owes us)'],
+      ['/portal/dashboard/books/','Books & Bank Reconciliation'],
       ['/portal/reports/','Reports'],
       ['/portal/dashboard/pos/','POS'],
       ['/portal/dashboard/cash-management/','Cash Management'],

@@ -9,7 +9,7 @@ import uuid
 class Migration(migrations.Migration):
 
     dependencies = [
-        ("ims", "0017_import_legacy_subscriptions"),
+        ("ims", "0020_import_legacy_subscriptions"),
     ]
 
     operations = [

@@ -1,7 +1,8 @@
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from decimal import Decimal
 
 import pytest
+from django.utils import timezone
 
 from ims import finance
 from ims.ledger import ensure_seeded, post_payroll_entry
@@ -46,7 +47,8 @@ def world(db, admin):
     invoice('INV-5', 100, 'overdue', sent_on=date(2026, 8, 25))
     invoice('INV-6', 999, 'draft')       # drafts never count
     invoice('INV-7', 999, 'cancelled')   # nor cancelled
-    CashTransaction.objects.create(amount=300, payment_method='cash', description='Retail sale', performed_by=admin)
+    sale = CashTransaction.objects.create(amount=300, payment_method='cash', description='Retail sale', performed_by=admin)
+    CashTransaction.objects.filter(pk=sale.pk).update(created_at=timezone.make_aware(datetime(2026, 9, 15, 12, 0)))
     # linked-to-invoice payments must NOT be double counted
     CashTransaction.objects.create(amount=1000, payment_method='eft', description='pay INV-1', performed_by=admin,
                                    invoice=Invoice.objects.get(invoice_number='INV-1'))
