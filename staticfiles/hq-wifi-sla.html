@@ -465,6 +465,8 @@
 <script>(function(){function _i(){var s=document.querySelector('.js-sidebar'),t=document.querySelector('.js-sidebar-toggle');if(!s||!t)return;if(window.innerWidth<992&&localStorage.getItem('ims_sidebar')==='open')s.classList.add('collapsed');t.addEventListener('click',function(){setTimeout(function(){localStorage.setItem('ims_sidebar',s.classList.contains('collapsed')?'open':'closed');},50);});}document.readyState==='loading'?document.addEventListener('DOMContentLoaded',_i):_i();})();</script>
 <script>
 (function(){
+  // Monthly invoicing moved to Subscriptions & Branches (one combined invoice per client, with a preview first)
+  (function(){ const b=document.getElementById('genMonthlyBtn'); if(b){ b.innerHTML='Monthly billing run →'; b.addEventListener('click',function(e){ e.stopImmediatePropagation(); e.preventDefault(); location.href='/portal/dashboard/subscriptions/#billing'; },true); } })();
   const token = localStorage.getItem('ims_access');
   if(!token){ window.location.href='/portal/login/'; return; }
   const userData = JSON.parse(localStorage.getItem('ims_user')||'{}');

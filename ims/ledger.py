@@ -39,11 +39,13 @@ SEED_ACCOUNTS = [
 
     ('4000', 'REV_WIFI', 'WiFi Subscription Revenue', 'revenue', '', 'credit'),
     ('4100', 'REV_SLA', 'SLA Retainer Revenue', 'revenue', '', 'credit'),
+    ('4150', 'REV_SERVICES', 'Email, Hosting & Other Services Revenue', 'revenue', '', 'credit'),
     ('4200', 'REV_ADHOC', 'Ad-Hoc / Project Revenue', 'revenue', '', 'credit'),
     ('4300', 'REV_RETAIL', 'Retail / POS Sales Revenue', 'revenue', '', 'credit'),
 
     ('5000', 'COGS_HARDWARE', 'Cost of Goods Sold — Hardware/Parts', 'expense', 'cogs', 'debit'),
     ('5100', 'COGS_AXXESS', 'Cost of Goods Sold — Axxess Wholesale', 'expense', 'cogs', 'debit'),
+    ('5200', 'COGS_SERVICES', 'Cost of Services — Hosting / Email / Other', 'expense', 'cogs', 'debit'),
 
     ('6000', 'OPEX_RENT', 'Rent Expense', 'expense', 'operating_expense', 'debit'),
     ('6100', 'OPEX_UTILITIES', 'Utilities / Internet Expense', 'expense', 'operating_expense', 'debit'),
@@ -195,18 +197,40 @@ def post_invoice_sent(invoice, user=None):
     total = Decimal(invoice.total_amount or 0)
     if total <= 0:
         return None
+    ref = f"Invoice {invoice.invoice_number}"
 
-    lines = [
-        ('ACCOUNTS_RECEIVABLE', total, Decimal('0'), f"Invoice {invoice.invoice_number}"),
-        (revenue_key, Decimal('0'), subtotal, f"Invoice {invoice.invoice_number}"),
-    ]
+    # Combined monthly-services invoices: revenue and cost are booked per line by service type.
+    revenue = {}
+    cost_wifi = cost_other = Decimal('0')
+    items = list(invoice.items.all()) if invoice.invoice_type == 'subscription' else []
+    if items:
+        for it in items:
+            key = {'wifi': 'REV_WIFI', 'sla': 'REV_SLA'}.get(it.service_type, 'REV_SERVICES')
+            revenue[key] = revenue.get(key, Decimal('0')) + Decimal(it.amount or 0)
+            line_cost = Decimal(it.quantity or 0) * Decimal(it.unit_cost or 0)
+            if it.service_type == 'wifi':
+                cost_wifi += line_cost
+            else:
+                cost_other += line_cost
+        drift = subtotal - sum(revenue.values(), Decimal('0'))     # cents of rounding: keep the entry balanced
+        if drift:
+            first = next(iter(revenue))
+            revenue[first] += drift
+    else:
+        revenue = {revenue_key: subtotal}
+        if invoice.invoice_type == 'wifi':
+            cost_wifi = Decimal(invoice.wholesale_cost or 0)
+
+    lines = [('ACCOUNTS_RECEIVABLE', total, Decimal('0'), ref)]
+    lines += [(key, Decimal('0'), amount, ref) for key, amount in revenue.items() if amount]
     if tax_amount > 0:
-        lines.append(('VAT_PAYABLE', Decimal('0'), tax_amount, f"Invoice {invoice.invoice_number}"))
-
-    wholesale_cost = Decimal(invoice.wholesale_cost or 0)
-    if invoice.invoice_type == 'wifi' and wholesale_cost > 0:
-        lines.append(('COGS_AXXESS', wholesale_cost, Decimal('0'), f"Axxess cost — {invoice.invoice_number}"))
-        lines.append(('ACCOUNTS_PAYABLE', Decimal('0'), wholesale_cost, f"Axxess cost — {invoice.invoice_number}"))
+        lines.append(('VAT_PAYABLE', Decimal('0'), tax_amount, ref))
+    if cost_wifi > 0:
+        lines.append(('COGS_AXXESS', cost_wifi, Decimal('0'), f"Axxess cost — {invoice.invoice_number}"))
+        lines.append(('ACCOUNTS_PAYABLE', Decimal('0'), cost_wifi, f"Axxess cost — {invoice.invoice_number}"))
+    if cost_other > 0:
+        lines.append(('COGS_SERVICES', cost_other, Decimal('0'), f"Service cost — {invoice.invoice_number}"))
+        lines.append(('ACCOUNTS_PAYABLE', Decimal('0'), cost_other, f"Service cost — {invoice.invoice_number}"))
 
     return post_transaction(
         'Invoice', invoice.id,

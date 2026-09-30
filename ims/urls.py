@@ -1,6 +1,6 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from . import views, finance_views
+from . import views, finance_views, subscription_views
 
 router = DefaultRouter()
 router.register(r'companies', views.CompanyViewSet, basename='company')
@@ -81,6 +81,13 @@ urlpatterns = [
     path('sla-contracts/<uuid:pk>/', views.SLAContractDetailView.as_view(), name='sla-contract-detail'),
     # Revenue Intelligence — Settings & Auto-invoicing
     path('revenue-allocation/', views.RevenueAllocationView.as_view(), name='revenue-allocation'),
+    # Clients & branches, recurring services and the combined billing run
+    path('sites/', subscription_views.SiteListView.as_view(), name='site-list'),
+    path('sites/<uuid:pk>/', subscription_views.SiteDetailView.as_view(), name='site-detail'),
+    path('subscriptions/', subscription_views.SubscriptionListView.as_view(), name='subscription-list'),
+    path('subscriptions/<uuid:pk>/', subscription_views.SubscriptionDetailView.as_view(), name='subscription-detail'),
+    path('billing/preview/', subscription_views.BillingPreviewView.as_view(), name='billing-preview'),
+    path('billing/run/', subscription_views.BillingRunView.as_view(), name='billing-run'),
     path('billing/generate-monthly/', views.GenerateMonthlyInvoicesView.as_view(), name='generate-monthly'),
     # Revenue Intelligence — Dashboard
     path('revenue-intelligence/', views.RevenueIntelligenceView.as_view(), name='revenue-intelligence'),

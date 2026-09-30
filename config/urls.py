@@ -23,7 +23,7 @@ from ims.portal_views import (
     client_contact_view, client_notifications_view,
     website_home_view,
     payment_success_view, payment_cancel_view, website_checkout_view,
-    portal_hr_access_view, portal_quotations_view, public_quote_view,
+    portal_hr_access_view, portal_quotations_view, public_quote_view, portal_subscriptions_view,
 )
 from ims.views import ChangePasswordView, quote_request_view
 
@@ -51,6 +51,7 @@ _portal_patterns = [
     path('dashboard/financial-analytics/', portal_financial_analytics_view, name='portal-financial-analytics'),
     path('dashboard/expenses/', portal_expenses_view, name='portal-expenses'),
     path('dashboard/quotations/', portal_quotations_view, name='portal-quotations'),
+    path('dashboard/subscriptions/', portal_subscriptions_view, name='portal-subscriptions'),
     path('dashboard/sla-monitor/', portal_sla_monitor_view, name='portal-sla-monitor'),
     path('dashboard/notifications/', portal_hq_notifications_view, name='portal-hq-notifications'),
     path('dashboard/audit-log/', portal_audit_log_view, name='portal-audit-log'),

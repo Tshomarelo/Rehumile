@@ -144,7 +144,8 @@
     ]),
     header('Revenue'),
     submenu('nav-revenue','trending-up','Revenue',[
-      ['/portal/dashboard/wifi-sla/','Subscriber & Contract Registry'],
+      ['/portal/dashboard/subscriptions/','Subscriptions & Branches'],
+      ['/portal/dashboard/wifi-sla/','WiFi & SLA Registry'],
       ['/portal/dashboard/revenue-intelligence/','Business Intelligence (Week/Month/Year)'],
     ]),
     header('Website'),

@@ -157,9 +157,11 @@ class InvoiceItemSerializer(serializers.ModelSerializer):
     """One invoice line. `amount` is always quantity x unit price, worked out here."""
     class Meta:
         model = InvoiceItem
-        fields = ['id', 'description', 'quantity', 'unit_price', 'amount', 'item_type']
+        fields = ['id', 'description', 'quantity', 'unit_price', 'amount', 'item_type',
+                  'service_type', 'site_name', 'unit_cost', 'subscription']
         read_only_fields = ['id', 'amount']
-        extra_kwargs = {'item_type': {'required': False}}
+        extra_kwargs = {'item_type': {'required': False}, 'service_type': {'required': False}, 'site_name': {'required': False},
+                        'unit_cost': {'required': False}, 'subscription': {'required': False}}
 
     def validate_quantity(self, value):
         if value <= 0:
@@ -187,7 +189,7 @@ class InvoiceSerializer(serializers.ModelSerializer):
             'subtotal', 'tax_rate', 'tax_amount', 'total_amount',
             'ticket_count', 'hours_worked', 'status', 'notes',
             'due_date', 'payment_date', 'created_at', 'updated_at',
-            'invoice_type', 'description', 'items',
+            'invoice_type', 'description', 'items', 'bill_to_name',
         ]
         read_only_fields = ['id', 'tax_amount', 'total_amount', 'created_at', 'updated_at',
                             'incident_ticket_id', 'incident_title']
@@ -199,7 +201,7 @@ class InvoiceSerializer(serializers.ModelSerializer):
         return attrs
 
     def get_company_name(self, obj):
-        return obj.company.name if obj.company else None
+        return obj.company.name if obj.company else (obj.bill_to_name or None)
 
     def get_incident_ticket_id(self, obj):
         return obj.incident.ticket_id if obj.incident else None
@@ -234,7 +236,8 @@ class InvoiceSerializer(serializers.ModelSerializer):
             InvoiceItem.objects.create(
                 invoice=invoice, description=it['description'], quantity=it['quantity'],
                 unit_price=it['unit_price'], amount=self._line_amount(it),
-                item_type=it.get('item_type') or 'service')
+                item_type=it.get('item_type') or 'service', service_type=it.get('service_type', ''),
+                site_name=it.get('site_name', ''), unit_cost=it.get('unit_cost') or 0, subscription=it.get('subscription'))
 
     def _subtotal_from(self, items):
         from decimal import Decimal

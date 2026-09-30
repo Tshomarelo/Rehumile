@@ -186,3 +186,7 @@ def portal_quotations_view(request):
 def public_quote_view(request, token):
     """The client's quotation page. The token is read from the URL by the page's script."""
     return _serve('quote-public.html')
+
+
+def portal_subscriptions_view(request):
+    return _serve('hq-subscriptions.html')

@@ -44,6 +44,7 @@
     .inv-items tbody td.num{text-align:center;color:#888}
     .inv-items tbody td.amount{text-align:right;font-weight:600}
     .inv-items tbody td.vat-col{text-align:center}
+    .inv-items tbody tr.grp td{background:#f3e8e8;color:#50181E;font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.4px;padding:6px 10px}
     /* Totals */
     .inv-totals{width:280px;margin-left:auto;margin-bottom:24px}
     .inv-totals table{width:100%;border-collapse:collapse}
@@ -123,7 +124,7 @@
       <tr>
         <th class="num">#</th>
         <th>Item / Service</th>
-        <th>Description</th>
+        <th>Branch / Client</th>
         <th style="text-align:center">Qty</th>
         <th style="text-align:right">Unit Price (ZAR)</th>
         <th class="vat-col">VAT Exempt</th>
@@ -244,19 +245,28 @@
     // Line items
     const tbody = document.getElementById('itemsTbody');
     if(items.length){
-      tbody.innerHTML = items.map((item,i)=>{
-        const vatRate = parseFloat(cs.vat_rate||0);
-        const vatExempt = vatRate === 0 ? 'Y' : 'N';
-        return `<tr>
-          <td class="num">${i+1}</td>
+      const vatRate = parseFloat(inv.tax_rate||0)/100;
+      const vatExempt = vatRate === 0 ? 'Y' : 'N';
+      const grouped = items.some(it=>it.site_name);          // combined invoices get a heading per branch
+      let n = 0, lastSite = null, rows = [];
+      items.forEach(item=>{
+        const site = item.site_name||'';
+        if(grouped && site !== lastSite){
+          rows.push(`<tr class="grp"><td colspan="7">${escHtml(site||'Head office')}</td></tr>`);
+          lastSite = site;
+        }
+        n++;
+        rows.push(`<tr>
+          <td class="num">${n}</td>
           <td>${escHtml(item.description||inv.description||'Service')}</td>
-          <td>${escHtml(client.name||'')}</td>
+          <td>${escHtml(site||client.name||'')}</td>
           <td style="text-align:center">${item.quantity||1}</td>
           <td class="amount">${R(item.unit_price)}</td>
           <td class="vat-col">${vatExempt}</td>
           <td class="amount">${R(item.total_price||item.unit_price)}</td>
-        </tr>`;
-      }).join('');
+        </tr>`);
+      });
+      tbody.innerHTML = rows.join('');
     } else {
       tbody.innerHTML = `<tr>
         <td class="num">1</td>
@@ -270,7 +280,7 @@
     }
 
     // Totals
-    const vatRate = parseFloat(cs.vat_rate||0)*100;
+    const vatRate = parseFloat(inv.tax_rate||0);
     document.getElementById('tot-sub').textContent = R(inv.subtotal);
     document.getElementById('vat-label').textContent = `VAT (${vatRate.toFixed(0)}%)`;
     document.getElementById('tot-vat').textContent = R(inv.tax_amount);

@@ -739,6 +739,7 @@ class Invoice(models.Model):
         ('sla', 'SLA Monthly Retainer'),
         ('callout', 'SLA Call-Out'),
         ('adhoc', 'Ad-Hoc / Project'),
+        ('subscription', 'Monthly Services (combined)'),
     ]
     invoice_type = models.CharField(max_length=20, choices=INVOICE_TYPE_CHOICES, default='adhoc', db_index=True)
 
@@ -751,6 +752,9 @@ class Invoice(models.Model):
     )
     # Axxess wholesale cost at time of invoice — locked so history is accurate even if rate changes
     wholesale_cost = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+
+    # Who is billed when there is no registered Company (direct-pay client)
+    bill_to_name = models.CharField(max_length=255, blank=True)
 
     # Description (short human-readable label — used in print/email)
     description = models.CharField(max_length=500, blank=True)
@@ -838,6 +842,15 @@ class InvoiceItem(models.Model):
         validators=[MinValueValidator(0)]
     )
     
+    # Set on lines created from recurring services (subscriptions): lets reports split
+    # revenue/cost by service and lets the billing run know what has been billed.
+    service_type = models.CharField(max_length=20, blank=True)
+    site_name = models.CharField(max_length=200, blank=True, help_text='Branch this line is for (shown as a heading on the invoice)')
+    unit_cost = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    subscription = models.ForeignKey(
+        'Subscription', null=True, blank=True, on_delete=models.SET_NULL, related_name='invoice_items',
+    )
+
     # Type of charge
     item_type = models.CharField(
         max_length=50,
@@ -2210,6 +2223,109 @@ class SLAContract(models.Model):
 
     def __str__(self):
         return f"{self.client_name} SLA — R{self.monthly_retainer}/month"
+
+
+class ServiceTypeChoices(models.TextChoices):
+    WIFI = 'wifi', _('WiFi / Internet')
+    EMAIL = 'email', _('Email hosting')
+    HOSTING = 'hosting', _('Website hosting')
+    SLA = 'sla', _('SLA retainer')
+    OTHER = 'other', _('Other service')
+
+
+class BillingMode(models.TextChoices):
+    HEAD_OFFICE = 'head_office', _('Billed to head office')
+    SELF = 'self', _('Branch pays its own invoice')
+
+
+class ClientSite(models.Model):
+    """A branch of a client company (the Company is the head office)."""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name='sites')
+    name = models.CharField(max_length=200, help_text='e.g. "Jozini Branch"')
+    address = models.TextField(blank=True)
+    contact_name = models.CharField(max_length=255, blank=True)
+    contact_email = models.EmailField(blank=True)
+    contact_phone = models.CharField(max_length=30, blank=True)
+    billing_mode = models.CharField(
+        max_length=12, choices=BillingMode.choices, default=BillingMode.HEAD_OFFICE,
+        help_text='Head office: this branch\'s services appear on the head office invoice. '
+                  'Branch pays: it gets its own invoice.',
+    )
+    is_active = models.BooleanField(default=True)
+    notes = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'client_sites'
+        ordering = ['company__name', 'name']
+        unique_together = [('company', 'name')]
+
+    def __str__(self):
+        return f"{self.company.name} — {self.name}"
+
+
+class Subscription(models.Model):
+    """
+    One recurring monthly service for a client (and optionally a branch):
+    WiFi, email, website hosting, an SLA retainer, anything else. The monthly billing run
+    combines everything due for the same paying client into ONE invoice with a line per service.
+
+    WiFi subscribers and SLA contracts are mirrored into this table automatically
+    (see legacy_wifi / legacy_sla) so they are billed together with everything else.
+    """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    company = models.ForeignKey(Company, null=True, blank=True, on_delete=models.PROTECT, related_name='subscriptions')
+    # For direct-pay clients that are not registered companies (no branches possible)
+    client_name = models.CharField(max_length=255, blank=True, db_index=True)
+    contact_email = models.EmailField(blank=True)
+    site = models.ForeignKey(ClientSite, null=True, blank=True, on_delete=models.PROTECT, related_name='subscriptions')
+    service_type = models.CharField(max_length=20, choices=ServiceTypeChoices.choices, default='wifi', db_index=True)
+    description = models.CharField(max_length=255, blank=True, help_text='Shown on the invoice, e.g. "20Mbps fibre" or "domain + 5 mailboxes"')
+    quantity = models.DecimalField(max_digits=8, decimal_places=2, default=1)
+    unit_price = models.DecimalField(max_digits=12, decimal_places=2, help_text='What the client pays per unit per month')
+    unit_cost = models.DecimalField(max_digits=12, decimal_places=2, default=0, help_text='What it costs you per unit per month')
+    billing_day = models.PositiveSmallIntegerField(default=1, help_text='Invoice is due on this day of the month')
+    start_date = models.DateField()
+    end_date = models.DateField(null=True, blank=True)
+    status = models.CharField(max_length=20, choices=SubscriberStatusChoices.choices, default='active', db_index=True)
+    axxess_id = models.CharField(max_length=150, blank=True)
+    notes = models.TextField(blank=True)
+    legacy_wifi = models.OneToOneField(WifiSubscriber, null=True, blank=True, on_delete=models.CASCADE, related_name='subscription')
+    legacy_sla = models.OneToOneField(SLAContract, null=True, blank=True, on_delete=models.CASCADE, related_name='subscription')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'subscriptions'
+        ordering = ['company__name', 'client_name', 'site__name', 'service_type']
+
+    def __str__(self):
+        return f"{self.client_label} — {self.get_service_type_display()} R{self.monthly_total}"
+
+    @property
+    def client_label(self):
+        return self.company.name if self.company_id else (self.client_name or '—')
+
+    @property
+    def monthly_total(self):
+        return (self.quantity or 0) * (self.unit_price or 0)
+
+    @property
+    def monthly_cost(self):
+        return (self.quantity or 0) * (self.unit_cost or 0)
+
+    @property
+    def is_managed_by_legacy(self):
+        return bool(self.legacy_wifi_id or self.legacy_sla_id)
+
+    def clean(self):
+        from django.core.exceptions import ValidationError
+        if self.site_id and self.site.company_id != self.company_id:
+            raise ValidationError('The branch must belong to the same client company.')
+        if not self.company_id and not self.client_name:
+            raise ValidationError('Choose a client company or type a client name.')
 
 
 class RevenueAllocation(models.Model):

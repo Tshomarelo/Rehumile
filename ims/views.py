@@ -3463,7 +3463,7 @@ Questions? Call 068 397 3484 or email infor@rehumile.co.za
 # REVENUE INTELLIGENCE — WiFi Subscribers, SLA Contracts, Auto-Invoicing
 # ============================================================================
 
-from .models import WifiSubscriber, SLAContract, RevenueAllocation
+from .models import WifiSubscriber, SLAContract, RevenueAllocation, Subscription
 from .serializers import WifiSubscriberSerializer, SLAContractSerializer, RevenueAllocationSerializer
 from django.db.models import Sum, Q, F, OuterRef, Exists
 from datetime import date, timedelta
@@ -3720,97 +3720,27 @@ class RevenueAllocationView(APIView):
 # ── Monthly Invoice Generation ────────────────────────────────────────────────
 
 class GenerateMonthlyInvoicesView(APIView):
+    """Kept for the older registry page. Uses the combined billing run: one invoice per paying client."""
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
         if request.user.role not in ('admin', 'finance'):
             return Response({'detail': 'Admin/Finance access required.'}, status=403)
-
+        from . import billing as _billing
+        from .subscription_views import send_invoice_email
         year = int(request.data.get('year', date.today().year))
         month = int(request.data.get('month', date.today().month))
-        send_email = request.data.get('send_email', True)
-        base_url = request.scheme + '://' + request.get_host()
-
+        invoices = _billing.generate(year, month, status='sent', vat_rate=0)
+        if request.data.get('send_email', True):
+            base_url = request.scheme + '://' + request.get_host()
+            for inv in invoices:
+                if inv._recipients:
+                    send_invoice_email(inv, inv._recipients, base_url)
+        skipped = len(_billing.plan(year, month)['skipped'])
         m_start, m_end = _month_bounds(year, month)
-        created_wifi = 0
-        created_sla = 0
-        skipped = 0
-
-        # WiFi Subscribers
-        for sub in WifiSubscriber.objects.filter(status='active'):
-            exists = Invoice.objects.filter(
-                wifi_subscriber=sub,
-                billing_period_start=m_start,
-                billing_period_end=m_end,
-            ).exists()
-            if exists:
-                skipped += 1
-                continue
-            inv = Invoice.objects.create(
-                invoice_number=_next_invoice_number(),
-                company=sub.company,
-                wifi_subscriber=sub,
-                invoice_type='wifi',
-                billing_period_start=m_start,
-                billing_period_end=m_end,
-                due_date=date(year, month, sub.billing_day),
-                subtotal=sub.retail_price,
-                tax_rate=0,
-                tax_amount=0,
-                total_amount=sub.retail_price,
-                wholesale_cost=sub.wholesale_cost,
-                ticket_count=0,
-                hours_worked=0,
-                description=f"WiFi Subscription — {sub.client_name}",
-                status='sent',
-                sent_at=timezone.now(),
-            )
-            created_wifi += 1
-            if send_email and sub.contact_email:
-                _send_subscriber_invoice_email(inv, sub.contact_email, base_url)
-
-        # SLA Contracts
-        for contract in SLAContract.objects.filter(status='active'):
-            # Skip if contract has ended before this month
-            if contract.contract_end and contract.contract_end < m_start:
-                skipped += 1
-                continue
-            exists = Invoice.objects.filter(
-                sla_contract=contract,
-                invoice_type='sla',
-                billing_period_start=m_start,
-                billing_period_end=m_end,
-            ).exists()
-            if exists:
-                skipped += 1
-                continue
-            inv = Invoice.objects.create(
-                invoice_number=_next_invoice_number(),
-                company=contract.company,
-                sla_contract=contract,
-                invoice_type='sla',
-                billing_period_start=m_start,
-                billing_period_end=m_end,
-                due_date=date(year, month, contract.billing_day),
-                subtotal=contract.monthly_retainer,
-                tax_rate=0,
-                tax_amount=0,
-                total_amount=contract.monthly_retainer,
-                ticket_count=0,
-                hours_worked=0,
-                description=f"SLA Monthly Retainer — {contract.client_name}",
-                status='sent',
-                sent_at=timezone.now(),
-            )
-            created_sla += 1
-            if send_email and contract.contact_email:
-                _send_subscriber_invoice_email(inv, contract.contact_email, base_url)
-
         return Response({
-            'detail': f"Generated {created_wifi} WiFi and {created_sla} SLA invoices. {skipped} skipped (already exist).",
-            'wifi_created': created_wifi,
-            'sla_created': created_sla,
-            'skipped': skipped,
+            'detail': f"Generated {len(invoices)} combined invoice(s). {skipped} service(s) skipped (already invoiced).",
+            'wifi_created': len(invoices), 'sla_created': 0, 'skipped': skipped,
             'period': f"{m_start} to {m_end}",
         })
 
@@ -3846,15 +3776,19 @@ class RevenueIntelligenceView(APIView):
         base = dict(billing_period_start__gte=m_start, billing_period_start__lte=m_end)
 
         # ── Current month streams ──────────────────────────────────────────────
-        wifi_paid = paid_sum({'invoice_type': 'wifi'})
-        wifi_outstanding = outstanding_sum({**base, 'invoice_type': 'wifi'})
-        wifi_expected = float(WifiSubscriber.objects.filter(status='active').aggregate(t=Sum('retail_price'))['t'] or 0)
+        # Split line by line, so a combined monthly invoice still counts WiFi, SLA and
+        # email/hosting separately.
+        paid = _finance.paid_by_stream(m_start, m_end)
+        outstanding = _finance.outstanding_by_stream(m_start, m_end)
+        active_subs = Subscription.objects.filter(status='active', start_date__lte=m_end).exclude(end_date__lt=m_start)
 
-        sla_paid = paid_sum({'invoice_type__in': ['sla', 'callout']})
-        sla_outstanding = outstanding_sum({**base, 'invoice_type__in': ['sla', 'callout']})
-        sla_expected = float(SLAContract.objects.filter(status='active').aggregate(t=Sum('monthly_retainer'))['t'] or 0)
+        def expected(types):
+            return float(sum((s.monthly_total for s in active_subs.filter(service_type__in=types)), Decimal('0')))
 
-        adhoc_paid = paid_sum({'invoice_type': 'adhoc'})
+        wifi_paid, wifi_outstanding, wifi_expected = paid['wifi'], outstanding['wifi'], expected(['wifi'])
+        sla_paid, sla_outstanding, sla_expected = paid['sla'], outstanding['sla'], expected(['sla'])
+        services_paid, services_outstanding, services_expected = paid['services'], outstanding['services'], expected(['email', 'hosting', 'other'])
+        adhoc_paid = paid['adhoc']
         direct_sales = fin['revenue']['direct_sales']
         axxess_costs = fin['expenses']['axxess']
 
@@ -3867,25 +3801,24 @@ class RevenueIntelligenceView(APIView):
         flags = []
 
         if adhoc_paid == 0:
-            floor_income = wifi_paid + sla_paid
+            floor_income = wifi_paid + sla_paid + services_paid
             flags.append({
                 'type': 'floor_month',
                 'level': 'warning',
                 'title': 'No Ad-Hoc Income This Month',
-                'detail': f'Floor income only: R {floor_income:,.2f} from WiFi + SLA. No ad-hoc/project income recorded yet.',
+                'detail': f'Floor income only: R {floor_income:,.2f} from recurring services (WiFi, SLA, email, hosting). No ad-hoc/project income recorded yet.',
             })
 
-        loss_makers = list(WifiSubscriber.objects.filter(
-            status='active', wholesale_cost__gte=F('retail_price'),
-        ).values('id', 'client_name', 'retail_price', 'wholesale_cost'))
+        loss_makers = []
+        for sub in Subscription.objects.select_related('company', 'site').filter(status='active', unit_price__gt=0, unit_cost__gte=F('unit_price')):
+            loss_makers.append({'id': str(sub.id), 'client_name': sub.client_label + (f" — {sub.site.name}" if sub.site_id else '') + f" ({sub.get_service_type_display()})",
+                                'retail_price': float(sub.unit_price), 'wholesale_cost': float(sub.unit_cost)})
         for lm in loss_makers:
-            lm['retail_price'] = float(lm['retail_price'])
-            lm['wholesale_cost'] = float(lm['wholesale_cost'])
             flags.append({
                 'type': 'loss_making',
                 'level': 'danger',
                 'title': f"Loss-Making Line: {lm['client_name']}",
-                'detail': f"Billed R {lm['retail_price']:,.2f} but Axxess costs R {lm['wholesale_cost']:,.2f}. Review pricing.",
+                'detail': f"Billed R {lm['retail_price']:,.2f} but it costs R {lm['wholesale_cost']:,.2f}. Review pricing.",
                 'data': lm,
             })
 
@@ -3912,48 +3845,46 @@ class RevenueIntelligenceView(APIView):
 
         overdue_threshold = today - timedelta(days=7)
         overdue_subs = list(Invoice.objects.filter(
-            invoice_type='wifi',
+            invoice_type__in=['wifi', 'subscription'],
             status__in=['sent', 'overdue'],
             sent_at__date__lte=overdue_threshold,
-        ).select_related('wifi_subscriber').values(
+        ).select_related('wifi_subscriber', 'company').values(
             'id', 'invoice_number', 'total_amount',
-            'wifi_subscriber__client_name', 'sent_at',
+            'wifi_subscriber__client_name', 'company__name', 'bill_to_name', 'sent_at',
         )[:15])
         for o in overdue_subs:
             o['total_amount'] = float(o['total_amount'] or 0)
+            o['wifi_subscriber__client_name'] = o['wifi_subscriber__client_name'] or o['company__name'] or o['bill_to_name']
         if overdue_subs:
             flags.append({
                 'type': 'overdue_subscribers',
                 'level': 'warning',
-                'title': f'{len(overdue_subs)} WiFi Invoice(s) Overdue (>7 days)',
+                'title': f'{len(overdue_subs)} Subscription Invoice(s) Overdue (>7 days)',
                 'detail': 'Sent but unpaid for more than 7 days. Follow up or mark overdue.',
                 'invoices': overdue_subs,
             })
 
-        # ── Per-client profitability ───────────────────────────────────────────
+        # ── Per-service profitability (what each subscription has billed and cost, all time) ──
+        from .models import InvoiceItem
         client_prof = []
-        for sub in WifiSubscriber.objects.filter(status='active').order_by('client_name'):
-            billed = float(Invoice.objects.filter(wifi_subscriber=sub).aggregate(t=Sum('total_amount'))['t'] or 0)
-            costs = float(Invoice.objects.filter(wifi_subscriber=sub, wholesale_cost__isnull=False).aggregate(t=Sum('wholesale_cost'))['t'] or 0)
+        for sub in Subscription.objects.select_related('company', 'site', 'legacy_wifi', 'legacy_sla').filter(status='active'):
+            items = InvoiceItem.objects.filter(subscription=sub).exclude(invoice__status__in=['draft', 'cancelled'])
+            billed = float(items.aggregate(t=Sum('amount'))['t'] or 0)
+            costs = float(sum((i.quantity * i.unit_cost for i in items), Decimal('0')))
+            if sub.legacy_wifi_id:     # history from before combined invoices
+                old = Invoice.objects.filter(wifi_subscriber=sub.legacy_wifi)
+                billed += float(old.aggregate(t=Sum('subtotal'))['t'] or 0)
+                costs += float(old.filter(wholesale_cost__isnull=False).aggregate(t=Sum('wholesale_cost'))['t'] or 0)
+            if sub.legacy_sla_id:
+                billed += float(Invoice.objects.filter(sla_contract=sub.legacy_sla).aggregate(t=Sum('subtotal'))['t'] or 0)
             client_prof.append({
                 'id': str(sub.id),
-                'client_name': sub.client_name,
-                'type': 'wifi',
+                'client_name': sub.client_label + (f" — {sub.site.name}" if sub.site_id else ''),
+                'type': sub.service_type,
                 'revenue': billed,
                 'cost': costs,
                 'gross_margin': billed - costs,
-                'is_loss_making': sub.is_loss_making,
-            })
-        for contract in SLAContract.objects.filter(status='active').order_by('client_name'):
-            billed = float(Invoice.objects.filter(sla_contract=contract).aggregate(t=Sum('total_amount'))['t'] or 0)
-            client_prof.append({
-                'id': str(contract.id),
-                'client_name': contract.client_name,
-                'type': 'sla',
-                'revenue': billed,
-                'cost': 0,
-                'gross_margin': billed,
-                'is_loss_making': False,
+                'is_loss_making': sub.unit_price > 0 and sub.unit_cost >= sub.unit_price,
             })
         client_prof.sort(key=lambda x: x['gross_margin'], reverse=True)
 
@@ -3962,10 +3893,11 @@ class RevenueIntelligenceView(APIView):
             'streams': {
                 'wifi': {'paid': wifi_paid, 'outstanding': wifi_outstanding, 'expected': wifi_expected},
                 'sla': {'paid': sla_paid, 'outstanding': sla_outstanding, 'expected': sla_expected},
+                'services': {'paid': services_paid, 'outstanding': services_outstanding, 'expected': services_expected},
                 'adhoc': {'paid': adhoc_paid},
                 'direct': {'paid': direct_sales},
             },
-            'costs': {'axxess': axxess_costs, 'total_expenses': fin['expenses']['total']},
+            'costs': {'axxess': axxess_costs, 'service_costs': fin['expenses']['service_costs'], 'total_expenses': fin['expenses']['total']},
             'totals': {
                 'revenue': total_revenue,
                 'expenses': fin['expenses']['total'],
@@ -4056,7 +3988,7 @@ class InvoicePrintView(APIView):
                 return Response({'detail': 'Not found.'}, status=404)
 
         items = list(InvoiceItem.objects.filter(invoice=inv).values(
-            'description', 'quantity', 'unit_price', total_price=F('amount'),
+            'description', 'quantity', 'unit_price', 'site_name', 'service_type', total_price=F('amount'),
         ))
 
         # Build a single line item from invoice fields if no items exist
@@ -4071,7 +4003,7 @@ class InvoicePrintView(APIView):
         client_name = (
             inv.wifi_subscriber.client_name if inv.wifi_subscriber else
             inv.sla_contract.client_name if inv.sla_contract else
-            inv.company.name if inv.company else ''
+            inv.company.name if inv.company else inv.bill_to_name
         )
         client_email = (
             inv.wifi_subscriber.contact_email if inv.wifi_subscriber else

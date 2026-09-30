@@ -71,6 +71,13 @@
           </div>
           <div class="col-md-3 col-sm-6 mb-3">
             <div class="card text-center py-3">
+              <h6 class="text-muted small mb-1">Email &amp; Hosting Revenue</h6>
+              <h4 class="mb-0 text-primary" id="live-services">R —</h4>
+              <small class="text-muted" id="live-services-sub"></small>
+            </div>
+          </div>
+          <div class="col-md-3 col-sm-6 mb-3">
+            <div class="card text-center py-3">
               <h6 class="text-muted small mb-1">Ad-Hoc Revenue</h6>
               <h4 class="mb-0 text-info" id="live-adhoc">R —</h4>
               <small class="text-muted">Growth income</small>
@@ -142,6 +149,9 @@
               <option value="">All Types</option>
               <option value="wifi">WiFi</option>
               <option value="sla">SLA</option>
+              <option value="email">Email</option>
+              <option value="hosting">Hosting</option>
+              <option value="other">Other</option>
             </select>
           </div>
           <div class="card-body p-0">
@@ -178,8 +188,8 @@
             <div class="table-responsive" id="monthlyTable" style="display:none">
               <table class="table table-hover my-0 small">
                 <thead><tr>
-                  <th id="thPeriod">Period</th><th>WiFi</th><th>SLA</th><th>Ad-Hoc</th><th>Till / POS</th>
-                  <th>Revenue</th><th>Axxess</th><th>Expenses &amp; stock</th><th>Payroll</th><th>Total expenses</th><th>Net profit</th><th>Margin</th>
+                  <th id="thPeriod">Period</th><th>WiFi</th><th>SLA</th><th>Email &amp; Hosting</th><th>Ad-Hoc</th><th>Till / POS</th>
+                  <th>Revenue</th><th>Axxess</th><th>Service costs</th><th>Expenses &amp; stock</th><th>Payroll</th><th>Total expenses</th><th>Net profit</th><th>Margin</th>
                 </tr></thead>
                 <tbody id="monthlyTbody"></tbody>
                 <tfoot id="monthlyTfoot"></tfoot>
@@ -278,6 +288,8 @@
       document.getElementById('live-wifi-sub').textContent=`Expected: ${R(s.wifi?.expected)}`;
       document.getElementById('live-sla').textContent=R(s.sla?.paid);
       document.getElementById('live-sla-sub').textContent=`Expected: ${R(s.sla?.expected)}`;
+      document.getElementById('live-services').textContent=R(s.services?.paid);
+      document.getElementById('live-services-sub').textContent=`Expected: ${R(s.services?.expected)}`;
       document.getElementById('live-adhoc').textContent=R(s.adhoc?.paid);
       const netProfit=parseFloat(totals.net_profit||0);
       const totalRev=parseFloat(totals.revenue||0);
@@ -386,19 +398,20 @@
         const margin=m.revenue>0?(m.profit/m.revenue*100).toFixed(0)+'%':'—';
         return `<tr>
           <td><strong>${m.label}</strong>${gran==='weekly'?`<div class="text-muted" style="font-size:.7rem">to ${m.end}</div>`:''}</td>
-          <td>${Rm(m.rev_wifi)}</td><td>${Rm(m.rev_sla)}</td><td>${Rm(m.rev_adhoc)}</td><td>${Rm(m.rev_direct)}</td>
+          <td>${Rm(m.rev_wifi)}</td><td>${Rm(m.rev_sla)}</td><td>${Rm(m.rev_services)}</td><td>${Rm(m.rev_adhoc)}</td><td>${Rm(m.rev_direct)}</td>
           <td class="fw-semibold">${Rm(m.revenue)}</td>
-          <td class="text-warning">${Rm(m.cost_axxess)}</td><td>${Rm(m.cost_expenses)}</td><td>${Rm(m.cost_payroll)}</td>
+          <td class="text-warning">${Rm(m.cost_axxess)}</td><td>${Rm(m.cost_services)}</td><td>${Rm(m.cost_expenses)}</td><td>${Rm(m.cost_payroll)}</td>
           <td class="fw-semibold">${Rm(m.expenses)}</td>
           <td class="fw-semibold ${m.profit<0?'neg':m.profit>0?'pos':'text-muted'}">${Rm(m.profit)}</td><td>${margin}</td></tr>`;
       }).join('');
       const tp=sum('profit'), tr=sum('revenue');
-      document.getElementById('monthlyTfoot').innerHTML=`<tr class="table-light fw-bold"><td>Total</td><td>${Rm(sum('rev_wifi'))}</td><td>${Rm(sum('rev_sla'))}</td><td>${Rm(sum('rev_adhoc'))}</td><td>${Rm(sum('rev_direct'))}</td><td>${Rm(tr)}</td><td>${Rm(sum('cost_axxess'))}</td><td>${Rm(sum('cost_expenses'))}</td><td>${Rm(sum('cost_payroll'))}</td><td>${Rm(sum('expenses'))}</td><td class="${tp<0?'neg':'pos'}">${Rm(tp)}</td><td>${tr>0?(tp/tr*100).toFixed(0)+'%':'—'}</td></tr>`;
+      document.getElementById('monthlyTfoot').innerHTML=`<tr class="table-light fw-bold"><td>Total</td><td>${Rm(sum('rev_wifi'))}</td><td>${Rm(sum('rev_sla'))}</td><td>${Rm(sum('rev_services'))}</td><td>${Rm(sum('rev_adhoc'))}</td><td>${Rm(sum('rev_direct'))}</td><td>${Rm(tr)}</td><td>${Rm(sum('cost_axxess'))}</td><td>${Rm(sum('cost_services'))}</td><td>${Rm(sum('cost_expenses'))}</td><td>${Rm(sum('cost_payroll'))}</td><td>${Rm(sum('expenses'))}</td><td class="${tp<0?'neg':'pos'}">${Rm(tp)}</td><td>${tr>0?(tp/tr*100).toFixed(0)+'%':'—'}</td></tr>`;
       try{ if(window.Chart){
         const labels=rows.map(m=>m.label);
         const ds=[
           {type:'bar',label:'WiFi',data:rows.map(m=>m.rev_wifi),backgroundColor:'#3b82f6',stack:'rev'},
           {type:'bar',label:'SLA',data:rows.map(m=>m.rev_sla),backgroundColor:'#10b981',stack:'rev'},
+          {type:'bar',label:'Email & hosting',data:rows.map(m=>m.rev_services),backgroundColor:'#f59e0b',stack:'rev'},
           {type:'bar',label:'Ad-hoc',data:rows.map(m=>m.rev_adhoc),backgroundColor:'#06b6d4',stack:'rev'},
           {type:'bar',label:'Till / POS',data:rows.map(m=>m.rev_direct),backgroundColor:'#a78bfa',stack:'rev'},
           {type:'line',label:'Expenses',data:rows.map(m=>m.expenses),borderColor:'#dc2626',backgroundColor:'#dc2626',tension:.25,pointRadius:3},

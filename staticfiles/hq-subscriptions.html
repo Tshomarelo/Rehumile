@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <link rel="shortcut icon" href="/portal/static/img/icons/icon-48x48.png"/>
+  <title>Subscriptions &amp; Branches | Rehumile IMS</title>
+  <link href="/portal/static/css/app.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+  <style>
+    .tab-pane{display:none}.tab-pane.active{display:block}
+    .nav-tabs .nav-link{cursor:pointer}
+    .inv-card{border:1px solid #e5e7eb;border-left:4px solid #50181E;border-radius:10px;background:#fff;margin-bottom:14px}
+    .inv-card .hd{display:flex;flex-wrap:wrap;gap:8px;justify-content:space-between;align-items:flex-start;padding:12px 16px;border-bottom:1px solid #f3f4f6}
+    .inv-card table{margin:0;font-size:.85rem}
+    .inv-card tr.grp td{background:#f3e8e8;color:#50181E;font-weight:700;font-size:.72rem;text-transform:uppercase;letter-spacing:.04em}
+    .chip{display:inline-block;background:#f3f4f6;border-radius:999px;padding:1px 9px;font-size:.72rem;margin:0 3px 2px 0}
+    .chip.self{background:#fef3c7;color:#92400e}
+    .neg{color:#b91c1c}.pos{color:#15803d}
+    .tile .card-body{padding:.6rem .9rem}
+    .site-row td{font-size:.85rem}
+  </style>
+</head>
+<body>
+<div class="wrapper">
+  <nav id="sidebar" class="sidebar js-sidebar">
+    <div class="sidebar-content js-simplebar">
+      <a class="sidebar-brand d-flex align-items-center p-2" href="/portal/dashboard/">
+        <img src="/portal/static/img/rehumile-logo.jpeg" style="height:36px;object-fit:contain" alt="Rehumile TMW">
+      </a>
+      <ul class="sidebar-nav"></ul>
+    </div>
+  </nav>
+  <div class="main">
+    <nav class="navbar navbar-expand navbar-light navbar-bg">
+      <a class="sidebar-toggle js-sidebar-toggle"><i class="hamburger align-self-center"></i></a>
+      <div class="navbar-collapse collapse">
+        <ul class="navbar-nav navbar-align">
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle d-none d-sm-inline-block" href="#" data-bs-toggle="dropdown">
+              <i class="align-middle me-1" data-feather="user"></i><span class="text-dark" id="navUserName">…</span>
+            </a>
+            <div class="dropdown-menu dropdown-menu-end">
+              <span class="dropdown-item-text small text-muted" id="navUserRole"></span>
+              <div class="dropdown-divider"></div>
+              <a class="dropdown-item" href="#" id="logoutBtn"><i class="align-middle me-1" data-feather="log-out"></i> Sign out</a>
+            </div>
+          </li>
+        </ul>
+      </div>
+    </nav>
+    <main class="content">
+      <div class="container-fluid p-0">
+        <div class="mb-3">
+          <h1 class="h3 mb-0"><strong>Subscriptions &amp; Branches</strong></h1>
+          <div class="text-muted small">Recurring services for each client and branch. The monthly run combines everything due for the same paying client into <b>one invoice with a line per service</b>.</div>
+        </div>
+        <div id="pageAlert"></div>
+
+        <ul class="nav nav-tabs mb-3" id="tabs">
+          <li class="nav-item"><a class="nav-link active" data-tab="billing">Monthly billing run</a></li>
+          <li class="nav-item"><a class="nav-link" data-tab="services">Services</a></li>
+          <li class="nav-item"><a class="nav-link" data-tab="clients">Clients &amp; branches</a></li>
+        </ul>
+
+        <!-- ═══ Billing run ═══ -->
+        <div id="tab-billing" class="tab-pane active">
+          <div class="card mb-3"><div class="card-body">
+            <div class="d-flex flex-wrap gap-2 align-items-end">
+              <div><label class="form-label small mb-1">Billing month</label><input type="month" class="form-control form-control-sm" id="runMonth"></div>
+              <div><label class="form-label small mb-1" title="Generated invoices carry no VAT unless you enter a rate here">VAT % <span class="text-muted">(0 = none)</span></label><input type="number" class="form-control form-control-sm" id="runVat" value="0" min="0" max="100" step="0.01" style="width:90px"></div>
+              <button class="btn btn-sm btn-primary" id="btnPreview">Preview invoices</button>
+            </div>
+            <div class="small text-muted mt-2">Preview changes nothing. Services already invoiced for the month are skipped, so it is safe to run again after adding a service.</div>
+          </div></div>
+          <div id="runSummary"></div>
+          <div id="runGroups"></div>
+          <div id="runActions" style="display:none" class="card"><div class="card-body d-flex flex-wrap gap-3 align-items-center">
+            <div><label class="form-label small mb-1">Create them as</label>
+              <select class="form-select form-select-sm" id="runStatus"><option value="sent">Sent (issued to clients now)</option><option value="draft">Drafts (review first)</option></select></div>
+            <div class="form-check mt-3"><input class="form-check-input" type="checkbox" id="runEmail" checked><label class="form-check-label" for="runEmail">Email each client one invoice</label></div>
+            <button class="btn btn-success ms-auto" id="btnRun">Create selected invoices</button>
+          </div></div>
+        </div>
+
+        <!-- ═══ Services ═══ -->
+        <div id="tab-services" class="tab-pane">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <div class="row g-2 flex-grow-1 me-2">
+              <div class="col-md-3"><input type="text" class="form-control form-control-sm" id="fSearch" placeholder="Search client, branch, description…"></div>
+              <div class="col-md-3"><select class="form-select form-select-sm" id="fCompany"><option value="">All clients</option></select></div>
+              <div class="col-md-2"><select class="form-select form-select-sm" id="fType"><option value="">All services</option><option value="wifi">WiFi</option><option value="email">Email</option><option value="hosting">Hosting</option><option value="sla">SLA</option><option value="other">Other</option></select></div>
+              <div class="col-md-2"><select class="form-select form-select-sm" id="fStatus"><option value="active">Active</option><option value="suspended">Suspended</option><option value="cancelled">Cancelled</option><option value="">All</option></select></div>
+              <div class="col-md-2"><button class="btn btn-sm btn-outline-secondary w-100" id="fClear">Clear</button></div>
+            </div>
+            <button class="btn btn-primary" id="btnNewSub"><i class="align-middle me-1" data-feather="plus"></i> Add service</button>
+          </div>
+          <div class="row g-2 mb-3" id="subTiles"></div>
+          <div class="card"><div class="card-body p-0"><div class="table-responsive">
+            <table class="table table-hover my-0 small">
+              <thead><tr><th>Client</th><th>Branch</th><th>Service</th><th class="text-end">Qty × price</th><th class="text-end">Monthly</th><th class="text-end d-none d-lg-table-cell">Margin</th><th class="d-none d-md-table-cell">Due day</th><th>Status</th><th>Actions</th></tr></thead>
+              <tbody id="subTbody"><tr><td colspan="9" class="text-center text-muted py-4">Loading…</td></tr></tbody>
+            </table></div></div></div>
+        </div>
+
+        <!-- ═══ Clients & branches ═══ -->
+        <div id="tab-clients" class="tab-pane">
+          <div class="alert alert-info py-2 small">A <b>client</b> is a company on the Companies page (the head office). Add its <b>branches</b> here, then choose for each one who pays:
+            <b>head office</b> (its services appear on the head-office invoice under the branch name) or <b>the branch itself</b> (it gets its own invoice). You can mix both for the same client.</div>
+          <div class="row g-2 mb-3"><div class="col-md-4"><input type="text" class="form-control form-control-sm" id="cSearch" placeholder="Search clients or branches…"></div>
+            <div class="col-md-3"><div class="form-check mt-1"><input class="form-check-input" type="checkbox" id="cOnlyBranches"><label class="form-check-label small" for="cOnlyBranches">Only clients with branches</label></div></div></div>
+          <div id="clientList"></div>
+        </div>
+      </div>
+    </main>
+    <footer class="footer"><div class="container-fluid"><p class="mb-0 text-muted">Rehumile TMW IMS &copy; 2026</p></div></footer>
+  </div>
+</div>
+
+<!-- Service drawer -->
+<div class="hq-drawer hq-wide" id="subModal">
+  <div class="hq-drawer-header"><h5 class="hq-drawer-title" id="subTitle">Add service</h5><button type="button" class="btn-close btn-close-white" onclick="HQ.hideDrawer('subModal')"></button></div>
+  <div class="hq-drawer-body">
+    <div id="subAlert"></div><input type="hidden" id="s_id">
+    <div id="legacyNote" class="alert alert-warning py-2 small" style="display:none">This <b id="legacyKind"></b> comes from the <a href="/portal/dashboard/wifi-sla/">WiFi &amp; SLA registry</a>. Price, cost, status and dates are changed there; here you can set the <b>branch</b>, invoice wording, quantity and notes.</div>
+    <div class="row g-2">
+      <div class="col-md-6"><label class="form-label">Client (company) <span class="text-danger">*</span></label><select class="form-select" id="s_company"><option value="">— Direct-pay client (type a name) —</option></select></div>
+      <div class="col-md-6" id="rowClientName"><label class="form-label">Client name</label><input class="form-control" id="s_client_name" placeholder="Only for clients that are not registered companies"></div>
+      <div class="col-md-6" id="rowSite"><label class="form-label">Branch</label><select class="form-select" id="s_site"><option value="">Head office</option></select>
+        <div class="form-text" id="siteHint"></div></div>
+      <div class="col-md-6"><label class="form-label">Service <span class="text-danger">*</span></label>
+        <select class="form-select" id="s_type"><option value="wifi">WiFi / Internet</option><option value="email">Email hosting</option><option value="hosting">Website hosting</option><option value="sla">SLA retainer</option><option value="other">Other service</option></select></div>
+      <div class="col-12"><label class="form-label">Wording on the invoice</label><input class="form-control" id="s_desc" placeholder='e.g. "20Mbps fibre", "5 mailboxes", "acme.co.za"'></div>
+      <div class="col-md-3"><label class="form-label">Quantity</label><input type="number" class="form-control" id="s_qty" min="0.01" step="0.01" value="1"></div>
+      <div class="col-md-3"><label class="form-label">Price each / month (R) <span class="text-danger">*</span></label><input type="number" class="form-control" id="s_price" min="0" step="0.01"></div>
+      <div class="col-md-3"><label class="form-label">Your cost each (R)</label><input type="number" class="form-control" id="s_cost" min="0" step="0.01" value="0"></div>
+      <div class="col-md-3"><label class="form-label">Due day</label><input type="number" class="form-control" id="s_day" min="1" max="31" value="1"></div>
+      <div class="col-md-4"><label class="form-label">Start date</label><input type="date" class="form-control" id="s_start"></div>
+      <div class="col-md-4"><label class="form-label">End date <span class="text-muted small">(optional)</span></label><input type="date" class="form-control" id="s_end"></div>
+      <div class="col-md-4"><label class="form-label">Status</label><select class="form-select" id="s_status"><option value="active">Active</option><option value="suspended">Suspended</option><option value="cancelled">Cancelled</option></select></div>
+      <div class="col-12"><label class="form-label">Notes</label><textarea class="form-control" id="s_notes" rows="2"></textarea></div>
+      <div class="col-12"><div class="card bg-light"><div class="card-body py-2 small" id="subPreview"></div></div></div>
+    </div>
+  </div>
+  <div class="hq-drawer-footer"><button class="btn btn-secondary" onclick="HQ.hideDrawer('subModal')">Cancel</button><button class="btn btn-primary" id="btnSaveSub">Save service</button></div>
+</div>
+<div class="hq-backdrop" id="subModal-bd" onclick="HQ.hideDrawer('subModal')"></div>
+
+<!-- Branch drawer -->
+<div class="hq-drawer" id="siteModal">
+  <div class="hq-drawer-header"><h5 class="hq-drawer-title" id="siteTitle">Add branch</h5><button type="button" class="btn-close btn-close-white" onclick="HQ.hideDrawer('siteModal')"></button></div>
+  <div class="hq-drawer-body">
+    <div id="siteAlert"></div><input type="hidden" id="b_id"><input type="hidden" id="b_company">
+    <div class="mb-2 fw-bold" id="b_companyName"></div>
+    <div class="mb-3"><label class="form-label">Branch name <span class="text-danger">*</span></label><input class="form-control" id="b_name" placeholder="e.g. Jozini Branch"></div>
+    <div class="mb-3"><label class="form-label">Who pays for this branch?</label>
+      <div class="form-check"><input class="form-check-input" type="radio" name="b_mode" id="b_ho" value="head_office" checked><label class="form-check-label" for="b_ho"><b>Head office pays</b> — its services appear on the head-office invoice, under the branch name.</label></div>
+      <div class="form-check"><input class="form-check-input" type="radio" name="b_mode" id="b_self" value="self"><label class="form-check-label" for="b_self"><b>The branch pays</b> — it gets its own invoice, emailed to the branch contact below.</label></div></div>
+    <div class="mb-3"><label class="form-label">Address</label><textarea class="form-control" id="b_addr" rows="2"></textarea></div>
+    <div class="row g-2 mb-3"><div class="col-md-6"><label class="form-label">Contact person</label><input class="form-control" id="b_cname"></div>
+      <div class="col-md-6"><label class="form-label">Contact phone</label><input class="form-control" id="b_cphone"></div>
+      <div class="col-12"><label class="form-label">Contact email <span class="text-muted small">(receives the invoice when the branch pays)</span></label><input type="email" class="form-control" id="b_cemail"></div></div>
+    <div class="form-check mb-2"><input class="form-check-input" type="checkbox" id="b_active" checked><label class="form-check-label" for="b_active">Active</label></div>
+    <div class="mb-2"><label class="form-label">Notes</label><textarea class="form-control" id="b_notes" rows="2"></textarea></div>
+  </div>
+  <div class="hq-drawer-footer"><button class="btn btn-secondary" onclick="HQ.hideDrawer('siteModal')">Cancel</button><button class="btn btn-primary" id="btnSaveSite">Save branch</button></div>
+</div>
+<div class="hq-backdrop" id="siteModal-bd" onclick="HQ.hideDrawer('siteModal')"></div>
+
+<script src="/portal/static/js/app.js"></script>
+<script src="/portal/static/js/hq-sidebar-menu.js"></script>
+<script src="/portal/static/js/hq-filters.js"></script>
+<script>
+(function(){
+  const token = localStorage.getItem('ims_access');
+  if(!token){ location.href='/portal/login/'; return; }
+  const user = JSON.parse(localStorage.getItem('ims_user')||'{}');
+  if(!['admin','finance'].includes(user.role)){ location.href='/portal/dashboard/'; return; }
+  document.getElementById('navUserName').textContent=((user.first_name||'')+' '+(user.last_name||'')).trim()||user.email||'User';
+  document.getElementById('navUserRole').textContent=(user.role||'').toUpperCase();
+  document.getElementById('logoutBtn').onclick=e=>{ e.preventDefault(); localStorage.clear(); location.href='/portal/login/'; };
+  const $ = id => document.getElementById(id);
+  const esc = s => String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  const R = n => 'R '+(parseFloat(n)||0).toLocaleString('en-ZA',{minimumFractionDigits:2,maximumFractionDigits:2});
+  async function api(url, opts={}){
+    const r=await fetch(url,{...opts,headers:{'Content-Type':'application/json','Authorization':'Bearer '+token,...(opts.headers||{})}});
+    if(r.status===401){ localStorage.clear(); location.href='/portal/login/'; throw new Error('Unauth'); }
+    return r;
+  }
+  function alertBox(id,msg,type='danger'){ $(id).innerHTML=`<div class="alert alert-${type} alert-dismissible"><button type="button" class="btn-close" data-bs-dismiss="alert"></button>${esc(msg)}</div>`; }
+  const TYPE={wifi:'WiFi',email:'Email',hosting:'Hosting',sla:'SLA',other:'Other'};
+
+  // ── tabs ──
+  function tab(name){
+    document.querySelectorAll('.tab-pane').forEach(t=>t.classList.remove('active'));
+    document.querySelectorAll('#tabs .nav-link').forEach(a=>a.classList.toggle('active',a.dataset.tab===name));
+    $('tab-'+name).classList.add('active'); history.replaceState(null,'','#'+name);
+    if(name==='services') loadSubs(); if(name==='clients') loadClients();
+  }
+  $('tabs').addEventListener('click',e=>{ const a=e.target.closest('.nav-link'); if(a) tab(a.dataset.tab); });
+
+  let companies=[], sites=[];
+  async function loadRefs(){
+    try{ const c=await (await api('/portal/api/companies/?page_size=500')).json(); companies=(c.results||c).sort((a,b)=>a.name.localeCompare(b.name)); }catch{ companies=[]; }
+    try{ sites=await (await api('/portal/api/sites/')).json(); }catch{ sites=[]; }
+    const opts=companies.map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join('');
+    $('fCompany').innerHTML='<option value="">All clients</option>'+opts;
+    $('s_company').innerHTML='<option value="">— Direct-pay client (type a name) —</option>'+opts;
+  }
+
+  // ═══ Billing run ═══
+  const now=new Date(); $('runMonth').value=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
+  let plan=null;
+  function ym(){ const [y,m]=$('runMonth').value.split('-'); return {year:+y,month:+m}; }
+  $('btnPreview').onclick=async()=>{
+    if(!$('runMonth').value){ alertBox('pageAlert','Choose a month.'); return; }
+    const btn=$('btnPreview'); btn.disabled=true;
+    try{
+      const r=await api('/portal/api/billing/preview/',{method:'POST',body:JSON.stringify({...ym(),vat_rate:$('runVat').value||0})}); const d=await r.json();
+      if(!r.ok){ alertBox('pageAlert',d.detail||'Preview failed.'); return; }
+      plan=d; renderPlan();
+    }catch(e){ if(e.message!=='Unauth') alertBox('pageAlert','Preview failed.'); }
+    btn.disabled=false;
+  };
+  function renderPlan(){
+    const t=plan.totals;
+    $('runSummary').innerHTML=`<div class="row g-2 mb-3">
+      <div class="col-md-3"><div class="card tile mb-0"><div class="card-body"><div class="text-muted small">Invoices to create</div><div class="h4 mb-0" id="selCount">${t.invoices}</div></div></div></div>
+      <div class="col-md-3"><div class="card tile mb-0"><div class="card-body"><div class="text-muted small">Service lines</div><div class="h4 mb-0">${t.lines}</div></div></div></div>
+      <div class="col-md-3"><div class="card tile mb-0"><div class="card-body"><div class="text-muted small">Total of selected invoices</div><div class="h4 mb-0" id="selTotal">${R(t.amount)}</div></div></div></div>
+      <div class="col-md-3"><div class="card tile mb-0"><div class="card-body"><div class="text-muted small">Already invoiced (skipped)</div><div class="h4 mb-0">${t.skipped}</div></div></div></div></div>`;
+    if(!plan.groups.length){
+      $('runGroups').innerHTML=`<div class="card"><div class="card-body text-center text-muted py-4">${t.skipped?'Everything due for '+esc(plan.period.label)+' has already been invoiced.':'No active services are due for '+esc(plan.period.label)+'. Add services on the Services tab.'}</div></div>`;
+      $('runActions').style.display='none'; return;
+    }
+    $('runGroups').innerHTML=plan.groups.map((g,i)=>{
+      let last=null; const multi=g.lines.some(l=>l.site_name);
+      const rows=g.lines.map(l=>{ let h=''; if(multi && l.site_name!==last){ h=`<tr class="grp"><td colspan="4">${esc(l.site_name||'Head office')}</td></tr>`; last=l.site_name; }
+        return h+`<tr><td>${esc(l.description)}</td><td class="text-end">${l.quantity}</td><td class="text-end">${R(l.unit_price)}</td><td class="text-end">${R(l.amount)}</td></tr>`; }).join('');
+      return `<div class="inv-card"><div class="hd"><div class="form-check"><input class="form-check-input grp-sel" type="checkbox" id="g${i}" data-i="${i}" checked><label class="form-check-label" for="g${i}"><b>${esc(g.client_name)}</b></label>
+          <div class="small text-muted ms-0">${g.branches.map(b=>`<span class="chip ${g.site_id?'self':''}">${esc(b)}</span>`).join('')||''}${g.site_id?'<span class="chip self">branch pays itself</span>':''}
+          Due ${esc(g.due_date)} · ${g.recipients.length?'email to '+g.recipients.map(esc).join(', '):'<span class="neg">no email address on file</span>'}</div></div>
+          <div class="text-end"><div class="h5 mb-0">${R(g.total)}</div><div class="small text-muted">${g.vat_rate?'incl. VAT '+R(g.tax_amount):'no VAT'} · cost ${R(g.cost)}</div></div></div>
+        <table class="table table-sm"><thead><tr><th>Service</th><th class="text-end">Qty</th><th class="text-end">Price</th><th class="text-end">Amount</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+    }).join('');
+    $('runActions').style.display='';
+    document.querySelectorAll('.grp-sel').forEach(c=>c.onchange=updSel); updSel();
+  }
+  function updSel(){ const sel=[...document.querySelectorAll('.grp-sel')].filter(c=>c.checked).map(c=>plan.groups[+c.dataset.i]);
+    $('selCount').textContent=sel.length; $('selTotal').textContent=R(sel.reduce((s,g)=>s+g.total,0)); $('btnRun').disabled=!sel.length; }
+  $('btnRun').onclick=async()=>{
+    const keys=[...document.querySelectorAll('.grp-sel')].filter(c=>c.checked).map(c=>plan.groups[+c.dataset.i].key);
+    if(!keys.length) return;
+    if(!confirm(`Create ${keys.length} invoice(s) for ${plan.period.label}?`)) return;
+    const btn=$('btnRun'); btn.disabled=true; btn.textContent='Creating…';
+    try{
+      const r=await api('/portal/api/billing/run/',{method:'POST',body:JSON.stringify({...ym(),vat_rate:$('runVat').value||0,status:$('runStatus').value,send_email:$('runEmail').checked,keys})}); const d=await r.json();
+      if(r.ok){
+        $('runGroups').innerHTML=''; $('runActions').style.display='none'; $('runSummary').innerHTML='';
+        $('pageAlert').innerHTML=`<div class="alert alert-success alert-dismissible"><button type="button" class="btn-close" data-bs-dismiss="alert"></button><b>${esc(d.detail)}</b><ul class="mb-0 mt-2">${d.invoices.map(i=>`<li><a href="/portal/invoices/?search=${encodeURIComponent(i.invoice_number)}">${esc(i.invoice_number)}</a> — ${esc(i.client)} · ${i.lines} line(s) · ${R(i.total)}</li>`).join('')}</ul></div>`;
+        window.scrollTo(0,0);
+      } else alertBox('pageAlert',d.detail||'Could not create invoices.');
+    }catch(e){ if(e.message!=='Unauth') alertBox('pageAlert','Could not create invoices.'); }
+    btn.textContent='Create selected invoices'; btn.disabled=false;
+  };
+
+  // ═══ Services ═══
+  let subs=[];
+  async function loadSubs(){
+    const qs=HQFilters.qs({search:$('fSearch').value.trim(),company:$('fCompany').value,service_type:$('fType').value,status:$('fStatus').value});
+    try{
+      const d=await (await api('/portal/api/subscriptions/'+(qs?'?'+qs:''))).json(); subs=d.results||[];
+      const tile=(l,v,s)=>`<div class="col-md-3"><div class="card tile mb-0"><div class="card-body"><div class="text-muted small">${l}</div><div class="h5 mb-0">${v}</div><div class="text-muted small">${s}</div></div></div></div>`;
+      const act=subs.filter(s=>s.status==='active');
+      $('subTiles').innerHTML=tile('Monthly recurring revenue',R(d.monthly_total),'active services shown')+tile('Monthly margin',R(d.monthly_margin),'after your costs')+tile('Active services',act.length,[...new Set(act.map(s=>s.client_name))].length+' client(s)')+tile('Branch-paying',act.filter(s=>s.billing_mode==='self').length,'billed separately');
+      $('subTbody').innerHTML=subs.length?subs.map(s=>`<tr>
+        <td><b>${esc(s.client_name)}</b></td><td>${s.site_name?esc(s.site_name)+(s.billing_mode==='self'?' <span class="chip self">pays itself</span>':''):'<span class="text-muted">Head office</span>'}</td>
+        <td>${esc(s.service_label)}${s.description?`<div class="text-muted">${esc(s.description)}</div>`:''}${s.managed_by?`<span class="chip">${s.managed_by==='wifi'?'WiFi registry':'SLA registry'}</span>`:''}</td>
+        <td class="text-end">${s.quantity} × ${R(s.unit_price)}</td><td class="text-end"><b>${R(s.monthly_total)}</b></td>
+        <td class="text-end d-none d-lg-table-cell ${s.monthly_margin<0?'neg':''}">${R(s.monthly_margin)}</td><td class="d-none d-md-table-cell">${s.billing_day}</td>
+        <td><span class="badge bg-${s.status==='active'?'success':s.status==='suspended'?'warning text-dark':'secondary'}">${s.status}</span></td>
+        <td class="text-nowrap"><button class="btn btn-sm btn-outline-primary" onclick="editSub('${s.id}')">Edit</button>${s.managed_by?'':` <button class="btn btn-sm btn-outline-danger" onclick="delSub('${s.id}')">×</button>`}</td></tr>`).join('')
+        :'<tr><td colspan="9" class="text-center text-muted py-4">No services found. Click "Add service".</td></tr>';
+    }catch(e){ if(e.message!=='Unauth') alertBox('pageAlert','Failed to load services.'); }
+  }
+  [ 'fCompany','fType','fStatus' ].forEach(i=>$(i).addEventListener('change',loadSubs));
+  $('fSearch').addEventListener('input',HQFilters.debounce(loadSubs,350));
+  $('fClear').onclick=()=>{ $('fSearch').value=''; $('fCompany').value=''; $('fType').value=''; $('fStatus').value='active'; loadSubs(); };
+
+  function fillSites(companyId, selected){
+    const list=sites.filter(s=>s.company===companyId && (s.is_active || s.id===selected));
+    $('rowSite').style.display=companyId?'':'none';
+    $('s_site').innerHTML='<option value="">Head office</option>'+list.map(s=>`<option value="${s.id}" ${s.id===selected?'selected':''}>${esc(s.name)}${s.billing_mode==='self'?' (pays itself)':''}</option>`).join('');
+    $('siteHint').textContent=companyId&&!list.length?'This client has no branches yet — add them on the Clients & branches tab.':'';
+    $('rowClientName').style.display=companyId?'none':'';
+  }
+  $('s_company').onchange=()=>fillSites($('s_company').value,'');
+  function prev(){ const q=parseFloat($('s_qty').value)||0,p=parseFloat($('s_price').value)||0,c=parseFloat($('s_cost').value)||0;
+    $('subPreview').innerHTML=`Invoiced per month: <b>${R(q*p)}</b> · your cost ${R(q*c)} · margin <b class="${q*(p-c)<0?'neg':'pos'}">${R(q*(p-c))}</b>`; }
+  ['s_qty','s_price','s_cost'].forEach(i=>$(i).oninput=prev);
+  function openSub(s){
+    s=s||{}; $('subAlert').innerHTML=''; $('s_id').value=s.id||''; $('subTitle').textContent=s.id?'Edit service':'Add service';
+    $('s_company').value=s.company||''; $('s_client_name').value=s.company?'':(s.client_name||''); fillSites(s.company||'',s.site||'');
+    $('s_type').value=s.service_type||'wifi'; $('s_desc').value=s.description||''; $('s_qty').value=s.quantity!=null?s.quantity:1; $('s_price').value=s.unit_price!=null?s.unit_price:''; $('s_cost').value=s.unit_cost||0;
+    $('s_day').value=s.billing_day||1; $('s_start').value=s.start_date||new Date().toISOString().slice(0,10); $('s_end').value=s.end_date||''; $('s_status').value=s.status||'active'; $('s_notes').value=s.notes||'';
+    const legacy=!!s.managed_by; $('legacyNote').style.display=legacy?'':'none'; $('legacyKind').textContent=s.managed_by==='sla'?'SLA contract':'WiFi subscriber';
+    ['s_company','s_client_name','s_type','s_price','s_cost','s_day','s_start','s_end','s_status'].forEach(i=>$(i).disabled=legacy);
+    prev(); HQ.showDrawer('subModal');
+  }
+  $('btnNewSub').onclick=()=>openSub(null);
+  window.editSub=id=>openSub(subs.find(s=>s.id===id));
+  window.delSub=async id=>{ if(!confirm('Delete this service?')) return; const r=await api('/portal/api/subscriptions/'+id+'/',{method:'DELETE'});
+    if(r.ok||r.status===204){ loadSubs(); } else { const d=await r.json(); alertBox('pageAlert',d.detail||'Could not delete.'); } };
+  $('btnSaveSub').onclick=async()=>{
+    const id=$('s_id').value; const legacy=$('s_type').disabled;
+    const body = legacy ? {site:$('s_site').value||null,description:$('s_desc').value,quantity:$('s_qty').value,notes:$('s_notes').value}
+      : {company:$('s_company').value||null,client_name:$('s_client_name').value,site:$('s_site').value||null,service_type:$('s_type').value,description:$('s_desc').value,quantity:$('s_qty').value,
+         unit_price:$('s_price').value,unit_cost:$('s_cost').value||0,billing_day:$('s_day').value||1,start_date:$('s_start').value||null,end_date:$('s_end').value||null,status:$('s_status').value,notes:$('s_notes').value};
+    const r=await api('/portal/api/subscriptions/'+(id?id+'/':''),{method:id?'PATCH':'POST',body:JSON.stringify(body)}); const d=await r.json();
+    if(r.ok){ HQ.hideDrawer('subModal'); alertBox('pageAlert','Service saved.','success'); loadSubs(); } else alertBox('subAlert',d.detail||JSON.stringify(d));
+  };
+
+  // ═══ Clients & branches ═══
+  async function loadClients(){
+    await loadRefs();
+    const q=$('cSearch').value.trim().toLowerCase(), only=$('cOnlyBranches').checked;
+    const rows=companies.filter(c=>{ const bs=sites.filter(s=>s.company===c.id); if(only&&!bs.length) return false;
+      return !q || c.name.toLowerCase().includes(q) || bs.some(b=>b.name.toLowerCase().includes(q)); });
+    $('clientList').innerHTML=rows.length?rows.map(c=>{ const bs=sites.filter(s=>s.company===c.id);
+      return `<div class="card mb-2"><div class="card-body py-2"><div class="d-flex justify-content-between align-items-center"><div><b>${esc(c.name)}</b> <span class="text-muted small">(head office)</span></div>
+        <button class="btn btn-sm btn-outline-primary" onclick="addSite('${c.id}')">+ Add branch</button></div>
+        ${bs.length?`<table class="table table-sm mt-2 mb-0"><tbody>${bs.map(s=>`<tr class="site-row"><td><b>${esc(s.name)}</b>${s.is_active?'':' <span class="badge bg-secondary">inactive</span>'}<div class="text-muted">${esc(s.address||'')}</div></td>
+          <td>${s.billing_mode==='self'?'<span class="chip self">Branch pays its own invoice</span>':'<span class="chip">Head office pays</span>'}</td><td>${s.service_count} service(s) · ${R(s.monthly_total)}/mo</td>
+          <td class="text-end text-nowrap"><button class="btn btn-sm btn-outline-secondary" onclick="editSite('${s.id}')">Edit</button> <button class="btn btn-sm btn-outline-danger" onclick="delSite('${s.id}')">×</button></td></tr>`).join('')}</tbody></table>`:'<div class="text-muted small mt-1">No branches — all services are billed to the head office.</div>'}</div></div>`; }).join('')
+      :'<div class="text-center text-muted py-4">No clients found. Clients are companies on the Companies page.</div>';
+  }
+  $('cSearch').addEventListener('input',HQFilters.debounce(loadClients,250)); $('cOnlyBranches').onchange=loadClients;
+  function openSite(s,companyId){
+    s=s||{}; $('siteAlert').innerHTML=''; const co=companies.find(c=>c.id===(s.company||companyId));
+    $('siteTitle').textContent=s.id?'Edit branch':'Add branch'; $('b_id').value=s.id||''; $('b_company').value=co?co.id:''; $('b_companyName').textContent='Client: '+(co?co.name:'');
+    $('b_name').value=s.name||''; $('b_addr').value=s.address||''; $('b_cname').value=s.contact_name||''; $('b_cphone').value=s.contact_phone||''; $('b_cemail').value=s.contact_email||'';
+    $('b_notes').value=s.notes||''; $('b_active').checked=s.id?s.is_active:true; ($('b_'+(s.billing_mode==='self'?'self':'ho'))).checked=true; HQ.showDrawer('siteModal');
+  }
+  window.addSite=cid=>openSite(null,cid); window.editSite=id=>openSite(sites.find(s=>s.id===id));
+  window.delSite=async id=>{ if(!confirm('Delete this branch?')) return; const r=await api('/portal/api/sites/'+id+'/',{method:'DELETE'});
+    if(r.ok||r.status===204){ loadClients(); } else { const d=await r.json(); alertBox('pageAlert',d.detail||'Could not delete.'); } };
+  $('btnSaveSite').onclick=async()=>{
+    const id=$('b_id').value;
+    const body={company:$('b_company').value,name:$('b_name').value.trim(),address:$('b_addr').value,contact_name:$('b_cname').value,contact_phone:$('b_cphone').value,contact_email:$('b_cemail').value,
+      billing_mode:document.querySelector('input[name=b_mode]:checked').value,is_active:$('b_active').checked,notes:$('b_notes').value};
+    if(!body.name){ alertBox('siteAlert','Branch name is required.'); return; }
+    const r=await api('/portal/api/sites/'+(id?id+'/':''),{method:id?'PATCH':'POST',body:JSON.stringify(body)}); const d=await r.json();
+    if(r.ok){ HQ.hideDrawer('siteModal'); loadClients(); } else alertBox('siteAlert',d.detail||JSON.stringify(d));
+  };
+
+  loadRefs().then(()=>{ const h=(location.hash||'').replace('#',''); if(['services','clients'].includes(h)) tab(h); });
+  if(window.feather) feather.replace();
+})();
+</script>
+</body>
+</html>
