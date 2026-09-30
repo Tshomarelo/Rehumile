@@ -107,10 +107,10 @@
       <div class="col-md-4 mb-3"><label class="form-label">VAT % <span class="text-muted">(0 if not VAT-registered)</span></label><input type="number" class="form-control" id="q_vat" min="0" max="100" step="0.01" oninput="recalc()"></div>
     </div>
 
-    <div class="d-flex justify-content-between align-items-center mb-2">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
       <h6 class="mb-0">Line items</h6>
-      <div class="d-flex gap-2">
-        <select class="form-select form-select-sm" id="catalogueSel" style="width:260px"><option value="">+ Add from service catalogue…</option></select>
+      <div class="d-flex flex-wrap gap-2" style="flex:1;justify-content:flex-end;min-width:0">
+        <select class="form-select form-select-sm" id="catalogueSel" style="flex:1 1 200px;max-width:260px;min-width:0"><option value="">+ Add from service catalogue…</option></select>
         <button class="btn btn-sm btn-outline-primary" id="addLineBtn" type="button">+ Custom line</button>
       </div>
     </div>

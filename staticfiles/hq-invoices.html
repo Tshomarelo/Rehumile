@@ -272,10 +272,10 @@
           <input type="date" class="form-control" id="f_due_date">
         </div>
       </div>
-      <div class="d-flex justify-content-between align-items-center mb-2">
+      <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
         <h6 class="mb-0">Invoice items <span class="text-danger">*</span></h6>
-        <div class="d-flex gap-2">
-          <select class="form-select form-select-sm" id="catalogueSel" style="width:230px"><option value="">+ Add from service catalogue…</option></select>
+        <div class="d-flex flex-wrap gap-2" style="flex:1;justify-content:flex-end;min-width:0">
+          <select class="form-select form-select-sm" id="catalogueSel" style="flex:1 1 200px;max-width:260px;min-width:0"><option value="">+ Add from service catalogue…</option></select>
           <button type="button" class="btn btn-sm btn-outline-primary" id="addItemBtn">+ Add item</button>
         </div>
       </div>
