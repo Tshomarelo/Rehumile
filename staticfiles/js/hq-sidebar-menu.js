@@ -125,7 +125,6 @@
       ['/portal/dashboard/quotations/','Quotations'],
       ['/portal/reports/','Reports'],
       ['/portal/dashboard/pos/','POS'],
-      ['/portal/dashboard/vouchers/','Vouchers'],
       ['/portal/dashboard/cash-management/','Cash Management'],
       ['/portal/dashboard/expenses/','Expenses & Categories'],
       ['/portal/dashboard/financial-analytics/','Financial Analytics'],

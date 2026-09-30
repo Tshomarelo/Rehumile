@@ -272,10 +272,24 @@
           <input type="date" class="form-control" id="f_due_date">
         </div>
       </div>
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <h6 class="mb-0">Invoice items <span class="text-danger">*</span></h6>
+        <div class="d-flex gap-2">
+          <select class="form-select form-select-sm" id="catalogueSel" style="width:230px"><option value="">+ Add from service catalogue…</option></select>
+          <button type="button" class="btn btn-sm btn-outline-primary" id="addItemBtn">+ Add item</button>
+        </div>
+      </div>
+      <div class="table-responsive mb-2">
+        <table class="table table-sm align-middle mb-0">
+          <thead><tr><th>Description</th><th style="width:90px">Qty</th><th style="width:130px">Price each (R)</th><th style="width:120px" class="text-end">Amount</th><th style="width:36px"></th></tr></thead>
+          <tbody id="itemRows"></tbody>
+        </table>
+      </div>
+      <div class="form-text mb-3">Amounts are calculated automatically: quantity × price. The subtotal, VAT and total below update as you type.</div>
       <div class="row">
         <div class="col-md-5 mb-3">
-          <label class="form-label">Subtotal (ZAR) <span class="text-danger">*</span></label>
-          <input type="number" class="form-control" id="f_subtotal" required min="0" step="0.01" value="0" oninput="calcTotal()">
+          <label class="form-label">Subtotal (auto-calculated)</label>
+          <input type="text" class="form-control bg-light" id="f_subtotal" readonly value="R 0.00">
         </div>
         <div class="col-md-3 mb-3">
           <label class="form-label">Tax Rate (%)</label>
@@ -320,11 +334,35 @@ window.onInvoiceTypeChange = function(){
   // nothing to toggle for now — type is stored and displayed
 };
 
+const money = n => 'R '+(Math.round((n+Number.EPSILON)*100)/100).toLocaleString('en-ZA',{minimumFractionDigits:2,maximumFractionDigits:2});
+const escH = s => String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+window.addItemRow = function(it){
+  it = it||{};
+  const tr=document.createElement('tr');
+  tr.innerHTML=`<td><input class="form-control form-control-sm i-desc" value="${escH(it.description)}" placeholder="What was supplied / done"></td>
+    <td><input type="number" class="form-control form-control-sm i-qty" min="0.01" step="0.01" value="${it.quantity!=null?it.quantity:1}"></td>
+    <td><input type="number" class="form-control form-control-sm i-price" min="0" step="0.01" value="${it.unit_price!=null?it.unit_price:''}"></td>
+    <td class="text-end i-amt">R 0.00</td>
+    <td><button type="button" class="btn btn-sm btn-outline-danger" title="Remove">×</button></td>`;
+  tr.querySelector('button').onclick=()=>{ tr.remove(); calcTotal(); };
+  tr.querySelectorAll('input').forEach(i=>i.oninput=calcTotal);
+  document.getElementById('itemRows').appendChild(tr);
+  calcTotal();
+};
 window.calcTotal = function(){
-  const sub=parseFloat(document.getElementById('f_subtotal').value)||0;
+  let sub=0;
+  document.querySelectorAll('#itemRows tr').forEach(tr=>{
+    const q=parseFloat(tr.querySelector('.i-qty').value)||0, p=parseFloat(tr.querySelector('.i-price').value)||0;
+    const amt=Math.round(q*p*100)/100; tr.querySelector('.i-amt').textContent=money(amt); sub+=amt;
+  });
   const tax=parseFloat(document.getElementById('f_tax_rate').value)||0;
-  const total=sub+(sub*tax/100);
-  document.getElementById('f_total_display').value='R '+total.toFixed(2);
+  const vat=Math.round(sub*tax)/100;
+  document.getElementById('f_subtotal').value=money(sub);
+  document.getElementById('f_total_display').value=money(sub+vat)+(vat?'  (incl. VAT '+money(vat)+')':'');
+};
+window.collectItems = function(){
+  return [...document.querySelectorAll('#itemRows tr')].map(tr=>({description:tr.querySelector('.i-desc').value.trim(),quantity:tr.querySelector('.i-qty').value||1,unit_price:tr.querySelector('.i-price').value||0}))
+    .filter(i=>i.description||parseFloat(i.unit_price));
 };
 
 (function(){
@@ -416,12 +454,27 @@ window.calcTotal = function(){
     document.getElementById('editId').value='';
     document.getElementById('modalAlert').innerHTML='';
     document.getElementById('invoiceModalTitle').textContent='Create Invoice';
+    document.getElementById('itemRows').innerHTML='';
+    addItemRow();
     document.getElementById('f_total_display').value='R 0.00';
     // Auto-suggest invoice number
     document.getElementById('f_inv_number').value='INV-'+new Date().getFullYear()+'-'+String(Date.now()).slice(-4);
     document.getElementById('f_invoice_type').value='adhoc';
     document.getElementById('f_description').value='';
   }
+
+  // Service catalogue (same list the website and quotations use) speeds up adding items
+  let catalogue=[];
+  fetch('/portal/api/website/prices/').then(r=>r.json()).then(list=>{
+    catalogue=list; document.getElementById('catalogueSel').innerHTML='<option value="">+ Add from service catalogue…</option>'+list.map(p=>`<option value="${p.id}">${escH(p.name)} — R ${parseFloat(p.price).toFixed(2)}</option>`).join('');
+  }).catch(()=>{});
+  document.getElementById('catalogueSel').onchange=function(){
+    const p=catalogue.find(x=>x.id===this.value); this.value=''; if(!p) return;
+    const blank=[...document.querySelectorAll('#itemRows tr')].find(tr=>!tr.querySelector('.i-desc').value&&!tr.querySelector('.i-price').value);
+    if(blank) blank.remove();
+    addItemRow({description:p.name+(p.unit?' ('+p.unit+')':''),quantity:1,unit_price:p.price});
+  };
+  document.getElementById('addItemBtn').onclick=()=>addItemRow();
 
   document.getElementById('newInvoiceBtn').onclick=()=>{
     resetForm();
@@ -439,7 +492,10 @@ window.calcTotal = function(){
     document.getElementById('f_period_end').value=inv.billing_period_end||'';
     document.getElementById('f_ticket_count').value=inv.ticket_count||0;
     document.getElementById('f_hours').value=inv.hours_worked||0;
-    document.getElementById('f_subtotal').value=inv.subtotal||0;
+    document.getElementById('itemRows').innerHTML='';
+    if(inv.items&&inv.items.length) inv.items.forEach(addItemRow);
+    else if(parseFloat(inv.subtotal)>0) addItemRow({description:inv.description||'Services',quantity:1,unit_price:inv.subtotal});
+    else addItemRow();
     document.getElementById('f_tax_rate').value=inv.tax_rate||15;
     document.getElementById('f_due_date').value=inv.due_date||'';
     document.getElementById('f_status').value=inv.status||'draft';
@@ -466,7 +522,7 @@ window.calcTotal = function(){
     const billing_period_end=document.getElementById('f_period_end').value;
     const ticket_count=parseInt(document.getElementById('f_ticket_count').value)||0;
     const hours_worked=parseFloat(document.getElementById('f_hours').value)||0;
-    const subtotal=parseFloat(document.getElementById('f_subtotal').value)||0;
+    const items=collectItems();
     const tax_rate=parseFloat(document.getElementById('f_tax_rate').value)||0;
     const due_date=document.getElementById('f_due_date').value||null;
     const status=document.getElementById('f_status').value;
@@ -477,10 +533,13 @@ window.calcTotal = function(){
     if(!company||!invoice_number||!billing_period_start||!billing_period_end){
       showAlert('modalAlert','Company, invoice number, and billing period are required.'); return;
     }
+    if(!items.length){
+      showAlert('modalAlert','Add at least one invoice item (description, quantity and price).'); return;
+    }
     if(!description){
       showAlert('modalAlert','A description of the work/service is required so the client can see what the invoice is for.'); return;
     }
-    const body={company,invoice_number,billing_period_start,billing_period_end,ticket_count,hours_worked,subtotal,tax_rate,due_date,status,notes,incident,invoice_type,description};
+    const body={company,invoice_number,billing_period_start,billing_period_end,ticket_count,hours_worked,items,tax_rate,due_date,status,notes,incident,invoice_type,description};
     const btn=document.getElementById('saveInvoiceBtn');
     const orig=btn.innerHTML;
     btn.disabled=true;
@@ -515,7 +574,7 @@ window.calcTotal = function(){
     document.getElementById('fDateTo').value='';
     loadInvoices();
   });
-  document.getElementById('fPmtStatus').addEventListener('change', loadPayments);
+  document.getElementById('fPmtStatus').addEventListener('change', () => window.loadPayments());
 
   loadCompanies();
   loadInvoices();

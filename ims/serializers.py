@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from django.utils.text import slugify
-from .models import Company, UserProfile, Incident, IncidentComment, Invoice, WifiSubscriber, SLAContract, RevenueAllocation, CompanySettings
+from .models import Company, UserProfile, Incident, IncidentComment, Invoice, InvoiceItem, WifiSubscriber, SLAContract, RevenueAllocation, CompanySettings
 
 User = get_user_model()
 
@@ -153,7 +153,27 @@ class IncidentCreateSerializer(serializers.ModelSerializer):
         ]
 
 
+class InvoiceItemSerializer(serializers.ModelSerializer):
+    """One invoice line. `amount` is always quantity x unit price, worked out here."""
+    class Meta:
+        model = InvoiceItem
+        fields = ['id', 'description', 'quantity', 'unit_price', 'amount', 'item_type']
+        read_only_fields = ['id', 'amount']
+        extra_kwargs = {'item_type': {'required': False}}
+
+    def validate_quantity(self, value):
+        if value <= 0:
+            raise serializers.ValidationError('Quantity must be greater than zero.')
+        return value
+
+    def validate_unit_price(self, value):
+        if value < 0:
+            raise serializers.ValidationError('Price cannot be negative.')
+        return value
+
+
 class InvoiceSerializer(serializers.ModelSerializer):
+    items = InvoiceItemSerializer(many=True, required=False)
     company_name = serializers.SerializerMethodField()
     incident_ticket_id = serializers.SerializerMethodField()
     incident_title = serializers.SerializerMethodField()
@@ -167,10 +187,16 @@ class InvoiceSerializer(serializers.ModelSerializer):
             'subtotal', 'tax_rate', 'tax_amount', 'total_amount',
             'ticket_count', 'hours_worked', 'status', 'notes',
             'due_date', 'payment_date', 'created_at', 'updated_at',
-            'invoice_type', 'description',
+            'invoice_type', 'description', 'items',
         ]
         read_only_fields = ['id', 'tax_amount', 'total_amount', 'created_at', 'updated_at',
                             'incident_ticket_id', 'incident_title']
+        extra_kwargs = {'subtotal': {'required': False}}   # worked out from the items when they are sent
+
+    def validate(self, attrs):
+        if not self.instance and not attrs.get('items') and attrs.get('subtotal') is None:
+            raise serializers.ValidationError({'items': 'Add at least one invoice item.'})
+        return attrs
 
     def get_company_name(self, obj):
         return obj.company.name if obj.company else None
@@ -197,13 +223,48 @@ class InvoiceSerializer(serializers.ModelSerializer):
         data['total_amount'] = round(float(subtotal) + tax_amount, 2)
         return data
 
+    @staticmethod
+    def _line_amount(item):
+        from decimal import Decimal, ROUND_HALF_UP
+        return (Decimal(item['quantity']) * Decimal(item['unit_price'])).quantize(Decimal('0.01'), ROUND_HALF_UP)
+
+    def _write_items(self, invoice, items):
+        invoice.items.all().delete()
+        for it in items:
+            InvoiceItem.objects.create(
+                invoice=invoice, description=it['description'], quantity=it['quantity'],
+                unit_price=it['unit_price'], amount=self._line_amount(it),
+                item_type=it.get('item_type') or 'service')
+
+    def _subtotal_from(self, items):
+        from decimal import Decimal
+        return sum((self._line_amount(i) for i in items), Decimal('0'))
+
     def create(self, validated_data):
+        items = validated_data.pop('items', None)
+        if items:
+            validated_data['subtotal'] = self._subtotal_from(items)
         self._calc_totals(validated_data)
-        return super().create(validated_data)
+        invoice = super().create(validated_data)
+        if items:
+            self._write_items(invoice, items)
+        return invoice
 
     def update(self, instance, validated_data):
-        self._calc_totals(validated_data)
-        return super().update(instance, validated_data)
+        items = validated_data.pop('items', None)
+        if items is not None:
+            if instance.status == 'paid':
+                raise serializers.ValidationError({'items': 'A paid invoice cannot be changed.'})
+            if items:
+                validated_data['subtotal'] = self._subtotal_from(items)
+        if items or 'subtotal' in validated_data or 'tax_rate' in validated_data:
+            validated_data.setdefault('subtotal', instance.subtotal)
+            validated_data.setdefault('tax_rate', instance.tax_rate)
+            self._calc_totals(validated_data)
+        invoice = super().update(instance, validated_data)
+        if items is not None:
+            self._write_items(invoice, items)
+        return invoice
 
 
 class WifiSubscriberSerializer(serializers.ModelSerializer):

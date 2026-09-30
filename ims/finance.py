@@ -11,7 +11,7 @@ Definitions (all amounts exclude VAT, because VAT belongs to SARS, not us):
   Invoiced   = invoices issued (sent / paid / overdue) in the period
   Paid       = invoices whose payment date falls in the period   -> revenue
   Unpaid     = invoices issued but not yet paid (sent / overdue), owed to us
-  Revenue    = Paid invoices (ex VAT) + direct sales (POS, vouchers, cash)
+  Revenue    = Paid invoices (ex VAT) + direct sales (POS, cash)
   Expenses   = cost of goods + operating expenses recorded in the period
                + Axxess wholesale cost of the WiFi invoices that were paid
                + payroll cost (gross pay + employer UIF/SDL) of approved payroll
@@ -222,8 +222,8 @@ def summary(start, end, today=None):
          'explain': f"{len(paid_invoices)} invoice(s) whose payment date is between {start:%d %b} and {end:%d %b %Y}. "
                     f"Total received was R {_f(paid_total):,.2f}; R {_f(paid_vat):,.2f} of that is VAT and is not our income.",
          'rows': [_invoice_row(i, i.payment_date) for i in paid_invoices[:ROW_LIMIT]]},
-        {'key': 'direct_sales', 'label': 'Direct sales (POS, vouchers, cash)', 'sign': '+', 'amount': _f(direct_total),
-         'explain': f"{len(direct)} sale(s) taken at the till or as vouchers with no invoice behind them.",
+        {'key': 'direct_sales', 'label': 'Direct sales (POS / till, cash)', 'sign': '+', 'amount': _f(direct_total),
+         'explain': f"{len(direct)} sale(s) taken at the till with no invoice behind them.",
          'rows': [{'ref': t.payment_method.upper(), 'label': t.description, 'date': t.created_at.date().isoformat(),
                    'amount': _f(t.amount), 'url': '/portal/dashboard/cash-management/'} for t in direct[:ROW_LIMIT]]},
         {'key': 'revenue', 'label': 'REVENUE', 'sign': '=', 'amount': _f(revenue), 'total': True,

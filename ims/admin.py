@@ -10,7 +10,8 @@ from django.utils.html import format_html
 from .models import (
     Company, User, UserProfile, Incident, IncidentComment, IncidentAttachment,
     IncidentTimeline, SLABreach, SLAConfig, Invoice, InvoiceItem, Notification,
-    AuditLog, DashboardMetric, CompanyBillingInfo
+    AuditLog, DashboardMetric, CompanyBillingInfo,
+    Account, ExpenseCategory, Expense, Quotation, QuotationItem,
 )
 
 
@@ -274,6 +275,24 @@ class InvoiceAdmin(admin.ModelAdmin):
         }),
     )
     
+    def save_formset(self, request, form, formset, change):
+        # amount = quantity x price, and the invoice subtotal follows the items
+        instances = formset.save(commit=False)
+        for obj in formset.deleted_objects:
+            obj.delete()
+        for it in instances:
+            if isinstance(it, InvoiceItem):
+                it.amount = round(it.quantity * it.unit_price, 2)
+            it.save()
+        formset.save_m2m()
+        inv = form.instance
+        if inv.items.exists():
+            from decimal import Decimal
+            inv.subtotal = sum((i.amount for i in inv.items.all()), Decimal('0'))
+            inv.tax_amount = (inv.subtotal * inv.tax_rate / 100).quantize(Decimal('0.01'))
+            inv.total_amount = inv.subtotal + inv.tax_amount
+            inv.save()
+
     def billing_period_display(self, obj):
         """Display billing period"""
         return f"{obj.billing_period_start} to {obj.billing_period_end}"
@@ -381,3 +400,67 @@ class DashboardMetricAdmin(admin.ModelAdmin):
 admin.site.site_header = "Rehumile Portal IMS Administration"
 admin.site.site_title = "IMS Admin"
 admin.site.index_title = "Welcome to IMS Administration"
+
+
+
+# ============================================================================
+# FINANCE: CHART OF ACCOUNTS, EXPENSE CATEGORIES, EXPENSES, QUOTATIONS
+# ============================================================================
+
+@admin.register(Account)
+class AccountAdmin(admin.ModelAdmin):
+    """An account is a labelled bucket in your books (Rent, Bank, Sales...). Expense categories post into one."""
+    list_display = ('code', 'name', 'account_type', 'account_subtype', 'normal_balance', 'is_active', 'is_system')
+    list_filter = ('account_type', 'is_active', 'is_system')
+    search_fields = ('code', 'name')
+    readonly_fields = ('normal_balance',)
+
+    def get_readonly_fields(self, request, obj=None):
+        # system accounts are looked up by system_key by the posting code: never rename the key
+        return ('system_key', 'is_system', 'normal_balance') if obj else ('normal_balance',)
+
+    def save_model(self, request, obj, form, change):
+        if not change:
+            obj.normal_balance = 'debit' if obj.account_type in ('asset', 'expense') else 'credit'
+            if not obj.system_key:
+                obj.system_key = f"CUSTOM_{obj.code}"
+        super().save_model(request, obj, form, change)
+
+    def get_fields(self, request, obj=None):
+        fields = ['code', 'name', 'description', 'account_type', 'account_subtype', 'is_active']
+        return fields + ['system_key', 'is_system', 'normal_balance'] if obj else fields
+
+
+@admin.register(ExpenseCategory)
+class ExpenseCategoryAdmin(admin.ModelAdmin):
+    list_display = ('name', 'kind', 'account', 'monthly_budget', 'is_active', 'is_system')
+    list_filter = ('kind', 'is_active')
+    search_fields = ('name',)
+
+
+@admin.register(Expense)
+class ExpenseAdmin(admin.ModelAdmin):
+    list_display = ('expense_date', 'vendor', 'expense_category', 'amount', 'payment_status', 'quotation')
+    list_filter = ('payment_status', 'category', 'expense_category')
+    search_fields = ('vendor', 'description')
+    date_hierarchy = 'expense_date'
+    readonly_fields = ('recorded_by',)
+
+
+class QuotationItemInline(admin.TabularInline):
+    model = QuotationItem
+    extra = 1
+    fields = ('description', 'quantity', 'unit_price', 'unit_cost', 'cost_category')
+
+
+@admin.register(Quotation)
+class QuotationAdmin(admin.ModelAdmin):
+    list_display = ('quote_number', 'client_name', 'status', 'issue_date', 'total_amount')
+    list_filter = ('status',)
+    search_fields = ('quote_number', 'client_name')
+    inlines = [QuotationItemInline]
+    readonly_fields = ('subtotal', 'tax_amount', 'total_amount', 'estimated_cost')
+
+    def save_related(self, request, form, formsets, change):
+        super().save_related(request, form, formsets, change)
+        form.instance.recalculate()

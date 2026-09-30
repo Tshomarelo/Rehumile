@@ -41,7 +41,6 @@ SEED_ACCOUNTS = [
     ('4100', 'REV_SLA', 'SLA Retainer Revenue', 'revenue', '', 'credit'),
     ('4200', 'REV_ADHOC', 'Ad-Hoc / Project Revenue', 'revenue', '', 'credit'),
     ('4300', 'REV_RETAIL', 'Retail / POS Sales Revenue', 'revenue', '', 'credit'),
-    ('4400', 'REV_VOUCHER', 'Voucher Sales Revenue', 'revenue', '', 'credit'),
 
     ('5000', 'COGS_HARDWARE', 'Cost of Goods Sold — Hardware/Parts', 'expense', 'cogs', 'debit'),
     ('5100', 'COGS_AXXESS', 'Cost of Goods Sold — Axxess Wholesale', 'expense', 'cogs', 'debit'),
@@ -339,7 +338,7 @@ def post_payroll_entry(entry):
 
 
 def post_direct_sale_cash(cash_txn, revenue_system_key='REV_RETAIL'):
-    """A cash/card/EFT sale with no Invoice behind it (POS retail, voucher sale)."""
+    """A cash/card/EFT sale with no Invoice behind it (POS retail)."""
     amount = Decimal(cash_txn.amount or 0)
     if amount <= 0:
         return None

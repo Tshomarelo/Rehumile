@@ -194,7 +194,7 @@
         <button class="how-btn" id="howBtn">How was this calculated? ▾</button>
         <div id="howPanel" style="display:none">
           <div class="note-box" style="background:#eff6ff;border-color:#bfdbfe;color:#1e3a8a">
-            <b>Plain-English rules.</b> Revenue is money that has actually been <b>paid</b> (invoice totals <b>without VAT</b>, because VAT belongs to SARS) plus till/voucher sales.
+            <b>Plain-English rules.</b> Revenue is money that has actually been <b>paid</b> (invoice totals <b>without VAT</b>, because VAT belongs to SARS) plus till (POS) sales.
             <b>Unpaid</b> is what clients still owe us. <b>Expenses</b> are what the business spent or owes suppliers for, plus wages. <b>Profit = Revenue − Expenses.</b>
             Tap any line to see the exact invoices / expenses behind it.
           </div>
@@ -437,7 +437,7 @@
     document.getElementById('tExp').textContent = fmtR(ex.total);
     document.getElementById('tExpSub').innerHTML = 'Cost of sales '+fmtR(ex.cost_of_sales)+'<br>Running costs '+fmtR(ex.operating)+'<br>Payroll '+fmtR(ex.payroll);
     document.getElementById('tRev').textContent = fmtR(rev.total);
-    document.getElementById('tRevSub').innerHTML = 'Paid invoices '+fmtR(rev.invoices)+'<br>Till / voucher sales '+fmtR(rev.direct_sales);
+    document.getElementById('tRevSub').innerHTML = 'Paid invoices '+fmtR(rev.invoices)+'<br>Till / POS sales '+fmtR(rev.direct_sales);
     const pv = document.getElementById('tProfit');
     pv.textContent = signedR(pr.net); pv.className = 'val '+(pr.net<0?'neg':'pos');
     document.getElementById('tProfitSub').innerHTML = 'Margin '+pr.margin_pct+'%<br>Gross profit '+signedR(pr.gross);

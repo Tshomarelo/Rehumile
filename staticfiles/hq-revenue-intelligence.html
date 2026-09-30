@@ -178,7 +178,7 @@
             <div class="table-responsive" id="monthlyTable" style="display:none">
               <table class="table table-hover my-0 small">
                 <thead><tr>
-                  <th id="thPeriod">Period</th><th>WiFi</th><th>SLA</th><th>Ad-Hoc</th><th>Till / Vouchers</th>
+                  <th id="thPeriod">Period</th><th>WiFi</th><th>SLA</th><th>Ad-Hoc</th><th>Till / POS</th>
                   <th>Revenue</th><th>Axxess</th><th>Expenses &amp; stock</th><th>Payroll</th><th>Total expenses</th><th>Net profit</th><th>Margin</th>
                 </tr></thead>
                 <tbody id="monthlyTbody"></tbody>
@@ -400,7 +400,7 @@
           {type:'bar',label:'WiFi',data:rows.map(m=>m.rev_wifi),backgroundColor:'#3b82f6',stack:'rev'},
           {type:'bar',label:'SLA',data:rows.map(m=>m.rev_sla),backgroundColor:'#10b981',stack:'rev'},
           {type:'bar',label:'Ad-hoc',data:rows.map(m=>m.rev_adhoc),backgroundColor:'#06b6d4',stack:'rev'},
-          {type:'bar',label:'Till / vouchers',data:rows.map(m=>m.rev_direct),backgroundColor:'#a78bfa',stack:'rev'},
+          {type:'bar',label:'Till / POS',data:rows.map(m=>m.rev_direct),backgroundColor:'#a78bfa',stack:'rev'},
           {type:'line',label:'Expenses',data:rows.map(m=>m.expenses),borderColor:'#dc2626',backgroundColor:'#dc2626',tension:.25,pointRadius:3},
           {type:'line',label:'Net profit',data:rows.map(m=>m.profit),borderColor:'#50181E',borderDash:[5,4],backgroundColor:'#50181E',tension:.25,pointRadius:3},
         ];

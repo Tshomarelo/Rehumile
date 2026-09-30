@@ -250,7 +250,7 @@ from .models import (
     JobCard, JobCardStatusChoices,
     InventoryItem, StockTransaction,
     ShiftLog, CashTransaction, CashFlowStreamChoices,
-    Voucher, PurchaseSlip,
+    PurchaseSlip,
 )
 from .serializers import (
     CompanySerializer, UserSerializer, UserCreateSerializer,
@@ -776,7 +776,7 @@ class InvoiceViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        qs = Invoice.objects.select_related('company').order_by('-created_at')
+        qs = Invoice.objects.select_related('company').prefetch_related('items').order_by('-created_at')
         if user.role in ('admin', 'agent', 'finance'):
             pass
         elif user.company:
@@ -1600,77 +1600,6 @@ class CashTransactionListView(APIView):
 
 
 # ============================================================================
-# VOUCHERS
-# ============================================================================
-
-class VoucherView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def get(self, request):
-        if request.user.role not in ("admin", "cashier", "finance"):
-            return Response({"detail": "Permission denied."}, status=status.HTTP_403_FORBIDDEN)
-        qs = Voucher.objects.select_related("sold_by").order_by("-created_at")
-        if request.GET.get("status"):
-            qs = qs.filter(status=request.GET["status"])
-        if request.GET.get("search"):
-            qs = qs.filter(voucher_code__icontains=request.GET["search"])
-        if request.GET.get("duration_hours"):
-            qs = qs.filter(duration_hours=request.GET["duration_hours"])
-        qs = qs[:200]
-        data = [{
-            "id": str(v.id),
-            "voucher_code": v.voucher_code,
-            "duration_hours": v.duration_hours,
-            "selling_price": str(v.selling_price),
-            "status": v.status,
-            "sold_by": v.sold_by.email if v.sold_by else None,
-            "sold_at": v.sold_at.isoformat() if v.sold_at else None,
-        } for v in qs]
-        return Response({"results": data})
-
-    def post(self, request):
-        u = request.user
-        d = request.data
-        action = d.get("action", "create")
-        if action == "create":
-            if u.role not in ("admin",):
-                return Response({"detail": "Only admins can create vouchers."}, status=status.HTTP_403_FORBIDDEN)
-            import secrets, string as _string
-            code = d.get("voucher_code") or "".join(secrets.choice(_string.ascii_uppercase + _string.digits) for _ in range(8))
-            v = Voucher.objects.create(
-                voucher_code=code,
-                duration_hours=int(d.get("duration_hours", 24)),
-                selling_price=d.get("selling_price", 0),
-            )
-            return Response({"id": str(v.id), "voucher_code": v.voucher_code}, status=status.HTTP_201_CREATED)
-        elif action == "sell":
-            if u.role not in ("admin", "cashier"):
-                return Response({"detail": "Permission denied."}, status=status.HTTP_403_FORBIDDEN)
-            try:
-                v = Voucher.objects.get(pk=d.get("voucher_id"), status="available")
-            except Voucher.DoesNotExist:
-                return Response({"detail": "Voucher not available."}, status=status.HTTP_400_BAD_REQUEST)
-            from datetime import date as _date
-            shift = ShiftLog.objects.filter(date=_date.today(), is_closed=False).first()
-            txn = CashTransaction.objects.create(
-                shift=shift, amount=v.selling_price,
-                payment_method=d.get("payment_method", "cash"),
-                cash_flow_stream="ocf",
-                description=f"Voucher sale {v.voucher_code} ({v.duration_hours}h)",
-                performed_by=u,
-            )
-            v.status = "sold"
-            v.sold_by = u
-            v.sold_at = timezone.now()
-            v.cash_transaction = txn
-            v.save()
-            from .ledger import post_direct_sale_cash
-            post_direct_sale_cash(txn, revenue_system_key='REV_VOUCHER')
-            return Response({"detail": "Voucher sold.", "voucher_code": v.voucher_code})
-        return Response({"detail": "action must be create or sell."}, status=status.HTTP_400_BAD_REQUEST)
-
-
-# ============================================================================
 # FINANCIAL ANALYTICS
 # ============================================================================
 
@@ -1742,6 +1671,8 @@ class ChartOfAccountsView(APIView):
     def get(self, request, pk=None):
         if request.user.role not in _ACCOUNTING_READ_ROLES:
             return Response({"detail": "Permission denied."}, status=status.HTTP_403_FORBIDDEN)
+        from .ledger import ensure_seeded
+        ensure_seeded()   # a fresh install has no accounts until something seeds them
         if pk is not None:
             try:
                 acct = Account.objects.get(pk=pk)
@@ -1767,6 +1698,30 @@ class ChartOfAccountsView(APIView):
             "account_type", "account_subtype", "normal_balance", "is_active", "is_system",
         ))
         return Response(data)
+
+    def post(self, request):
+        """Add a new account to the chart of accounts (admin only)."""
+        if request.user.role != "admin":
+            return Response({"detail": "Only an Admin can add accounts."}, status=status.HTTP_403_FORBIDDEN)
+        d = request.data
+        code = str(d.get("code", "")).strip()
+        name = str(d.get("name", "")).strip()
+        acct_type = d.get("account_type")
+        if not code or not name:
+            return Response({"detail": "Code and name are required."}, status=400)
+        if acct_type not in ("asset", "liability", "equity", "revenue", "expense"):
+            return Response({"detail": "Choose a valid account type."}, status=400)
+        if Account.objects.filter(code=code).exists():
+            return Response({"detail": f"Account code {code} is already used."}, status=400)
+        subtype = d.get("account_subtype", "")
+        if acct_type == "expense" and not subtype:
+            subtype = "operating_expense"
+        normal = "debit" if acct_type in ("asset", "expense") else "credit"
+        acct = Account.objects.create(
+            code=code, name=name, account_type=acct_type, account_subtype=subtype, normal_balance=normal,
+            description=str(d.get("description", "")).strip(), system_key=f"CUSTOM_{code}", is_system=False,
+        )
+        return Response({"id": str(acct.id), "code": acct.code, "name": acct.name}, status=201)
 
     def patch(self, request, pk):
         if request.user.role != "admin":

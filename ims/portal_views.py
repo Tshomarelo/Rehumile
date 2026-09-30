@@ -86,10 +86,6 @@ def portal_pos_view(request):
     return _serve('hq-pos.html')
 
 
-def portal_vouchers_view(request):
-    return _serve('hq-vouchers.html')
-
-
 # ── Client portal pages ──────────────────────────────────────────────────────
 
 def client_dashboard_view(request):

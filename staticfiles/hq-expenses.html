@@ -124,7 +124,7 @@
             <div class="card-body p-0">
               <div class="table-responsive">
                 <table class="table table-hover my-0 small">
-                  <thead><tr><th>Category</th><th>Type</th><th class="d-none d-md-table-cell">Posts to account</th><th>Budget / month</th><th style="min-width:180px">Spent this month</th><th>Status</th><th>Actions</th></tr></thead>
+                  <thead><tr><th>Category</th><th>Type</th><th class="d-none d-md-table-cell">Booked under (account)</th><th>Budget / month</th><th style="min-width:180px">Spent this month</th><th>Status</th><th>Actions</th></tr></thead>
                   <tbody id="categoryTbody"><tr><td colspan="7" class="text-center text-muted py-3">Loading…</td></tr></tbody>
                 </table>
               </div>
@@ -136,8 +136,11 @@
         <div id="tab-accounts" class="tab-pane">
           <div class="card">
             <div class="card-header d-flex align-items-center justify-content-between">
-              <h5 class="card-title mb-0">Chart of Accounts</h5>
-              <span class="text-muted small">System accounts — admins can rename or deactivate, not delete.</span>
+              <div>
+                <h5 class="card-title mb-0">Chart of Accounts</h5>
+                <span class="text-muted small"><b>What is an account?</b> A labelled bucket in your books — "Rent", "Bank", "Sales", "Fuel". Every expense category is booked into one, which is how your reports know where money went. You normally only pick a <b>category</b> when logging an expense; accounts are set up once.</span>
+              </div>
+              <button class="btn btn-sm btn-outline-primary" id="newAccountBtn" style="display:none">+ New Account</button>
             </div>
             <div class="card-body p-0">
               <div class="table-responsive">
@@ -258,6 +261,22 @@
 </div>
 <div class="hq-backdrop" id="accountModal-bd" onclick="HQ.hideDrawer('accountModal')"></div>
 
+<!-- New Account Drawer -->
+<div class="hq-drawer" id="newAccountModal">
+  <div class="hq-drawer-header"><h5 class="hq-drawer-title">New Account</h5><button type="button" class="btn-close btn-close-white" onclick="HQ.hideDrawer('newAccountModal')"></button></div>
+  <div class="hq-drawer-body">
+    <div id="newAcctAlert"></div>
+    <div class="mb-3"><label class="form-label">Account code <span class="text-danger">*</span></label><input type="text" class="form-control" id="na_code" maxlength="10" placeholder="e.g. 6700">
+      <div class="form-text">A unique number. Expenses use 6xxx, cost of goods 5xxx, income 4xxx, assets 1xxx.</div></div>
+    <div class="mb-3"><label class="form-label">Name <span class="text-danger">*</span></label><input type="text" class="form-control" id="na_name" placeholder="e.g. Staff Training"></div>
+    <div class="mb-3"><label class="form-label">Type <span class="text-danger">*</span></label>
+      <select class="form-select" id="na_type"><option value="expense">Expense (money you spend)</option><option value="revenue">Income</option><option value="asset">Asset (things you own)</option><option value="liability">Liability (money you owe)</option><option value="equity">Owner's equity</option></select></div>
+    <div class="mb-3"><label class="form-label">Description</label><input type="text" class="form-control" id="na_desc"></div>
+  </div>
+  <div class="hq-drawer-footer"><button class="btn btn-secondary" onclick="HQ.hideDrawer('newAccountModal')">Cancel</button><button class="btn btn-primary" id="saveNewAcctBtn">Create Account</button></div>
+</div>
+<div class="hq-backdrop" id="newAccountModal-bd" onclick="HQ.hideDrawer('newAccountModal')"></div>
+
 <!-- Category Drawer -->
 <div class="hq-drawer" id="categoryModal">
   <div class="hq-drawer-header">
@@ -274,7 +293,7 @@
         <option value="cogs">Cost of goods sold (stock, parts)</option>
         <option value="capital">Capital / asset purchase (not deducted from profit)</option>
       </select></div>
-    <div class="mb-3"><label class="form-label">Ledger account <span class="text-danger">*</span></label><select class="form-select" id="cat_account"></select></div>
+    <div class="mb-3"><label class="form-label">Accounting section <span class="text-danger">*</span></label><select class="form-select" id="cat_account"></select><div class="form-text">Where this category shows up in your books. The right choices for the cost type are listed; the default is fine for most. Missing one? Add it under the Chart of Accounts tab.</div></div>
     <div class="mb-3"><label class="form-label">Monthly budget (R) <span class="text-muted">0 = none</span></label><input type="number" class="form-control" id="cat_budget" min="0" step="0.01" value="0"></div>
     <div class="mb-3"><label class="form-label">Description</label><input type="text" class="form-control" id="cat_description"></div>
     <div class="form-check"><input class="form-check-input" type="checkbox" id="cat_active" checked><label class="form-check-label" for="cat_active">Active (selectable on the expense form)</label></div>
@@ -572,6 +591,18 @@
     document.getElementById('acct_description').value = a.description||'';
     document.getElementById('acct_is_active').checked = a.is_active;
     HQ.showDrawer('accountModal');
+  };
+
+  document.getElementById('newAccountBtn').style.display = isAdmin ? '' : 'none';
+  document.getElementById('newAccountBtn').onclick = () => { ['na_code','na_name','na_desc'].forEach(i=>document.getElementById(i).value=''); document.getElementById('newAcctAlert').innerHTML=''; HQ.showDrawer('newAccountModal'); };
+  document.getElementById('saveNewAcctBtn').onclick = async () => {
+    const body = {code:document.getElementById('na_code').value.trim(), name:document.getElementById('na_name').value.trim(), account_type:document.getElementById('na_type').value, description:document.getElementById('na_desc').value.trim()};
+    if(!body.code || !body.name){ showAlert('newAcctAlert','Code and name are required.'); return; }
+    try{
+      const r = await api('/portal/api/accounts/', {method:'POST', body:JSON.stringify(body)}); const d = await r.json();
+      if(r.ok){ HQ.hideDrawer('newAccountModal'); accountsLoaded=false; await loadAccountsIntoSelects(); loadAccounts(); showAlert('pageAlert','Account created. You can now pick it when creating an expense category.','success'); }
+      else showAlert('newAcctAlert', d.detail||JSON.stringify(d));
+    }catch(e){ if(e.message!=='Unauth') showAlert('newAcctAlert','Failed to create account.'); }
   };
 
   document.getElementById('saveAcctBtn').onclick = async () => {

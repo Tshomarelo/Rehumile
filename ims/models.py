@@ -1328,36 +1328,6 @@ class CashTransaction(models.Model):
         return f"{self.payment_method} R{self.amount} ({self.cash_flow_stream})"
 
 
-class Voucher(models.Model):
-    """Omada network-access voucher inventory and sales log."""
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    voucher_code = models.CharField(max_length=50, unique=True, db_index=True)
-    duration_hours = models.IntegerField()
-    selling_price = models.DecimalField(max_digits=8, decimal_places=2)
-    status = models.CharField(
-        max_length=20,
-        choices=[('available', 'Available'), ('sold', 'Sold'), ('expired', 'Expired')],
-        default='available', db_index=True,
-    )
-    sold_by = models.ForeignKey(
-        User, on_delete=models.SET_NULL, null=True, blank=True,
-        related_name='vouchers_sold',
-    )
-    sold_at = models.DateTimeField(null=True, blank=True)
-    cash_transaction = models.ForeignKey(
-        CashTransaction, on_delete=models.SET_NULL, null=True, blank=True,
-        related_name='vouchers',
-    )
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        db_table = 'vouchers'
-        ordering = ['-created_at']
-
-    def __str__(self):
-        return f"{self.voucher_code} ({self.status})"
-
-
 class PurchaseSlip(models.Model):
     """Supplier purchase slip upload for expense tracking and ICF reconciliation."""
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)

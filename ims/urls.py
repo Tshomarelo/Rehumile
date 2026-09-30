@@ -31,8 +31,6 @@ urlpatterns = [
     # Cash Management
     path('shifts/', views.ShiftLogView.as_view(), name='shift-log'),
     path('cash-transactions/', views.CashTransactionListView.as_view(), name='cash-transaction-list'),
-    # Vouchers
-    path('vouchers/', views.VoucherView.as_view(), name='voucher'),
     # Financial Analytics
     path('financial-analytics/', views.FinancialAnalyticsView.as_view(), name='financial-analytics'),
     # Accounting Engine — Chart of Accounts, Ledger, Expenses, Statements
