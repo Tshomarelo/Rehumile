@@ -756,6 +756,13 @@ class Invoice(models.Model):
     # Who is billed when there is no registered Company (direct-pay client)
     bill_to_name = models.CharField(max_length=255, blank=True)
 
+    # Client-facing link (/invoice/<token>/), collections follow-up
+    public_token = models.CharField(max_length=64, unique=True, null=True, blank=True, db_index=True)
+    reminder_count = models.PositiveSmallIntegerField(default=0)
+    last_reminder_at = models.DateTimeField(null=True, blank=True)
+    payment_notice_at = models.DateTimeField(null=True, blank=True, help_text='The client used "I have paid" on their invoice page')
+    payment_notice_note = models.CharField(max_length=500, blank=True)
+
     # Description (short human-readable label — used in print/email)
     description = models.CharField(max_length=500, blank=True)
 
@@ -779,6 +786,13 @@ class Invoice(models.Model):
     
     def __str__(self):
         return f"INV-{self.invoice_number} ({self.company.name if self.company else 'No company'})"
+
+    def ensure_public_token(self, regenerate=False):
+        import secrets
+        if regenerate or not self.public_token:
+            self.public_token = secrets.token_urlsafe(24)
+            self.save(update_fields=['public_token', 'updated_at'])
+        return self.public_token
 
     def save(self, *args, **kwargs):
         """Stamp the issue/payment dates the finance reports rely on.
@@ -1500,6 +1514,72 @@ class ExpenseCategory(models.Model):
         return self.name
 
 
+class RecurringExpense(models.Model):
+    """
+    A cost that repeats (your own Axxess line, domains, email, hosting, rent...). The daily job
+    posts a normal Expense on each due date, so it flows into reports and the ledger like any
+    other expense. Costs you resell to a client belong on that client's subscription instead.
+    """
+    FREQUENCIES = [('monthly', 'Monthly'), ('quarterly', 'Every 3 months'), ('annual', 'Yearly')]
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    name = models.CharField(max_length=150, help_text='e.g. "Axxess office fibre", "rehumile.co.za domain"')
+    vendor = models.CharField(max_length=255)
+    expense_category = models.ForeignKey(ExpenseCategory, on_delete=models.PROTECT, related_name='recurring_expenses')
+    amount = models.DecimalField(max_digits=12, decimal_places=2)
+    description = models.CharField(max_length=500, blank=True)
+    frequency = models.CharField(max_length=10, choices=FREQUENCIES, default='monthly')
+    day_of_month = models.PositiveSmallIntegerField(default=1, help_text='Posts on this day (short months use the last day)')
+    start_date = models.DateField()
+    end_date = models.DateField(null=True, blank=True)
+    payment_status = models.CharField(max_length=10, choices=[('paid', 'Paid'), ('unpaid', 'Unpaid / Payable')], default='paid')
+    is_active = models.BooleanField(default=True)
+    last_posted_for = models.DateField(null=True, blank=True)
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='recurring_expenses_created')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'recurring_expenses'
+        ordering = ['name']
+
+    def __str__(self):
+        return f"{self.name} R{self.amount} {self.frequency}"
+
+    def _date_in(self, year, month):
+        import calendar
+        from datetime import date as _d
+        return _d(year, month, min(self.day_of_month, calendar.monthrange(year, month)[1]))
+
+    def occurrences(self, upto, limit=36):
+        """Due dates from the start up to `upto` (inclusive) that have not been posted yet."""
+        step = {'monthly': 1, 'quarterly': 3, 'annual': 12}[self.frequency]
+        y, m = self.start_date.year, self.start_date.month
+        out = []
+        for _ in range(600):
+            d = self._date_in(y, m)
+            if d >= self.start_date:
+                if d > upto or (self.end_date and d > self.end_date):
+                    break
+                if self.last_posted_for is None or d > self.last_posted_for:
+                    out.append(d)
+                    if len(out) >= limit:
+                        break
+            m += step
+            y += (m - 1) // 12
+            m = (m - 1) % 12 + 1
+        return out
+
+    def next_due(self, today=None):
+        """The next date this will post: the earliest one not posted yet (a past date means it is due now).
+        None when paused or finished."""
+        from datetime import date as _d
+        today = today or _d.today()
+        if not self.is_active:
+            return None
+        upcoming = self.occurrences(today + timedelta(days=400), limit=1)
+        return upcoming[0] if upcoming else None
+
+
 class Expense(models.Model):
     """
     Canonical money-out record — replaces the informal 'PurchaseSlip as
@@ -1544,6 +1624,11 @@ class Expense(models.Model):
         PurchaseSlip, on_delete=models.SET_NULL, null=True, blank=True, related_name='expense',
     )
     receipt_image_path = models.CharField(max_length=500, blank=True)
+    # Set when a recurring-expense template created this expense (occurrence_date = the due date it stands for)
+    recurring_source = models.ForeignKey(
+        'RecurringExpense', on_delete=models.SET_NULL, null=True, blank=True, related_name='expenses',
+    )
+    occurrence_date = models.DateField(null=True, blank=True)
     recorded_by = models.ForeignKey(
         User, on_delete=models.SET_NULL, null=True, related_name='expenses_recorded',
     )
@@ -1556,6 +1641,7 @@ class Expense(models.Model):
     class Meta:
         db_table = 'expenses'
         ordering = ['-expense_date']
+        unique_together = [('recurring_source', 'occurrence_date')]   # a template can never post the same date twice
 
     def __str__(self):
         return f"{self.vendor} R{self.amount} ({self.expense_date})"
@@ -2280,6 +2366,7 @@ class Subscription(models.Model):
     # For direct-pay clients that are not registered companies (no branches possible)
     client_name = models.CharField(max_length=255, blank=True, db_index=True)
     contact_email = models.EmailField(blank=True)
+    contact_phone = models.CharField(max_length=30, blank=True)
     site = models.ForeignKey(ClientSite, null=True, blank=True, on_delete=models.PROTECT, related_name='subscriptions')
     service_type = models.CharField(max_length=20, choices=ServiceTypeChoices.choices, default='wifi', db_index=True)
     description = models.CharField(max_length=255, blank=True, help_text='Shown on the invoice, e.g. "20Mbps fibre" or "domain + 5 mailboxes"')

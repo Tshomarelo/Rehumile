@@ -23,7 +23,7 @@ from ims.portal_views import (
     client_contact_view, client_notifications_view,
     website_home_view,
     payment_success_view, payment_cancel_view, website_checkout_view,
-    portal_hr_access_view, portal_quotations_view, public_quote_view, portal_subscriptions_view,
+    portal_hr_access_view, portal_quotations_view, public_quote_view, portal_subscriptions_view, public_invoice_view,
 )
 from ims.views import ChangePasswordView, quote_request_view
 
@@ -83,6 +83,7 @@ _portal_patterns = [
 urlpatterns = _portal_patterns + [
     path('hr/', include('HR.urls', namespace='hr')),
     path('quote/<slug:token>/', public_quote_view, name='public-quote'),
+    path('invoice/<slug:token>/', public_invoice_view, name='public-invoice'),
     path('portal/', include(_portal_patterns)),
     path('portal/static/<path:path>', static_serve, {'document_root': settings.STATIC_ROOT}),
     path('portal/media/<path:path>', static_serve, {'document_root': settings.MEDIA_ROOT}),

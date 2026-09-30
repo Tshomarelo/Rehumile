@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <title>Invoice | Rehumile TMW</title>
+  <link rel="shortcut icon" href="/portal/static/img/icons/icon-48x48.png"/>
+  <style>
+    :root{--brand:#50181E;--tint:#fdf5f5;--ink:#1f2937;--mute:#6b7280;--line:#e5e7eb}
+    *{box-sizing:border-box}
+    body{margin:0;font-family:system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif;color:var(--ink);background:#f3f4f6;line-height:1.45}
+    .wrap{max-width:720px;margin:0 auto;padding:16px}
+    header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 4px 16px}
+    header img{height:44px;object-fit:contain}.co{font-size:.8rem;color:var(--mute);text-align:right}
+    .card{background:#fff;border-radius:14px;box-shadow:0 1px 4px rgba(0,0,0,.08);padding:20px;margin-bottom:14px}
+    h1{font-size:1.3rem;margin:0;color:var(--brand)} .sub{color:var(--mute);font-size:.9rem}
+    .banner{border-radius:10px;padding:12px 14px;margin-bottom:14px;font-weight:600}
+    .banner.due{background:#eff6ff;color:#1e3a8a}.banner.paid{background:#dcfce7;color:#14532d}.banner.overdue{background:#fee2e2;color:#7f1d1d}
+    .amount{font-size:2rem;font-weight:800;color:var(--brand);margin:6px 0}
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px 18px;margin-top:10px;font-size:.9rem}
+    .grid b{display:block;font-size:.72rem;letter-spacing:.05em;text-transform:uppercase;color:var(--mute);font-weight:600}
+    table{width:100%;border-collapse:collapse;font-size:.92rem}
+    th{background:var(--brand);color:#fff;text-align:left;padding:8px 10px;font-size:.72rem;letter-spacing:.05em;text-transform:uppercase} th.r,td.r{text-align:right}td.r{white-space:nowrap}
+    td{padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+    tr.grp td{background:#f3e8e8;color:var(--brand);font-weight:700;font-size:.72rem;text-transform:uppercase;letter-spacing:.04em}
+    .tot{margin-left:auto;width:min(100%,300px);margin-top:10px}.tot div{display:flex;justify-content:space-between;padding:4px 10px}
+    .tot .grand{background:var(--brand);color:#fff;font-weight:700;border-radius:8px;margin-top:4px;padding:9px 10px;font-size:1.05rem}
+    h2{font-size:.78rem;letter-spacing:.06em;text-transform:uppercase;color:var(--brand);margin:0 0 10px}
+    .bank{background:var(--tint);border-left:4px solid var(--brand);border-radius:8px;padding:12px 14px}
+    .row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid #f0dede}.row:last-child{border:0}
+    .row span{color:var(--mute);font-size:.85rem}.row b{font-size:1rem;word-break:break-all;text-align:right}
+    .copy{border:1px solid var(--brand);background:#fff;color:var(--brand);border-radius:8px;padding:3px 10px;font-size:.78rem;cursor:pointer;margin-left:8px;white-space:nowrap}
+    .ref{background:#fff;border:2px dashed var(--brand);border-radius:10px;padding:10px 12px;margin-top:10px;text-align:center}
+    .ref b{font-size:1.25rem;letter-spacing:.05em;color:var(--brand)}
+    textarea{width:100%;padding:12px;border:1px solid #d1d5db;border-radius:10px;font:inherit;margin-top:6px}
+    .btn{display:block;width:100%;border:0;border-radius:12px;padding:14px;font:inherit;font-weight:700;font-size:1rem;cursor:pointer;margin-top:10px}
+    .btn.primary{background:var(--brand);color:#fff}.btn.primary:disabled{opacity:.5}.btn.ghost{background:#fff;color:var(--brand);border:2px solid var(--brand)}
+    .small{font-size:.82rem;color:var(--mute);white-space:pre-wrap}.center{text-align:center;padding:40px 10px}
+    footer{text-align:center;color:var(--mute);font-size:.75rem;padding:10px 0 30px}
+    @media(max-width:560px){.wrap{padding:10px}.card{padding:16px}.grid{grid-template-columns:1fr}.row{flex-wrap:wrap}}
+    @media print{body{background:#fff}.noprint{display:none!important}.card{box-shadow:none}}
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <header><img src="/portal/static/img/rehumile-logo.jpeg" alt="Rehumile TMW" onerror="this.style.display='none'"><div class="co" id="coInfo"></div></header>
+  <div id="app"><div class="card center">Loading your invoice…</div></div>
+  <footer>Secure invoice link · please do not share it</footer>
+</div>
+<script>
+(function(){
+  const token=location.pathname.split('/').filter(Boolean).pop(), API='/portal/api/public/invoices/'+encodeURIComponent(token)+'/';
+  const app=document.getElementById('app');
+  const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  const R=n=>'R '+(parseFloat(n)||0).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,' ');
+  const D=d=>d?new Date(d).toLocaleDateString('en-ZA',{day:'numeric',month:'long',year:'numeric'}):'—';
+  async function load(){
+    let r; try{ r=await fetch(API);}catch(e){ app.innerHTML='<div class="card center">We could not reach the server. Please try again.</div>'; return; }
+    if(r.status===429){ app.innerHTML='<div class="card center">Too many requests — please wait a minute and refresh.</div>'; return; }
+    if(!r.ok){ app.innerHTML='<div class="card center"><h1>Link not valid</h1><p class="sub">This invoice link is invalid or has been replaced. Please contact us.</p></div>'; return; }
+    render(await r.json());
+  }
+  function render(i){
+    document.title='Invoice '+i.invoice_number+' | '+(i.company.name||'Rehumile TMW');
+    document.getElementById('coInfo').innerHTML=esc(i.company.name||'')+(i.company.phone?'<br>'+esc(i.company.phone):'')+(i.company.email?'<br>'+esc(i.company.email):'');
+    const paid=i.status==='paid', over=i.status==='overdue';
+    const banner=paid?['paid','Paid'+(i.paid_on?' on '+D(i.paid_on):'')+' — thank you!']:over?['overdue','Payment was due on '+D(i.due_date)+' ('+i.days_overdue+' day'+(i.days_overdue>1?'s':'')+' ago). Please pay as soon as you can.']:['due','Payment is due by '+D(i.due_date)+'.'];
+    const grouped=i.items.some(x=>x.site_name); let last=null;
+    const rows=i.items.map(x=>{ let h=''; if(grouped&&x.site_name!==last){ h='<tr class="grp"><td colspan="4">'+esc(x.site_name||'Head office')+'</td></tr>'; last=x.site_name; }
+      return h+`<tr><td>${esc(x.description)}</td><td class="r">${x.quantity}</td><td class="r">${R(x.unit_price)}</td><td class="r">${R(x.amount)}</td></tr>`; }).join('')
+      || `<tr><td colspan="3">${esc(i.description||'Services')}</td><td class="r">${R(i.subtotal)}</td></tr>`;
+    const b=i.bank, bankRows=[['Account name',b.account_name],['Bank',b.bank_name],['Account number',b.account_number],['Branch code',b.branch_code]].filter(x=>x[1]);
+    app.innerHTML=`
+      <div class="banner ${banner[0]}">${banner[1]}</div>
+      <div class="card"><h1>Invoice ${esc(i.invoice_number)}</h1><div class="sub">${esc(i.description||'')}</div>
+        ${paid?'':`<div class="amount">${R(i.total_amount)}</div>`}
+        <div class="grid"><div><b>Billed to</b>${esc(i.client_name)}</div><div><b>Invoice date</b>${D(i.issue_date)}</div><div><b>Period</b>${D(i.period.start)} – ${D(i.period.end)}</div><div><b>Due date</b>${D(i.due_date)}</div></div></div>
+      <div class="card"><table><thead><tr><th>Description</th><th class="r">Qty</th><th class="r">Price</th><th class="r">Amount</th></tr></thead><tbody>${rows}</tbody></table>
+        <div class="tot"><div><span>Subtotal</span><span>${R(i.subtotal)}</span></div><div><span>VAT (${i.tax_rate}%)</span><span>${R(i.tax_amount)}</span></div><div class="grand"><span>Total</span><span>${R(i.total_amount)}</span></div></div></div>
+      ${paid?'':`<div class="card"><h2>Pay by EFT</h2>
+        ${bankRows.length?`<div class="bank">${bankRows.map(x=>`<div class="row"><span>${esc(x[0])}</span><span><b>${esc(x[1])}</b><button class="copy noprint" data-v="${esc(x[1])}">Copy</button></span></div>`).join('')}</div>`:'<div class="small">Bank details are not set up yet — please contact us.</div>'}
+        <div class="ref">Use this payment reference<br><b>${esc(i.reference)}</b><button class="copy noprint" data-v="${esc(i.reference)}">Copy</button></div>
+        <div class="small" style="margin-top:10px">The reference lets us match your payment straight away. Amount to pay: <b>${R(i.total_amount)}</b>.</div></div>
+        <div class="card noprint" id="paidBox">${i.paid_notice?'<div class="small"><b>Thanks — we have been told you paid.</b> We will check our bank account and confirm shortly.</div>':`<h2>Already paid?</h2><div class="small">Tell us and we will check our bank account — it helps if you add the date or bank reference.</div>
+          <textarea id="nt" rows="2" placeholder="e.g. Paid on 28 Sept via FNB, ref ${esc(i.reference)}"></textarea><button class="btn primary" id="paidBtn">I have paid</button><div class="small" id="msg" style="margin-top:8px"></div>`}</div>`}
+      ${i.terms?`<div class="card"><h2>Terms</h2><div class="small">${esc(i.terms)}</div></div>`:''}
+      <div class="noprint"><button class="btn ghost" onclick="window.print()">Print / save as PDF</button></div>`;
+    document.querySelectorAll('.copy').forEach(c=>c.onclick=()=>{ (navigator.clipboard?navigator.clipboard.writeText(c.dataset.v):Promise.reject()).catch(()=>{}); const t=c.textContent; c.textContent='Copied ✓'; setTimeout(()=>c.textContent=t,1400); });
+    const pb=document.getElementById('paidBtn'); if(pb) pb.onclick=async()=>{ pb.disabled=true; pb.textContent='Sending…';
+      try{ const r=await fetch(API+'notice/',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({note:document.getElementById('nt').value})}); const d=await r.json().catch(()=>({}));
+        if(r.ok||r.status===409){ document.getElementById('paidBox').innerHTML='<div class="small"><b>'+esc(d.detail||'Thank you!')+'</b></div>'; } else { document.getElementById('msg').textContent=d.detail||'Something went wrong. Please try again.'; pb.disabled=false; pb.textContent='I have paid'; } }
+      catch(e){ document.getElementById('msg').textContent='Could not reach the server.'; pb.disabled=false; pb.textContent='I have paid'; } };
+  }
+  load();
+})();
+</script>
+</body>
+</html>

@@ -15,6 +15,11 @@ from tests.conftest import client_for, make_user
 Y, M = 2026, 9
 
 
+@pytest.fixture(autouse=True)
+def _fixed_today(monkeypatch):
+    monkeypatch.setattr(billing, '_today', lambda: date(2026, 9, 1))
+
+
 def company(name, email='billing@x.co'):
     return Company.objects.create(name=name, slug=name.lower().replace(' ', '-'), contact_person='P', contact_email=email, billing_email=email)
 

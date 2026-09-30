@@ -16,7 +16,7 @@ Generated invoices carry no VAT unless a `vat_rate` (percent) is passed.
 """
 import calendar
 from collections import OrderedDict
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal, ROUND_HALF_UP
 
 from django.db import transaction
@@ -29,6 +29,10 @@ SERVICE_LABELS = {
     'wifi': 'WiFi / Internet', 'email': 'Email hosting', 'hosting': 'Website hosting',
     'sla': 'SLA retainer', 'other': 'Other service',
 }
+
+
+def _today():
+    return date.today()
 
 
 def month_bounds(year, month):
@@ -139,6 +143,9 @@ def plan(year, month, vat_rate=0):
         subtotal = sum((l['amount'] for l in g['lines']), Decimal('0'))
         tax = _money(subtotal * vat / 100)
         due_day = min(min(l['billing_day'] for l in g['lines']), end.day)
+        due = date(year, month, due_day)
+        if due < _today():
+            due = _today() + timedelta(days=7)     # never issue an invoice that is already late: give 7 days
         out.append({
             'key': g['key'], 'company_id': str(g['company'].id) if g['company'] else None,
             'site_id': str(g['site'].id) if g['site'] else None, 'client_name': g['client_name'],
@@ -147,7 +154,7 @@ def plan(year, month, vat_rate=0):
                        'unit_cost': float(l['unit_cost']), 'amount': float(l['amount'])} for l in g['lines']],
             'subtotal': float(subtotal), 'vat_rate': float(vat), 'tax_amount': float(tax), 'total': float(subtotal + tax),
             'cost': float(sum((_money(l['quantity'] * l['unit_cost']) for l in g['lines']), Decimal('0'))),
-            'due_date': date(year, month, due_day).isoformat(),
+            'due_date': due.isoformat(),
             'recipients': _recipients(g['company'], g['site'], g['subs']),
             '_subs': g['subs'], '_company': g['company'], '_site': g['site'],
         })
@@ -193,6 +200,7 @@ def generate(year, month, *, status='sent', vat_rate=0, only_keys=None):
                 service_type=l['service_type'], site_name=l['site_name'], unit_cost=Decimal(str(l['unit_cost'])),
                 subscription_id=l['subscription_id'],
             )
+        inv.ensure_public_token()
         inv._recipients = g['recipients']
         inv._client_name = g['client_name']
         created.append(inv)

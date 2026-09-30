@@ -6,11 +6,16 @@ import requests as http_requests
 
 logger = logging.getLogger(__name__)
 
-# ── Sandbox credentials ───────────────────────────────────────────────────────
-PAYFAST_MERCHANT_ID = '10050987'
-PAYFAST_MERCHANT_KEY = 'p9c9mjpzjpnc'
-PAYFAST_PASSPHRASE = ''        # Set after adding passphrase in PayFast portal
-PAYFAST_SANDBOX = True
+# ── Credentials ───────────────────────────────────────────────────────────────
+# Read from .env so real (live) details never live in the code. The defaults are PayFast's
+# public SANDBOX (test) account: with them, NO real money moves. To go live set, in .env:
+#   PAYFAST_SANDBOX=False, PAYFAST_MERCHANT_ID, PAYFAST_MERCHANT_KEY, PAYFAST_PASSPHRASE
+from decouple import config
+
+PAYFAST_MERCHANT_ID = config('PAYFAST_MERCHANT_ID', default='10050987')
+PAYFAST_MERCHANT_KEY = config('PAYFAST_MERCHANT_KEY', default='p9c9mjpzjpnc')
+PAYFAST_PASSPHRASE = config('PAYFAST_PASSPHRASE', default='')
+PAYFAST_SANDBOX = config('PAYFAST_SANDBOX', default=True, cast=bool)
 
 PAYFAST_PROCESS_URL = (
     'https://sandbox.payfast.co.za/eng/process'

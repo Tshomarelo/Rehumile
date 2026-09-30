@@ -53,6 +53,7 @@
 
         <ul class="nav nav-tabs mb-3" id="mainTabs">
           <li class="nav-item"><a class="nav-link active" onclick="switchTab('expenses')">Expenses</a></li>
+          <li class="nav-item"><a class="nav-link" onclick="switchTab('recurring')">Recurring costs</a></li>
           <li class="nav-item"><a class="nav-link" onclick="switchTab('categories')">Categories &amp; Budgets</a></li>
           <li class="nav-item"><a class="nav-link" onclick="switchTab('accounts')">Chart of Accounts</a></li>
         </ul>
@@ -111,6 +112,25 @@
               </div>
               <div id="tableEmpty" class="text-center py-4 text-muted" style="display:none">No expenses found.</div>
             </div>
+          </div>
+        </div>
+
+        <!-- Recurring tab -->
+        <div id="tab-recurring" class="tab-pane">
+          <div class="alert alert-info py-2 small"><b>Your own running costs that repeat</b> — your Axxess office line, domains, email, hosting, rent. Set each one up once; it posts itself as a normal expense on its due date, so profit and reports stay right without retyping it every month.
+            <b>Not for services you resell</b> — a client's WiFi / email / hosting cost belongs on that client's subscription (Revenue → Subscriptions &amp; Branches); entering it here too would count it twice.</div>
+          <div class="row g-2 mb-3" id="recTiles"></div>
+          <div class="card">
+            <div class="card-header d-flex align-items-center justify-content-between">
+              <h5 class="card-title mb-0">Recurring costs</h5>
+              <div class="d-flex gap-2"><button class="btn btn-sm btn-outline-secondary" id="recRunBtn" style="display:none">Post anything due now</button>
+                <button class="btn btn-sm btn-primary" id="recNewBtn" style="display:none">+ New recurring cost</button></div>
+            </div>
+            <div class="card-body p-0"><div class="table-responsive">
+              <table class="table table-hover my-0 small">
+                <thead><tr><th>Cost</th><th>Category</th><th class="text-end">Amount</th><th>Repeats</th><th>Next posts</th><th class="d-none d-md-table-cell">Posted so far</th><th>Status</th><th>Actions</th></tr></thead>
+                <tbody id="recTbody"><tr><td colspan="8" class="text-center text-muted py-3">Loading…</td></tr></tbody>
+              </table></div></div>
           </div>
         </div>
 
@@ -261,6 +281,28 @@
 </div>
 <div class="hq-backdrop" id="accountModal-bd" onclick="HQ.hideDrawer('accountModal')"></div>
 
+<!-- Recurring Drawer -->
+<div class="hq-drawer" id="recModal">
+  <div class="hq-drawer-header"><h5 class="hq-drawer-title" id="recTitle">New recurring cost</h5><button type="button" class="btn-close btn-close-white" onclick="HQ.hideDrawer('recModal')"></button></div>
+  <div class="hq-drawer-body">
+    <div id="recAlert"></div><input type="hidden" id="r_id">
+    <div class="mb-3"><label class="form-label">What is it? <span class="text-danger">*</span></label><input class="form-control" id="r_name" placeholder='e.g. "Office Axxess fibre", "rehumile.co.za domain"'></div>
+    <div class="mb-3"><label class="form-label">Supplier <span class="text-danger">*</span></label><input class="form-control" id="r_vendor" placeholder="e.g. Axxess, Afrihost"></div>
+    <div class="mb-3"><label class="form-label">Category <span class="text-danger">*</span></label><select class="form-select" id="r_cat"></select>
+      <div class="form-text">Own internet lines → "Internet &amp; Axxess (own lines)". Own domains, mailboxes, hosting → "Domains, Email &amp; Hosting (own use)".</div></div>
+    <div class="row g-2 mb-3"><div class="col-md-6"><label class="form-label">Amount each time (R) <span class="text-danger">*</span></label><input type="number" class="form-control" id="r_amount" min="0.01" step="0.01"></div>
+      <div class="col-md-6"><label class="form-label">Repeats</label><select class="form-select" id="r_freq"><option value="monthly">Every month</option><option value="quarterly">Every 3 months</option><option value="annual">Every year</option></select></div></div>
+    <div class="row g-2 mb-3"><div class="col-md-4"><label class="form-label">Day of month</label><input type="number" class="form-control" id="r_day" min="1" max="31" value="1"></div>
+      <div class="col-md-4"><label class="form-label">First date</label><input type="date" class="form-control" id="r_start"></div>
+      <div class="col-md-4"><label class="form-label">Stops <span class="text-muted small">(optional)</span></label><input type="date" class="form-control" id="r_end"></div></div>
+    <div class="mb-3"><label class="form-label">Paid how?</label><select class="form-select" id="r_paid"><option value="paid">Paid when it is due (debit order / card)</option><option value="unpaid">Invoice to pay later (shows as owed to suppliers)</option></select></div>
+    <div class="mb-3"><label class="form-label">Note</label><input class="form-control" id="r_desc"></div>
+    <div class="form-check"><input class="form-check-input" type="checkbox" id="r_active" checked><label class="form-check-label" for="r_active">Active (untick to pause)</label></div>
+  </div>
+  <div class="hq-drawer-footer"><button class="btn btn-secondary" onclick="HQ.hideDrawer('recModal')">Cancel</button><button class="btn btn-primary" id="recSave">Save</button></div>
+</div>
+<div class="hq-backdrop" id="recModal-bd" onclick="HQ.hideDrawer('recModal')"></div>
+
 <!-- New Account Drawer -->
 <div class="hq-drawer" id="newAccountModal">
   <div class="hq-drawer-header"><h5 class="hq-drawer-title">New Account</h5><button type="button" class="btn-close btn-close-white" onclick="HQ.hideDrawer('newAccountModal')"></button></div>
@@ -346,7 +388,9 @@
     document.querySelector(`[onclick="switchTab('${name}')"]`).classList.add('active');
     if(name==='accounts') loadAccounts();
     if(name==='categories') renderCategories();
+    if(name==='recurring') loadRecurring();
     document.getElementById('newCategoryBtn').style.display = (name==='categories' && canManage) ? '' : 'none';
+    document.getElementById('recNewBtn').style.display = document.getElementById('recRunBtn').style.display = (name==='recurring' && canManage) ? '' : 'none';
   };
 
   let allAccounts = [], categories = [], openQuotes = [];
@@ -489,6 +533,47 @@
     }catch(e){ if(e.message!=='Unauth') showAlert('modalAlert','Failed to save expense.'); }
     btn.disabled = false;
     btn.innerHTML = orig;
+  };
+
+  // ── Recurring tab ──
+  let recs=[];
+  async function loadRecurring(){
+    if(!categories.length) await loadCategories();
+    try{
+      const d=await (await api('/portal/api/recurring-expenses/')).json(); recs=d.results||[];
+      const due=recs.filter(r=>r.is_active&&r.next_due&&r.next_due<=new Date().toISOString().slice(0,10)).length;
+      const tile=(l,v,s)=>`<div class="col-md-4"><div class="card mb-0"><div class="card-body py-2"><div class="text-muted small">${l}</div><div class="h5 mb-0">${v}</div><div class="text-muted small">${s}</div></div></div></div>`;
+      document.getElementById('recTiles').innerHTML=tile('Monthly equivalent',fmtR(d.monthly_equivalent),'all active recurring costs averaged per month')+tile('Active',recs.filter(r=>r.is_active).length,recs.length+' set up')+tile('Waiting to post',due,'posts automatically each day, or use "Post anything due now"');
+      const today=new Date().toISOString().slice(0,10);
+      document.getElementById('recTbody').innerHTML=recs.length?recs.map(r=>`<tr>
+        <td><b>${esc(r.name)}</b><div class="text-muted">${esc(r.vendor)}${r.description?' · '+esc(r.description):''}</div></td><td>${esc(r.category_name)}</td><td class="text-end">${fmtR(r.amount)}</td>
+        <td>${esc(r.frequency_label)}<div class="text-muted">day ${r.day_of_month}</div></td>
+        <td>${!r.is_active?'<span class="text-muted">paused</span>':r.next_due?(r.next_due<=today?'<span class="badge bg-warning text-dark">due now</span> ':'')+esc(r.next_due):'finished'}</td>
+        <td class="d-none d-md-table-cell">${r.posted_count}${r.last_posted_for?'<div class="text-muted">last '+esc(r.last_posted_for)+'</div>':''}</td>
+        <td>${r.is_active?'<span class="badge bg-success">Active</span>':'<span class="badge bg-secondary">Paused</span>'}</td>
+        <td class="text-nowrap">${canManage?`<button class="btn btn-sm btn-outline-primary" onclick="editRec('${r.id}')">Edit</button> <button class="btn btn-sm btn-outline-danger" onclick="delRec('${r.id}')">×</button>`:'—'}</td></tr>`).join('')
+        :'<tr><td colspan="8" class="text-center text-muted py-4">Nothing set up yet. Add your office Axxess line, domains, email and hosting.</td></tr>';
+    }catch(e){ if(e.message!=='Unauth') showAlert('pageAlert','Failed to load recurring costs.'); }
+  }
+  function openRec(r){
+    r=r||{}; document.getElementById('recAlert').innerHTML=''; document.getElementById('r_id').value=r.id||''; document.getElementById('recTitle').textContent=r.id?'Edit recurring cost':'New recurring cost';
+    const opts=categories.filter(c=>c.is_active&&c.kind!=='capital').map(c=>`<option value="${c.id}" ${c.id===r.expense_category?'selected':''}>${esc(c.name)}</option>`).join('');
+    document.getElementById('r_cat').innerHTML='<option value="">Choose…</option>'+opts;
+    const v=(i,x)=>document.getElementById(i).value=x==null?'':x;
+    v('r_name',r.name);v('r_vendor',r.vendor);v('r_amount',r.amount);v('r_freq',r.frequency||'monthly');v('r_day',r.day_of_month||1);v('r_start',r.start_date||new Date().toISOString().slice(0,10));v('r_end',r.end_date);v('r_paid',r.payment_status||'paid');v('r_desc',r.description);
+    document.getElementById('r_active').checked=r.id?r.is_active:true; HQ.showDrawer('recModal');
+  }
+  document.getElementById('recNewBtn').onclick=()=>openRec(null);
+  window.editRec=id=>openRec(recs.find(r=>r.id===id));
+  window.delRec=async id=>{ if(!confirm('Delete this recurring cost? (If it has already posted expenses it is paused instead, so history stays.)')) return;
+    const r=await api('/portal/api/recurring-expenses/'+id+'/',{method:'DELETE'}); const d=r.status===204?{}:await r.json(); if(r.ok){ showAlert('pageAlert',d.detail||'Deleted.','success'); loadRecurring(); } else showAlert('pageAlert',d.detail||'Could not delete.'); };
+  document.getElementById('recRunBtn').onclick=async()=>{ const r=await api('/portal/api/recurring-expenses/run/',{method:'POST'}); const d=await r.json();
+    if(r.ok){ showAlert('pageAlert',d.posted?`Posted ${d.posted} expense(s).`:'Nothing was due.','success'); loadRecurring(); loadExpenses(); } else showAlert('pageAlert',d.detail||'Failed.'); };
+  document.getElementById('recSave').onclick=async()=>{
+    const id=document.getElementById('r_id').value; const g=i=>document.getElementById(i).value;
+    const body={name:g('r_name'),vendor:g('r_vendor'),expense_category:g('r_cat'),amount:g('r_amount'),frequency:g('r_freq'),day_of_month:g('r_day'),start_date:g('r_start'),end_date:g('r_end')||null,payment_status:g('r_paid'),description:g('r_desc'),is_active:document.getElementById('r_active').checked};
+    const r=await api('/portal/api/recurring-expenses/'+(id?id+'/':''),{method:id?'PATCH':'POST',body:JSON.stringify(body)}); const d=await r.json();
+    if(r.ok){ HQ.hideDrawer('recModal'); showAlert('pageAlert','Saved. It will post automatically on its due date.','success'); loadRecurring(); } else showAlert('recAlert',d.detail||JSON.stringify(d));
   };
 
   // ── Categories tab ──

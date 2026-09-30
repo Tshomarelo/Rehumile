@@ -154,7 +154,7 @@ def _sub_dict(s):
         'quantity': float(s.quantity), 'unit_price': float(s.unit_price), 'unit_cost': float(s.unit_cost),
         'monthly_total': float(s.monthly_total), 'monthly_margin': float(s.monthly_total - s.monthly_cost),
         'billing_day': s.billing_day, 'start_date': s.start_date.isoformat(), 'end_date': s.end_date.isoformat() if s.end_date else None,
-        'status': s.status, 'notes': s.notes, 'contact_email': s.contact_email,
+        'status': s.status, 'notes': s.notes, 'contact_email': s.contact_email, 'contact_phone': s.contact_phone,
         'managed_by': 'wifi' if s.legacy_wifi_id else ('sla' if s.legacy_sla_id else None),
     }
 
@@ -173,6 +173,8 @@ def _apply_sub(sub, d, editing_legacy=False):
         sub.client_name = (d['client_name'] or '').strip()
     if 'contact_email' in d:
         sub.contact_email = (d['contact_email'] or '').strip()
+    if 'contact_phone' in d:
+        sub.contact_phone = (d['contact_phone'] or '').strip()[:30]
     if 'site' in d:
         if d['site']:
             site = _uuid_or_none(ClientSite, d['site'])
@@ -368,9 +370,12 @@ class BillingRunView(APIView):
 
 
 def send_invoice_email(invoice, recipients, base_url):
-    """One email per invoice: a line per service, grouped by branch, and the single total."""
+    """One email per invoice: a line per service (grouped by branch), the total, the bank details and the payment reference."""
     from html import escape
     from django.core.mail import EmailMultiAlternatives
+    from .collections import _bank_block
+    from .views import _company_settings
+    cs = _company_settings()
     items = list(invoice.items.all())
     groups = {}
     for it in items:
@@ -385,18 +390,24 @@ def send_invoice_email(invoice, recipients, base_url):
                         + f'</td><td align="right" style="padding:4px 0">R {float(it.amount):,.2f}</td></tr>')
     due = invoice.due_date.strftime('%d %B %Y') if invoice.due_date else 'upon receipt'
     name = escape(invoice.company.name if invoice.company_id else invoice.bill_to_name)
-    link = f"{base_url}/portal/client/billing/"
+    link = f"{base_url}/invoice/{invoice.ensure_public_token()}/"
+    bank = _bank_block(cs)
+    bank_html = ('<p style="margin:16px 0 4px"><b>Pay by EFT</b> — please use <b>' + escape(invoice.invoice_number) + '</b> as the payment reference:</p>'
+                 '<table cellspacing="0" style="font-size:14px;background:#fdf5f5;padding:8px 12px;border-left:4px solid #50181E">'
+                 + ''.join(f'<tr><td style="color:#777;padding:2px 14px 2px 0">{escape(k)}</td><td><b>{escape(v)}</b></td></tr>' for k, v in bank) + '</table>') if bank else ''
     html = (f'<div style="font-family:Segoe UI,Arial,sans-serif;max-width:560px;margin:auto"><h2 style="color:#50181E">Invoice {escape(invoice.invoice_number)}</h2>'
             f'<p>{name} — {escape(invoice.description)}</p><table width="100%" cellspacing="0" style="font-size:14px;border-top:2px solid #50181E">{"".join(rows)}'
             f'<tr><td style="padding:10px 0;border-top:1px solid #ccc;font-weight:700">Total due</td>'
             f'<td align="right" style="padding:10px 0;border-top:1px solid #ccc;font-weight:700;color:#50181E">R {float(invoice.total_amount):,.2f}</td></tr></table>'
-            f'<p>Payment is due by <b>{due}</b>. <a href="{link}">View or pay online</a>.</p>'
-            f'<p style="color:#888;font-size:12px">Rehumile TMW</p></div>')
+            f'<p>Payment is due by <b>{due}</b>.</p>{bank_html}'
+            f'<p><a href="{link}" style="display:inline-block;background:#50181E;color:#fff;padding:10px 20px;border-radius:8px;text-decoration:none">View invoice</a></p>'
+            f'<p style="color:#888;font-size:12px">{escape(cs.company_name)}</p></div>')
     plain = (f"Invoice {invoice.invoice_number} — {invoice.description}\n"
              + "\n".join(f"  {it.site_name + ': ' if it.site_name else ''}{it.description}  R {float(it.amount):,.2f}" for it in items)
-             + f"\n\nTotal due: R {float(invoice.total_amount):,.2f}\nDue by: {due}\n{link}")
+             + f"\n\nTotal due: R {float(invoice.total_amount):,.2f}\nDue by: {due}\nPayment reference: {invoice.invoice_number}\n"
+             + ''.join(f"{k}: {v}\n" for k, v in bank) + f"\nView your invoice: {link}")
     try:
-        msg = EmailMultiAlternatives(f"Invoice {invoice.invoice_number} — Rehumile TMW", plain, django_settings.DEFAULT_FROM_EMAIL, recipients)
+        msg = EmailMultiAlternatives(f"Invoice {invoice.invoice_number} — {cs.company_name}", plain, django_settings.DEFAULT_FROM_EMAIL, recipients)
         msg.attach_alternative(html, 'text/html')
         msg.send()
         return True

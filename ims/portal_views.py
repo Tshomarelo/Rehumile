@@ -190,3 +190,8 @@ def public_quote_view(request, token):
 
 def portal_subscriptions_view(request):
     return _serve('hq-subscriptions.html')
+
+
+def public_invoice_view(request, token):
+    """The client's invoice page (bank details + payment reference)."""
+    return _serve('invoice-public.html')

@@ -330,6 +330,7 @@
 <script src="/portal/static/js/app.js"></script>
 <script src="/portal/static/js/hq-sidebar-menu.js"></script>
 <script src="/portal/static/js/hq-filters.js"></script>
+<script src="/portal/static/js/hq-record-payment.js"></script>
 <script>(function(){function _i(){var s=document.querySelector('.js-sidebar'),t=document.querySelector('.js-sidebar-toggle');if(!s||!t)return;if(window.innerWidth<992&&localStorage.getItem('ims_sidebar')==='open')s.classList.add('collapsed');t.addEventListener('click',function(){setTimeout(function(){localStorage.setItem('ims_sidebar',s.classList.contains('collapsed')?'open':'closed');},50);});}document.readyState==='loading'?document.addEventListener('DOMContentLoaded',_i):_i();})();</script>
 <script>
 window.onInvoiceTypeChange = function(){
@@ -447,6 +448,7 @@ window.collectItems = function(){
           <td class="d-flex gap-1 flex-wrap">
             <button class="btn btn-sm btn-outline-primary" onclick='openEdit(${JSON.stringify(inv)})'>Edit</button>
             <a class="btn btn-sm btn-outline-secondary" href="/portal/invoices/print/${inv.id}/" target="_blank" title="Print / Save PDF"><i data-feather="printer" style="width:13px;height:13px"></i></a>
+            ${['sent','overdue'].includes(inv.status) ? `<button class="btn btn-sm btn-success" title="Record that the client has paid" onclick='recordPay(${JSON.stringify({id:inv.id,invoice_number:inv.invoice_number,client:inv.company_name||inv.bill_to_name||'',total:inv.total_amount}).replace(/'/g,'&#39;')})'>Record payment</button>` : ''}
             ${['sent','overdue','draft'].includes(inv.status) ? `<button class="btn btn-sm btn-outline-warning remind-btn" data-id="${inv.id}" data-num="${inv.invoice_number||'INV-'+inv.id.slice(0,8)}" title="Send email reminder"><i data-feather="mail" style="width:13px;height:13px"></i> Remind</button>` : ''}
           </td>
         </tr>`).join('');
@@ -517,6 +519,8 @@ window.collectItems = function(){
     }, 300);
     HQ.showDrawer('invoiceModal');
   };
+
+  window.recordPay=function(inv){ RecordPayment.open(inv,()=>{ showAlert('pageAlert','Payment recorded — the invoice is now paid.','success'); loadInvoices(); }); };
 
   document.getElementById('saveInvoiceBtn').onclick=async()=>{
     const id=document.getElementById('editId').value;

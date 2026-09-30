@@ -303,3 +303,21 @@ Then click **Reload** on the PythonAnywhere Web tab.
 | Email not sending | PythonAnywhere free tier **blocks outbound SMTP**. Upgrade to a paid plan or use a relay like SendGrid/Mailgun on port 587 |
 | `IMS_SECRET_KEY` error | Make sure your `.env` file is in `artifacts/ims-portal/` and `python-decouple` is installed |
 | React app shows blank | Check browser console — usually a base path issue. Verify `WHITENOISE_ROOT` points to `frontend_dist/` |
+
+## Daily housekeeping job (recurring costs, overdue invoices, reminders)
+
+Schedule ONE task that runs once a day (PythonAnywhere → **Tasks** tab → "Daily"):
+
+```
+cd /home/Rehumile/<your-project-folder> && python manage.py daily_jobs --base-url https://www.rehumile.co.za
+```
+
+It (1) posts recurring expenses that are due (your Axxess line, domains, email, hosting), (2) marks unpaid invoices
+overdue the day after their due date, and (3) emails payment reminders (the next day, then weekly, at most 3).
+Safe to run more than once; add `--no-email` to test without sending reminders.
+
+## PayFast (card payments)
+
+`ims/payfast.py` now reads its settings from `.env`. Until you set them it stays on PayFast's **sandbox** (test mode),
+where no real money moves. To go live put `PAYFAST_SANDBOX=False`, `PAYFAST_MERCHANT_ID`, `PAYFAST_MERCHANT_KEY` and
+`PAYFAST_PASSPHRASE` (from your PayFast account) in `.env`, then reload the web app.

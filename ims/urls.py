@@ -1,6 +1,6 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from . import views, finance_views, subscription_views
+from . import views, finance_views, subscription_views, collections_views
 
 router = DefaultRouter()
 router.register(r'companies', views.CompanyViewSet, basename='company')
@@ -72,7 +72,14 @@ urlpatterns = [
     path('payments/initiate-public/', views.PayFastPublicInitiateView.as_view(), name='payfast-initiate-public'),
     path('payments/payfast-notify/', views.PayFastITNView.as_view(), name='payfast-itn'),
     path('payments/', views.PaymentListView.as_view(), name='payment-list'),
-    path('invoices/<uuid:invoice_id>/remind/', views.InvoiceReminderView.as_view(), name='invoice-remind'),
+    path('invoices/<uuid:invoice_id>/remind/', collections_views.InvoiceReminderView.as_view(), name='invoice-remind'),
+    path('invoices/<uuid:pk>/record-payment/', collections_views.RecordPaymentView.as_view(), name='invoice-record-payment'),
+    path('collections/', collections_views.CollectionsView.as_view(), name='collections'),
+    path('recurring-expenses/', collections_views.RecurringExpenseListView.as_view(), name='recurring-expense-list'),
+    path('recurring-expenses/run/', collections_views.RecurringExpenseRunView.as_view(), name='recurring-expense-run'),
+    path('recurring-expenses/<uuid:pk>/', collections_views.RecurringExpenseDetailView.as_view(), name='recurring-expense-detail'),
+    path('public/invoices/<str:token>/', collections_views.PublicInvoiceView.as_view(), name='public-invoice'),
+    path('public/invoices/<str:token>/notice/', collections_views.PublicInvoiceNoticeView.as_view(), name='public-invoice-notice'),
     # Revenue Intelligence — WiFi Subscribers
     path('wifi-subscribers/', views.WifiSubscriberListView.as_view(), name='wifi-subscriber-list'),
     path('wifi-subscribers/<uuid:pk>/', views.WifiSubscriberDetailView.as_view(), name='wifi-subscriber-detail'),

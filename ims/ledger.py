@@ -91,6 +91,8 @@ SEED_EXPENSE_CATEGORIES = [
     ('Marketing & Advertising', 'operating', 'OPEX_MARKETING', 'ocf', 'Ads, flyers, sponsorships'),
     ('Fuel & Travel', 'operating', 'OPEX_OTHER', 'ocf', 'Fuel, tolls, call-out travel'),
     ('Software & Subscriptions', 'operating', 'OPEX_OTHER', 'ocf', 'Licences, hosting, SaaS'),
+    ('Domains, Email & Hosting (own use)', 'operating', 'OPEX_OTHER', 'ocf', 'Rehumile\'s own domains, mailboxes and web hosting (not services resold to clients)'),
+    ('Internet & Axxess (own lines)', 'operating', 'OPEX_UTILITIES', 'ocf', 'Axxess / internet lines used by Rehumile itself (client lines go on their subscription)'),
     ('Repairs & Maintenance', 'operating', 'OPEX_OTHER', 'ocf', 'Upkeep of premises and equipment'),
     ('Office & Sundry', 'operating', 'OPEX_OTHER', 'ocf', 'Stationery, cleaning, refreshments'),
     ('Equipment & Tools', 'capital', 'FIXED_ASSETS', 'icf', 'Long-life assets — not deducted from profit, shown as an asset'),
@@ -121,7 +123,7 @@ def ensure_seeded():
     from .models import ExpenseCategory
     if Account.objects.count() < len(SEED_ACCOUNTS):
         seed_chart_of_accounts()
-    if not ExpenseCategory.objects.exists():
+    if ExpenseCategory.objects.count() < len(SEED_EXPENSE_CATEGORIES):
         seed_expense_categories()
 
 

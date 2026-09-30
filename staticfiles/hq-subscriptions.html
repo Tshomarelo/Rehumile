@@ -59,6 +59,7 @@
 
         <ul class="nav nav-tabs mb-3" id="tabs">
           <li class="nav-item"><a class="nav-link active" data-tab="billing">Monthly billing run</a></li>
+          <li class="nav-item"><a class="nav-link" data-tab="collections">Collections <span class="badge bg-danger" id="colBadge" style="display:none"></span></a></li>
           <li class="nav-item"><a class="nav-link" data-tab="services">Services</a></li>
           <li class="nav-item"><a class="nav-link" data-tab="clients">Clients &amp; branches</a></li>
         </ul>
@@ -81,6 +82,17 @@
             <div class="form-check mt-3"><input class="form-check-input" type="checkbox" id="runEmail" checked><label class="form-check-label" for="runEmail">Email each client one invoice</label></div>
             <button class="btn btn-success ms-auto" id="btnRun">Create selected invoices</button>
           </div></div>
+        </div>
+
+        <!-- ═══ Collections ═══ -->
+        <div id="tab-collections" class="tab-pane">
+          <div class="row g-2 mb-3" id="colTiles"></div>
+          <div class="alert alert-info py-2 small">Clients pay by EFT using the invoice number as their reference. When the money shows in the bank, click <b>Record payment</b>. Invoices become <b>overdue</b> the day after their due date, and a friendly reminder email goes out the next day and weekly after that (up to 3) — this runs by itself once the daily job is scheduled (see the deploy notes).</div>
+          <div class="card"><div class="card-body p-0"><div class="table-responsive">
+            <table class="table table-hover my-0 small">
+              <thead><tr><th>Client</th><th>Invoice</th><th class="text-end">Amount</th><th>Due</th><th>Status</th><th class="d-none d-md-table-cell">Reminders</th><th>Actions</th></tr></thead>
+              <tbody id="colTbody"><tr><td colspan="7" class="text-center text-muted py-4">Loading…</td></tr></tbody>
+            </table></div></div></div>
         </div>
 
         <!-- ═══ Services ═══ -->
@@ -126,6 +138,8 @@
     <div class="row g-2">
       <div class="col-md-6"><label class="form-label">Client (company) <span class="text-danger">*</span></label><select class="form-select" id="s_company"><option value="">— Direct-pay client (type a name) —</option></select></div>
       <div class="col-md-6" id="rowClientName"><label class="form-label">Client name</label><input class="form-control" id="s_client_name" placeholder="Only for clients that are not registered companies"></div>
+      <div class="col-md-6" id="rowContact"><label class="form-label">Client email <span class="text-muted small">(invoices &amp; reminders)</span></label><input type="email" class="form-control" id="s_email"></div>
+      <div class="col-md-6" id="rowPhone"><label class="form-label">Client phone / WhatsApp</label><input class="form-control" id="s_phone" placeholder="e.g. 068 397 3484"></div>
       <div class="col-md-6" id="rowSite"><label class="form-label">Branch</label><select class="form-select" id="s_site"><option value="">Head office</option></select>
         <div class="form-text" id="siteHint"></div></div>
       <div class="col-md-6"><label class="form-label">Service <span class="text-danger">*</span></label>
@@ -170,6 +184,7 @@
 <script src="/portal/static/js/app.js"></script>
 <script src="/portal/static/js/hq-sidebar-menu.js"></script>
 <script src="/portal/static/js/hq-filters.js"></script>
+<script src="/portal/static/js/hq-record-payment.js"></script>
 <script>
 (function(){
   const token = localStorage.getItem('ims_access');
@@ -195,7 +210,7 @@
     document.querySelectorAll('.tab-pane').forEach(t=>t.classList.remove('active'));
     document.querySelectorAll('#tabs .nav-link').forEach(a=>a.classList.toggle('active',a.dataset.tab===name));
     $('tab-'+name).classList.add('active'); history.replaceState(null,'','#'+name);
-    if(name==='services') loadSubs(); if(name==='clients') loadClients();
+    if(name==='services') loadSubs(); if(name==='clients') loadClients(); if(name==='collections') loadCollections();
   }
   $('tabs').addEventListener('click',e=>{ const a=e.target.closest('.nav-link'); if(a) tab(a.dataset.tab); });
 
@@ -264,6 +279,35 @@
     btn.textContent='Create selected invoices'; btn.disabled=false;
   };
 
+  // ═══ Collections ═══
+  let owed=[];
+  function waLink(r){ let n=(r.phone||'').replace(/[^0-9]/g,''); if(!n) return ''; if(n.startsWith('0')) n='27'+n.slice(1);
+    const late=r.days_overdue>0; const msg=`Hi ${r.client}, `+(late?`a friendly reminder that invoice ${r.invoice_number} (${R(r.total)}) was due on ${r.due_date}. `:`your invoice ${r.invoice_number} for ${R(r.total)} is due on ${r.due_date}. `)+`Bank details and your payment reference are here: ${r.public_url}`;
+    return 'https://wa.me/'+n+'?text='+encodeURIComponent(msg); }
+  async function loadCollections(){
+    try{
+      const d=await (await api('/portal/api/collections/')).json(); owed=d.results||[];
+      const tile=(l,v,s,c)=>`<div class="col-md-3"><div class="card tile mb-0"><div class="card-body"><div class="text-muted small">${l}</div><div class="h5 mb-0 ${c||''}">${v}</div><div class="text-muted small">${s}</div></div></div></div>`;
+      $('colTiles').innerHTML=tile('Total owed to you',R(d.total_owed),d.count+' unpaid invoice(s)')+tile('Overdue',R(d.overdue_total),d.overdue_count+' invoice(s)',d.overdue_count?'neg':'')
+        +tile('Client says "I have paid"',owed.filter(o=>o.paid_notice).length,'check the bank, then record it')+tile('Consider suspending',owed.filter(o=>o.consider_suspending).length,'overdue '+d.suspend_after_days+'+ days','neg');
+      const b=$('colBadge'); b.style.display=d.overdue_count?'':'none'; b.textContent=d.overdue_count;
+      $('colTbody').innerHTML=owed.length?owed.map(r=>{ const wa=waLink(r); return `<tr>
+        <td><b>${esc(r.client)}</b>${r.emails.length?`<div class="text-muted">${esc(r.emails[0])}</div>`:'<div class="neg">no email on file</div>'}</td>
+        <td><a href="/portal/invoices/print/${r.id}/" target="_blank">${esc(r.invoice_number)}</a><div class="text-muted">${esc(r.description||'')}</div></td>
+        <td class="text-end"><b>${R(r.total)}</b></td><td>${esc(r.due_date||'—')}</td>
+        <td>${r.days_overdue>0?`<span class="badge bg-danger">${r.days_overdue} day${r.days_overdue>1?'s':''} overdue</span>`:'<span class="badge bg-info">due '+esc(r.due_date)+'</span>'}${r.consider_suspending?' <span class="badge bg-dark" title="Overdue a long time">suspend?</span>':''}
+          ${r.paid_notice?`<div class="mt-1"><span class="badge bg-warning text-dark">Client says paid</span>${r.paid_notice_note?`<div class="text-muted">“${esc(r.paid_notice_note)}”</div>`:''}</div>`:''}</td>
+        <td class="d-none d-md-table-cell">${r.reminder_count}/${d.max_reminders}${r.last_reminder_at?`<div class="text-muted">last ${new Date(r.last_reminder_at).toLocaleDateString('en-ZA')}</div>`:''}</td>
+        <td class="text-nowrap"><button class="btn btn-sm btn-success" onclick="payInv('${r.id}')">Record payment</button>
+          <button class="btn btn-sm btn-outline-primary" onclick="remindInv('${r.id}')" ${r.emails.length?'':'disabled'}>Email reminder</button>
+          <button class="btn btn-sm btn-outline-secondary" onclick="copyUrl('${r.id}')">Copy link</button>${wa?` <a class="btn btn-sm btn-outline-success" target="_blank" rel="noopener" href="${wa}">WhatsApp</a>`:''}</td></tr>`; }).join('')
+        :'<tr><td colspan="7" class="text-center text-muted py-4">Nothing owed — every invoice is paid. 🎉</td></tr>';
+    }catch(e){ if(e.message!=='Unauth') alertBox('pageAlert','Failed to load collections.'); }
+  }
+  window.payInv=id=>{ const r=owed.find(o=>o.id===id); RecordPayment.open({id:r.id,invoice_number:r.invoice_number,client:r.client,total:r.total},()=>{ alertBox('pageAlert','Payment recorded — thank you.','success'); loadCollections(); }); };
+  window.remindInv=async id=>{ const r=await api('/portal/api/invoices/'+id+'/remind/',{method:'POST'}); const d=await r.json(); alertBox('pageAlert',d.detail||'Done.',r.ok?'success':'danger'); loadCollections(); };
+  window.copyUrl=id=>{ const r=owed.find(o=>o.id===id); (navigator.clipboard?navigator.clipboard.writeText(r.public_url):Promise.reject()).catch(()=>{}); alertBox('pageAlert','Invoice link copied — paste it into WhatsApp or an SMS.','success'); };
+
   // ═══ Services ═══
   let subs=[];
   async function loadSubs(){
@@ -301,10 +345,11 @@
   function openSub(s){
     s=s||{}; $('subAlert').innerHTML=''; $('s_id').value=s.id||''; $('subTitle').textContent=s.id?'Edit service':'Add service';
     $('s_company').value=s.company||''; $('s_client_name').value=s.company?'':(s.client_name||''); fillSites(s.company||'',s.site||'');
+    $('s_email').value=s.contact_email||''; $('s_phone').value=s.contact_phone||'';
     $('s_type').value=s.service_type||'wifi'; $('s_desc').value=s.description||''; $('s_qty').value=s.quantity!=null?s.quantity:1; $('s_price').value=s.unit_price!=null?s.unit_price:''; $('s_cost').value=s.unit_cost||0;
     $('s_day').value=s.billing_day||1; $('s_start').value=s.start_date||new Date().toISOString().slice(0,10); $('s_end').value=s.end_date||''; $('s_status').value=s.status||'active'; $('s_notes').value=s.notes||'';
     const legacy=!!s.managed_by; $('legacyNote').style.display=legacy?'':'none'; $('legacyKind').textContent=s.managed_by==='sla'?'SLA contract':'WiFi subscriber';
-    ['s_company','s_client_name','s_type','s_price','s_cost','s_day','s_start','s_end','s_status'].forEach(i=>$(i).disabled=legacy);
+    ['s_company','s_client_name','s_email','s_phone','s_type','s_price','s_cost','s_day','s_start','s_end','s_status'].forEach(i=>$(i).disabled=legacy);
     prev(); HQ.showDrawer('subModal');
   }
   $('btnNewSub').onclick=()=>openSub(null);
@@ -314,7 +359,7 @@
   $('btnSaveSub').onclick=async()=>{
     const id=$('s_id').value; const legacy=$('s_type').disabled;
     const body = legacy ? {site:$('s_site').value||null,description:$('s_desc').value,quantity:$('s_qty').value,notes:$('s_notes').value}
-      : {company:$('s_company').value||null,client_name:$('s_client_name').value,site:$('s_site').value||null,service_type:$('s_type').value,description:$('s_desc').value,quantity:$('s_qty').value,
+      : {company:$('s_company').value||null,client_name:$('s_client_name').value,contact_email:$('s_email').value,contact_phone:$('s_phone').value,site:$('s_site').value||null,service_type:$('s_type').value,description:$('s_desc').value,quantity:$('s_qty').value,
          unit_price:$('s_price').value,unit_cost:$('s_cost').value||0,billing_day:$('s_day').value||1,start_date:$('s_start').value||null,end_date:$('s_end').value||null,status:$('s_status').value,notes:$('s_notes').value};
     const r=await api('/portal/api/subscriptions/'+(id?id+'/':''),{method:id?'PATCH':'POST',body:JSON.stringify(body)}); const d=await r.json();
     if(r.ok){ HQ.hideDrawer('subModal'); alertBox('pageAlert','Service saved.','success'); loadSubs(); } else alertBox('subAlert',d.detail||JSON.stringify(d));
@@ -353,7 +398,7 @@
     if(r.ok){ HQ.hideDrawer('siteModal'); loadClients(); } else alertBox('siteAlert',d.detail||JSON.stringify(d));
   };
 
-  loadRefs().then(()=>{ const h=(location.hash||'').replace('#',''); if(['services','clients'].includes(h)) tab(h); });
+  loadCollections(); loadRefs().then(()=>{ const h=(location.hash||'').replace('#',''); if(['services','clients','collections'].includes(h)) tab(h); });
   if(window.feather) feather.replace();
 })();
 </script>

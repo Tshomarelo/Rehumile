@@ -11,6 +11,7 @@ def mirror_wifi_fields(sub, w):
     sub.company_id = w.company_id
     sub.client_name = w.client_name
     sub.contact_email = w.contact_email
+    sub.contact_phone = w.contact_phone
     sub.unit_price = w.retail_price
     sub.unit_cost = w.wholesale_cost
     sub.billing_day = w.billing_day or 1
@@ -23,6 +24,7 @@ def mirror_sla_fields(sub, c):
     sub.company_id = c.company_id
     sub.client_name = c.client_name
     sub.contact_email = c.contact_email
+    sub.contact_phone = c.contact_phone
     sub.unit_price = c.monthly_retainer
     sub.unit_cost = 0
     sub.billing_day = c.billing_day or 1

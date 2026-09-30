@@ -166,7 +166,7 @@ REST_FRAMEWORK = {
     ),
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
     # Public quotation links: slow down guessing / abuse (per IP)
-    'DEFAULT_THROTTLE_RATES': {'quote_public': '60/min', 'quote_respond': '10/min'},
+    'DEFAULT_THROTTLE_RATES': {'quote_public': '60/min', 'quote_respond': '10/min', 'invoice_public': '60/min', 'invoice_notice': '5/min'},
 }
 
 # ── JWT ───────────────────────────────────────────────────────────────────────

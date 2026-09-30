@@ -123,6 +123,7 @@
     submenu('nav-finance','dollar-sign','Finance',[
       ['/portal/invoices/','Invoices'],
       ['/portal/dashboard/quotations/','Quotations'],
+      ['/portal/dashboard/subscriptions/#collections','Collections (who owes us)'],
       ['/portal/reports/','Reports'],
       ['/portal/dashboard/pos/','POS'],
       ['/portal/dashboard/cash-management/','Cash Management'],
