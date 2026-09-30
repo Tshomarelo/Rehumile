@@ -321,3 +321,15 @@ Safe to run more than once; add `--no-email` to test without sending reminders.
 `ims/payfast.py` now reads its settings from `.env`. Until you set them it stays on PayFast's **sandbox** (test mode),
 where no real money moves. To go live put `PAYFAST_SANDBOX=False`, `PAYFAST_MERCHANT_ID`, `PAYFAST_MERCHANT_KEY` and
 `PAYFAST_PASSPHRASE` (from your PayFast account) in `.env`, then reload the web app.
+
+## First-time upgrade to the redesigned system (MySQL)
+
+1. Back up first: `mysqldump -u <user> -h <host> '<db>' > backup_$(date +%F).sql`
+2. `git pull origin claude/gallant-hypatia-tgbx85` then `pip install -r requirements.txt`
+3. Set `HR_FIELD_ENCRYPTION_KEY` in the environment **before any HR data is entered**, and never change it afterwards
+   (generate with `python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"`).
+4. `python manage.py migrate --plan`, review, then `python manage.py migrate`, then `python manage.py hr_seed_defaults`.
+5. Do **not** run `makemigrations` on the server (harmless historical drift would be written as new migrations).
+6. Reload the web app and schedule `python manage.py daily_jobs` daily.
+
+Date filters use explicit Africa/Johannesburg day boundaries (`ims/timeutils.py`), so MySQL time-zone tables are not required.

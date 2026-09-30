@@ -2,7 +2,7 @@
 recovery schedule, repayment, write-off and the reports."""
 import hashlib
 import secrets
-from ..timeutils import on_day, local_date
+from ..timeutils import on_day, local_date, between_days
 from datetime import datetime, timedelta
 from decimal import ROUND_CEILING, ROUND_HALF_UP, Decimal
 
@@ -501,7 +501,7 @@ def apply_recoveries(line, run, user):
 # ------------------------------------------------------------------ reports (Section 7)
 def report_by_person_month(company, start, end):
     rows = {}
-    for p in AdvancePayment.objects.filter(advance__employee__company=company, paid_at__date__range=(start, end)).select_related('advance__employee'):
+    for p in AdvancePayment.objects.filter(advance__employee__company=company, **between_days('paid_at', start, end)).select_related('advance__employee'):
         k = (p.advance.employee, f"{p.paid_at.year}-{p.paid_at.month:02d}")
         r = rows.setdefault(k, {'employee': k[0], 'month': k[1], 'count': 0, 'total': Decimal('0')})
         r['count'] += 1
@@ -525,7 +525,7 @@ def report_schedule(company):
 
 def report_by_source(company, start, end):
     rows = {}
-    for p in AdvancePayment.objects.filter(advance__employee__company=company, paid_at__date__range=(start, end)):
+    for p in AdvancePayment.objects.filter(advance__employee__company=company, **between_days('paid_at', start, end)):
         label = p.get_method_display()
         if p.method == 'CASH_TILL':
             label += f" (shift {p.shift_id})"

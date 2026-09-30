@@ -1,4 +1,5 @@
 from django.shortcuts import render
+from .timeutils import since, until, parse_day
 from django.utils import timezone
 from django.contrib.auth import get_user_model
 from django.core.mail import EmailMultiAlternatives
@@ -652,10 +653,10 @@ class IncidentViewSet(viewsets.ModelViewSet):
             qs = qs.filter(priority=priority)
         date_from = params.get('date_from')
         if date_from:
-            qs = qs.filter(created_at__date__gte=date_from)
+            qs = qs.filter(**since('created_at', date_from))
         date_to = params.get('date_to')
         if date_to:
-            qs = qs.filter(created_at__date__lte=date_to)
+            qs = qs.filter(**until('created_at', date_to))
         return qs.order_by('-created_at')
 
     def create(self, request, *args, **kwargs):
@@ -800,10 +801,10 @@ class InvoiceViewSet(viewsets.ModelViewSet):
             qs = qs.filter(company=company_id)
         date_from = params.get('date_from')
         if date_from:
-            qs = qs.filter(due_date__gte=date_from)
+            qs = qs.filter(**({'due_date__gte': parse_day(date_from)} if parse_day(date_from) else {}))
         date_to = params.get('date_to')
         if date_to:
-            qs = qs.filter(due_date__lte=date_to)
+            qs = qs.filter(**({'due_date__lte': parse_day(date_to)} if parse_day(date_to) else {}))
         return qs
 
     def perform_create(self, serializer):
@@ -924,10 +925,10 @@ class AuditLogView(APIView):
             qs = qs.filter(model_name=model_name)
         date_from = params.get('date_from')
         if date_from:
-            qs = qs.filter(created_at__date__gte=date_from)
+            qs = qs.filter(**since('created_at', date_from))
         date_to = params.get('date_to')
         if date_to:
-            qs = qs.filter(created_at__date__lte=date_to)
+            qs = qs.filter(**until('created_at', date_to))
         qs = qs[:200]
         data = [{
             'id': str(log.id),
@@ -966,10 +967,10 @@ class SLABreachListView(APIView):
             qs = qs.filter(resolved_at__isnull=True)
         date_from = params.get('date_from')
         if date_from:
-            qs = qs.filter(breached_at__date__gte=date_from)
+            qs = qs.filter(**since('breached_at', date_from))
         date_to = params.get('date_to')
         if date_to:
-            qs = qs.filter(breached_at__date__lte=date_to)
+            qs = qs.filter(**until('breached_at', date_to))
         qs = qs[:100]
         breaches = [{
             'id': str(b.id),
@@ -1212,10 +1213,10 @@ class JobCardListView(APIView):
             qs = qs.filter(technician_id=technician_id)
         date_from = request.GET.get("date_from")
         if date_from:
-            qs = qs.filter(created_at__date__gte=date_from)
+            qs = qs.filter(**since('created_at', date_from))
         date_to = request.GET.get("date_to")
         if date_to:
-            qs = qs.filter(created_at__date__lte=date_to)
+            qs = qs.filter(**until('created_at', date_to))
         data = [{
             "id": str(j.id),
             "job_number": j.job_number,
@@ -1461,10 +1462,10 @@ class ShiftLogView(APIView):
         qs = ShiftLog.objects.select_related("opened_by", "closed_by").order_by("-date")
         date_from = request.GET.get("date_from")
         if date_from:
-            qs = qs.filter(date__gte=date_from)
+            qs = qs.filter(**({'date__gte': parse_day(date_from)} if parse_day(date_from) else {}))
         date_to = request.GET.get("date_to")
         if date_to:
-            qs = qs.filter(date__lte=date_to)
+            qs = qs.filter(**({'date__lte': parse_day(date_to)} if parse_day(date_to) else {}))
         qs = qs[:30]
         data = [{
             "id": str(s.id),
@@ -1542,10 +1543,10 @@ class CashTransactionListView(APIView):
             qs = qs.filter(payment_method=request.GET["payment_method"])
         date_from = request.GET.get("date_from")
         if date_from:
-            qs = qs.filter(created_at__date__gte=date_from)
+            qs = qs.filter(**since('created_at', date_from))
         date_to = request.GET.get("date_to")
         if date_to:
-            qs = qs.filter(created_at__date__lte=date_to)
+            qs = qs.filter(**until('created_at', date_to))
         qs = qs[:200]
         data = [{
             "id": str(t.id),
@@ -1622,7 +1623,7 @@ class FinancialAnalyticsView(APIView):
         pending = float(inv_qs.filter(status="sent").aggregate(t=Sum("total_amount"))["t"] or 0)
         overdue = float(inv_qs.filter(status="overdue").aggregate(t=Sum("total_amount"))["t"] or 0)
 
-        txn_qs = CashTransaction.objects.filter(created_at__date__gte=month_start, created_at__date__lte=month_end)
+        txn_qs = CashTransaction.objects.filter(**since('created_at', month_start), **until('created_at', month_end))
         ocf = float(txn_qs.filter(cash_flow_stream="ocf").aggregate(t=Sum("amount"))["t"] or 0)
         icf = float(txn_qs.filter(cash_flow_stream="icf").aggregate(t=Sum("amount"))["t"] or 0)
         fcf = float(txn_qs.filter(cash_flow_stream="fcf").aggregate(t=Sum("amount"))["t"] or 0)
@@ -1632,7 +1633,7 @@ class FinancialAnalyticsView(APIView):
         gross_profit = revenue - expenses
         gpm = round((gross_profit / revenue * 100) if revenue else 0, 1)
 
-        jc_counts = {s: JobCard.objects.filter(created_at__date__gte=month_start, status=s).count()
+        jc_counts = {s: JobCard.objects.filter(**since('created_at', month_start), status=s).count()
                      for s in ("logged", "in_progress", "awaiting_parts", "ready", "paid_released")}
 
         from django.db.models import F as _F
@@ -1770,10 +1771,10 @@ class ExpenseListView(APIView):
             qs = qs.filter(is_recurring=True)
         date_from = params.get("date_from")
         if date_from:
-            qs = qs.filter(expense_date__gte=date_from)
+            qs = qs.filter(**({'expense_date__gte': parse_day(date_from)} if parse_day(date_from) else {}))
         date_to = params.get("date_to")
         if date_to:
-            qs = qs.filter(expense_date__lte=date_to)
+            qs = qs.filter(**({'expense_date__lte': parse_day(date_to)} if parse_day(date_to) else {}))
 
         data = [{
             "id": str(e.id),
@@ -1946,10 +1947,10 @@ class LedgerQueryView(APIView):
             qs = qs.filter(transaction__source_model=source_model)
         date_from = params.get("date_from")
         if date_from:
-            qs = qs.filter(transaction__transaction_date__gte=date_from)
+            qs = qs.filter(**({'transaction__transaction_date__gte': parse_day(date_from)} if parse_day(date_from) else {}))
         date_to = params.get("date_to")
         if date_to:
-            qs = qs.filter(transaction__transaction_date__lte=date_to)
+            qs = qs.filter(**({'transaction__transaction_date__lte': parse_day(date_to)} if parse_day(date_to) else {}))
         data = [{
             "id": str(le.id),
             "transaction_id": str(le.transaction_id),
@@ -2189,8 +2190,8 @@ class CompliancePeriodDetailView(APIView):
         """Aggregate VAT and payroll figures into the period record."""
         from django.db.models import Sum
         invoices = Invoice.objects.filter(
-            created_at__date__gte=period.period_start,
-            created_at__date__lte=period.period_end,
+            **since('created_at', period.period_start),
+            **until('created_at', period.period_end),
         )
         total_gross = float(invoices.aggregate(t=Sum('total_amount'))['t'] or 0)
         field1 = round(total_gross / 1.15, 2)
@@ -3666,8 +3667,8 @@ class RevenueIntelligenceView(APIView):
         from .models import Incident as IncidentModel
         unlinked = list(IncidentModel.objects.filter(
             status__in=['resolved', 'closed'],
-            updated_at__date__gte=m_start,
-            updated_at__date__lte=m_end,
+            **since('updated_at', m_start),
+            **until('updated_at', m_end),
         ).exclude(id__in=[i for i in ticket_no_inv if i]).values(
             'ticket_id', 'title', 'company__name',
         )[:15])
@@ -3684,7 +3685,7 @@ class RevenueIntelligenceView(APIView):
         overdue_subs = list(Invoice.objects.filter(
             invoice_type__in=['wifi', 'subscription'],
             status__in=['sent', 'overdue'],
-            sent_at__date__lte=overdue_threshold,
+            **until('sent_at', overdue_threshold),
         ).select_related('wifi_subscriber', 'company').values(
             'id', 'invoice_number', 'total_amount',
             'wifi_subscriber__client_name', 'company__name', 'bill_to_name', 'sent_at',

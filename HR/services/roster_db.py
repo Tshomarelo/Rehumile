@@ -16,6 +16,7 @@ from ..models import (
     ShiftAbsence, ShiftChangeRequest, ShiftOffer, ShiftTemplate, SiteApproval, StaffGroup,
     ADMIN_ROLES, HR_ADMIN, SUPER_ADMIN, Site,
 )
+from ..timeutils import between_days
 from ..models.roster import csv_set
 from ..rostering import engine as E
 from . import audit
@@ -979,7 +980,7 @@ def report_unfilled(company, start, end):
 
 
 def report_overrides(company, start, end):
-    return list(RuleOverride.objects.filter(shift__site__company=company, created_at__date__range=(start, end)).select_related('user', 'employee', 'shift'))
+    return list(RuleOverride.objects.filter(shift__site__company=company, **between_days('created_at', start, end)).select_related('user', 'employee', 'shift'))
 
 
 def report_break_gaps(company, start, end):

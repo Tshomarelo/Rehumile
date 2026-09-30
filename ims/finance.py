@@ -26,6 +26,7 @@ from decimal import Decimal
 
 from django.db.models import Q, Sum
 
+from .timeutils import since, until
 from .models import (
     CashTransaction, Expense, ExpenseCategory, Invoice, PayrollEntry,
 )
@@ -92,7 +93,7 @@ def resolve_period(period='month', anchor=None, date_from=None, date_to=None, to
 def _invoiced_qs(start, end):
     return Invoice.objects.filter(
         status__in=('sent', 'paid', 'overdue'),
-        sent_at__date__gte=start, sent_at__date__lte=end,
+        **since('sent_at', start), **until('sent_at', end),
     )
 
 
@@ -105,7 +106,7 @@ def _paid_qs(start, end):
 def _unpaid_qs(as_of):
     """Issued but not paid, as at `as_of` (today for the live picture)."""
     return Invoice.objects.filter(
-        status__in=('sent', 'overdue'), sent_at__date__lte=as_of,
+        status__in=('sent', 'overdue'), **until('sent_at', as_of),
     )
 
 
@@ -114,7 +115,7 @@ def _direct_sales_qs(start, end):
     # invoice (already counted under Paid) — only count the ones without.
     return CashTransaction.objects.filter(
         transaction_category='sale', invoice__isnull=True,
-        created_at__date__gte=start, created_at__date__lte=end,
+        **since('created_at', start), **until('created_at', end),
     )
 
 

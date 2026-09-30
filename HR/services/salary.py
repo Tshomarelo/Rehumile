@@ -2,6 +2,7 @@
 import csv
 import io
 from datetime import date, timedelta
+from ..timeutils import since, until
 from decimal import Decimal, InvalidOperation
 
 from django.db import transaction
@@ -106,9 +107,9 @@ def salary_report(company, start=None, end=None):
     """Salary changes: every change with approver and effective date."""
     qs = SalaryRecord.objects.filter(employee__company=company).select_related('employee', 'captured_by', 'approved_by')
     if start:
-        qs = qs.filter(created_at__date__gte=start)
+        qs = qs.filter(**since('created_at', start))
     if end:
-        qs = qs.filter(created_at__date__lte=end)
+        qs = qs.filter(**until('created_at', end))
     return qs
 
 

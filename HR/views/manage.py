@@ -25,6 +25,7 @@ from ..models import (
     POS, StaffGroup, Flag, Post, ShiftTemplate, OpenPOS, DemandRule, DemandOverride, RequiredHours, RosterSettings,
     RosterProfile, EmployeeFlag, SiteApproval, AdvancePolicy,
 )
+from ..timeutils import since, until
 from ..services import audit, workflow
 from ..services import leave as L
 from ..services.access import (
@@ -231,9 +232,9 @@ def _audit_queryset(request):
     if g.get('module'):
         qs = qs.filter(module=g['module'])
     if g.get('from'):
-        qs = qs.filter(timestamp__date__gte=g['from'])
+        qs = qs.filter(**since('timestamp', g['from']))
     if g.get('to'):
-        qs = qs.filter(timestamp__date__lte=g['to'])
+        qs = qs.filter(**until('timestamp', g['to']))
     if g.get('sensitive'):
         qs = qs.filter(sensitive=True)
     return qs
