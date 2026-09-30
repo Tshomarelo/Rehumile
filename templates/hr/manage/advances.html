@@ -1,0 +1,16 @@
+{% extends "hr/base_manage.html" %}
+{% block title %}Advances{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3"><h4 class="mb-0">Salary advances</h4>
+  <a class="btn btn-primary btn-sm" href="{% url 'hr:manage_advance_capture' %}">Capture at the counter</a></div>
+{% if flags %}<div class="alert alert-warning py-2 small"><strong>Approved but not paid:</strong> {% for a in flags %}{{ a.number }} ({{ a.employee }}){% if not forloop.last %}, {% endif %}{% endfor %}</div>{% endif %}
+<ul class="nav nav-pills mb-3">
+  <li class="nav-item"><a class="nav-link {% if scope == 'pay' %}active{% endif %}" href="?show=pay">To pay</a></li>
+  <li class="nav-item"><a class="nav-link {% if scope == 'waiting' %}active{% endif %}" href="?show=waiting">Waiting</a></li>
+  <li class="nav-item"><a class="nav-link {% if scope == 'open' %}active{% endif %}" href="?show=open">Open balances</a></li>
+  <li class="nav-item"><a class="nav-link {% if scope == 'all' %}active{% endif %}" href="?show=all">All</a></li>
+</ul>
+<div class="card"><table class="table align-middle mb-0"><thead class="table-light"><tr><th>Advance</th><th>Employee</th><th>Amount</th><th>Balance</th><th>Status</th><th></th></tr></thead>
+{% for a in advances %}<tr><td>{{ a.number }}<div class="small text-muted">{{ a.created_at|date:"j M" }}</div></td><td>{{ a.employee }}</td><td>R{{ a.amount }}{% if a.emergency %} <span class="badge bg-danger">emergency</span>{% endif %}</td><td>{% if a.bal %}R{{ a.bal }}{% else %}-{% endif %}</td><td>{{ a.get_status_display }}</td><td><a href="{% url 'hr:manage_advance_detail' a.pk %}">Open</a></td></tr>
+{% empty %}<tr><td colspan="6" class="text-muted text-center py-4">Nothing here.</td></tr>{% endfor %}</table></div>
+{% endblock %}

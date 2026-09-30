@@ -1,0 +1,13 @@
+{% extends "hr/base_manage.html" %}
+{% block title %}Import salaries{% endblock %}
+{% block content %}
+<h4 class="mb-3">Import salaries</h4>
+<form method="post" enctype="multipart/form-data" class="card card-body mb-3" style="max-width:640px">{% csrf_token %}
+  <p class="small text-muted">CSV columns: employee_number, pay_type (MONTHLY, WEEKLY, HOURLY, SHIFT), amount, start_date (YYYY-MM-DD), frequency. You see new, changed and rejected rows before anything is saved. Only a Super Admin can load them.</p>
+  <input type="file" name="file" accept=".csv" class="form-control mb-2" required>
+  <div class="form-check mb-2"><input type="checkbox" name="apply" value="1" class="form-check-input" id="ap"><label for="ap" class="form-check-label">Save if there are no rejected rows (leave unticked to only check)</label></div>
+  <button class="btn btn-primary" style="width:160px">Check / import</button>
+</form>
+{% if report %}<div class="card"><table class="table table-sm mb-0"><thead class="table-light"><tr><th>Line</th><th>Employee</th><th>Result</th><th>Detail</th></tr></thead>
+{% for r in report %}<tr class="{% if r.status == 'rejected' %}table-danger{% elif r.status == 'new' %}table-success{% elif r.status == 'changed' %}table-warning{% endif %}"><td>{{ r.line }}</td><td>{{ r.number }}</td><td>{{ r.status }}</td><td>{{ r.detail }}</td></tr>{% endfor %}</table></div>{% endif %}
+{% endblock %}

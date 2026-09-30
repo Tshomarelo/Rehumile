@@ -1,0 +1,31 @@
+{% extends "hr/base_portal.html" %}
+{% block title %}Leave statement{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3 d-print-none">
+  <h4 class="mb-0">Leave statement {{ year }}</h4>
+  <div class="d-flex gap-2">
+    <a class="btn btn-outline-secondary btn-sm" href="?year={{ year|add:'-1' }}">&larr; {{ year|add:'-1' }}</a>
+    <a class="btn btn-outline-secondary btn-sm" href="?year={{ year|add:'1' }}">{{ year|add:'1' }} &rarr;</a>
+    <button class="btn btn-primary btn-sm" onclick="window.print()"><i class="bi bi-printer"></i> Print / save as PDF</button>
+  </div>
+</div>
+<div class="mb-3"><strong>{{ emp.full_name }}</strong> &middot; {{ emp.employee_number }} &middot; {{ emp.company.name }}</div>
+{% for s in sections %}
+<div class="card mb-3">
+  <div class="card-header bg-white fw-bold" style="border-left:4px solid {{ s.lt.colour }}">{{ s.lt.name }}</div>
+  <div class="table-responsive">
+    <table class="table table-sm mb-0">
+      <thead class="table-light"><tr><th>Date</th><th>Entry</th><th class="text-end">Days</th><th class="text-end">Balance</th></tr></thead>
+      <tbody>
+        <tr class="text-muted"><td colspan="3">Opening balance</td><td class="text-end">{{ s.opening|floatformat:"-2" }}</td></tr>
+        {% for r in s.rows %}
+        <tr><td>{{ r.t.date|date:"j M Y" }}</td><td>{{ r.t.get_kind_display }}{% if r.t.reason %} &middot; <span class="text-muted">{{ r.t.reason }}</span>{% endif %}</td>
+            <td class="text-end {% if r.t.days < 0 %}text-danger{% else %}text-success{% endif %}">{{ r.t.days|floatformat:"-2" }}</td><td class="text-end">{{ r.balance|floatformat:"-2" }}</td></tr>
+        {% endfor %}
+        <tr class="fw-bold table-light"><td colspan="3">Closing balance</td><td class="text-end">{{ s.closing|floatformat:"-2" }}</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+{% empty %}<div class="alert alert-info">No leave types apply to you yet.</div>{% endfor %}
+{% endblock %}

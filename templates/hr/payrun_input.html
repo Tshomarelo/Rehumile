@@ -1,0 +1,31 @@
+{% extends "hr/base_portal.html" %}
+{% block title %}Payrun Input{% endblock %}
+{% block content %}
+<h4 class="mb-3">Payrun Input</h4>
+<div class="card mb-4" style="max-width:640px"><div class="card-body">
+  {% if periods %}
+  <form method="post" enctype="multipart/form-data">{% csrf_token %}
+    <div class="row g-2">
+      <div class="col-md-6"><label class="form-label">Pay period</label><select name="period" class="form-select">{% for p in periods %}<option value="{{ p.pk }}">{{ p.label }}{% if p.input_cutoff %} (cut-off {{ p.input_cutoff|date:"j M" }}){% endif %}</option>{% endfor %}</select></div>
+      <div class="col-md-6"><label class="form-label">Type</label><select name="kind" class="form-select">{% for k, v in kinds %}<option value="{{ k }}">{{ v }}</option>{% endfor %}</select></div>
+      <div class="col-12"><label class="form-label">Description</label><input name="description" class="form-control" required></div>
+      <div class="col-md-4"><label class="form-label">Date</label><input type="date" name="work_date" class="form-control"></div>
+      <div class="col-md-4"><label class="form-label">Hours (overtime)</label><input name="hours" class="form-control" inputmode="decimal"></div>
+      <div class="col-md-4"><label class="form-label">Amount</label><input name="amount" class="form-control" inputmode="decimal"></div>
+      <div class="col-12"><label class="form-label">Receipt (required for expenses)</label><input type="file" name="receipt" class="form-control"></div>
+    </div>
+    <button class="btn btn-primary mt-3">Submit</button>
+  </form>
+  {% else %}<div class="text-muted">No pay period is open for input right now.</div>{% endif %}
+</div></div>
+<h6 class="text-muted">My submissions</h6>
+<ul class="list-group mb-4">
+  {% for r in rows %}<li class="list-group-item d-flex justify-content-between align-items-center">
+    <span>{{ r.get_kind_display }} &middot; {{ r.pay_period.label }} &middot; {{ r.description }}
+      {% if r.hours %}<span class="text-muted small">{{ r.hours|floatformat:"-2" }} h</span>{% endif %}{% if r.amount %}<span class="text-muted small">R{{ r.amount|floatformat:2 }}</span>{% endif %}
+      {% if r.decision_note %}<div class="small text-muted">{{ r.decision_note }}</div>{% endif %}</span>
+    <span class="d-flex gap-1 align-items-center"><span class="badge bg-secondary">{{ r.get_status_display }}</span>
+      {% if r.status == 'PENDING' %}<form method="post" action="{% url 'hr:payrun_withdraw' r.pk %}">{% csrf_token %}<button class="btn btn-sm btn-outline-secondary">Withdraw</button></form>{% endif %}</span>
+  </li>{% empty %}<li class="list-group-item text-muted">Nothing submitted yet.</li>{% endfor %}
+</ul>
+{% endblock %}

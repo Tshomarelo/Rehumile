@@ -1,0 +1,46 @@
+{% extends "hr/base_portal.html" %}
+{% block title %}Leave{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+  <h4 class="mb-0">Leave</h4>
+  <div class="d-flex gap-2 flex-wrap">
+    <a class="btn btn-outline-secondary btn-sm" href="{% url 'hr:leave_calendar' %}"><i class="bi bi-calendar3"></i> Team calendar</a>
+    <a class="btn btn-outline-secondary btn-sm" href="{% url 'hr:leave_statement' %}"><i class="bi bi-file-text"></i> Statement</a>
+    <a class="btn btn-warning btn-sm fw-bold" href="{% url 'hr:leave_apply' %}"><i class="bi bi-plus-lg"></i> Apply for leave</a>
+  </div>
+</div>
+
+<div class="row g-3 mb-3">
+  {% for b in balances %}
+  <div class="col-6 col-md-4 col-lg-3">
+    <div class="card h-100" style="border-left:4px solid {{ b.leave_type.colour }}">
+      <div class="card-body py-3">
+        <div class="k">{{ b.leave_type.name }}</div>
+        <div class="fs-3 fw-bold" style="color:var(--brand)">{{ b.available|floatformat:"-2" }}</div>
+        <div class="small text-muted">available days</div>
+        <div class="small mt-1">Accrued {{ b.accrued|floatformat:"-2" }} &middot; Taken {{ b.taken|floatformat:"-2" }} &middot; Pending {{ b.pending|floatformat:"-2" }}</div>
+      </div>
+    </div>
+  </div>
+  {% empty %}
+  <div class="col-12"><div class="alert alert-info">No leave policy is set up for you yet. Ask HR to assign one.</div></div>
+  {% endfor %}
+</div>
+
+<div class="card">
+  <div class="card-header bg-white fw-bold">My requests</div>
+  <div class="list-group list-group-flush">
+    {% for r in requests %}
+    <a class="list-group-item list-group-item-action d-flex justify-content-between align-items-center" href="{% url 'hr:leave_detail' r.pk %}">
+      <div>
+        <div class="fw-semibold">{{ r.leave_type.name }} &middot; {{ r.days|floatformat:"-2" }} day{{ r.days|pluralize }}</div>
+        <div class="small text-muted">{{ r.start_date|date:"j M Y" }}{% if r.end_date != r.start_date %} to {{ r.end_date|date:"j M Y" }}{% endif %}</div>
+      </div>
+      <span class="badge {% if r.status == 'APPROVED' %}bg-success{% elif r.status == 'PENDING' or r.status == 'CANCEL_REQUESTED' %}bg-warning text-dark{% elif r.status == 'DECLINED' %}bg-danger{% else %}bg-secondary{% endif %}">{{ r.get_status_display }}</span>
+    </a>
+    {% empty %}
+    <div class="list-group-item text-muted">No leave requests yet.</div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

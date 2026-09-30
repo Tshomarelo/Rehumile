@@ -23,6 +23,7 @@ from ims.portal_views import (
     client_contact_view, client_notifications_view,
     website_home_view,
     payment_success_view, payment_cancel_view, website_checkout_view,
+    portal_hr_access_view, portal_quotations_view,
 )
 from ims.views import ChangePasswordView, quote_request_view
 
@@ -50,6 +51,7 @@ _portal_patterns = [
     path('dashboard/cash-management/', portal_cash_management_view, name='portal-cash-management'),
     path('dashboard/financial-analytics/', portal_financial_analytics_view, name='portal-financial-analytics'),
     path('dashboard/expenses/', portal_expenses_view, name='portal-expenses'),
+    path('dashboard/quotations/', portal_quotations_view, name='portal-quotations'),
     path('dashboard/sla-monitor/', portal_sla_monitor_view, name='portal-sla-monitor'),
     path('dashboard/notifications/', portal_hq_notifications_view, name='portal-hq-notifications'),
     path('dashboard/audit-log/', portal_audit_log_view, name='portal-audit-log'),
@@ -67,6 +69,7 @@ _portal_patterns = [
     path('dashboard/vat201/', portal_vat201_view, name='portal-vat201'),
     path('dashboard/emp201/', portal_emp201_view, name='portal-emp201'),
     path('dashboard/hr/', portal_hr_view, name='portal-hr'),
+    path('hr-access/', portal_hr_access_view, name='portal-hr-access'),
     path('dashboard/playbook/', portal_playbook_view, name='portal-playbook'),
     path('dashboard/website/', portal_website_view, name='portal-website'),
     # Revenue Intelligence
@@ -78,6 +81,7 @@ _portal_patterns = [
 ]
 
 urlpatterns = _portal_patterns + [
+    path('hr/', include('HR.urls', namespace='hr')),
     path('portal/', include(_portal_patterns)),
     path('portal/static/<path:path>', static_serve, {'document_root': settings.STATIC_ROOT}),
     path('portal/media/<path:path>', static_serve, {'document_root': settings.MEDIA_ROOT}),

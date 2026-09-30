@@ -776,6 +776,27 @@ class Invoice(models.Model):
     def __str__(self):
         return f"INV-{self.invoice_number} ({self.company.name if self.company else 'No company'})"
 
+    def save(self, *args, **kwargs):
+        """Stamp the issue/payment dates the finance reports rely on.
+
+        Several code paths (cashier, PayFast ITN, admin edit) flip `status`
+        with save(update_fields=['status']); without this, the moment money
+        arrived would never be recorded and revenue could not be placed in
+        the right week/month.
+        """
+        from django.utils import timezone
+        touched = set()
+        if self.status in ('sent', 'paid', 'overdue') and not self.sent_at:
+            self.sent_at = timezone.now()
+            touched.add('sent_at')
+        if self.status == 'paid' and not self.payment_date:
+            self.payment_date = timezone.localdate()
+            touched.add('payment_date')
+        update_fields = kwargs.get('update_fields')
+        if touched and update_fields is not None:
+            kwargs['update_fields'] = set(update_fields) | touched
+        super().save(*args, **kwargs)
+
 
 class InvoiceItem(models.Model):
     """
@@ -1458,6 +1479,44 @@ class LedgerEntry(models.Model):
         return f"{self.account.system_key} Dr{self.debit}/Cr{self.credit}"
 
 
+class ExpenseCategory(models.Model):
+    """
+    User-managed expense category (Rent, Fuel, Stock purchases, ...).
+    Each category is wired to a Chart-of-Accounts account so picking a
+    category on the expense form automatically decides which ledger account,
+    cost type and cash-flow stream the expense posts to.
+    """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    name = models.CharField(max_length=100, unique=True)
+    kind = models.CharField(
+        max_length=12,
+        choices=[('cogs', 'Cost of Goods Sold'), ('operating', 'Operating Expense'), ('capital', 'Capital / Asset Purchase')],
+        default='operating',
+    )
+    account = models.ForeignKey('Account', on_delete=models.PROTECT, related_name='expense_categories')
+    default_cash_flow_stream = models.CharField(
+        max_length=10, choices=CashFlowStreamChoices.choices, default=CashFlowStreamChoices.OCF,
+    )
+    monthly_budget = models.DecimalField(
+        max_digits=12, decimal_places=2, default=0,
+        help_text='Optional. 0 = no budget. Shown against actual spend on the Expenses page.',
+    )
+    description = models.CharField(max_length=255, blank=True)
+    is_active = models.BooleanField(default=True)
+    is_system = models.BooleanField(default=False)
+    display_order = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'expense_categories'
+        ordering = ['display_order', 'name']
+        verbose_name_plural = 'expense categories'
+
+    def __str__(self):
+        return self.name
+
+
 class Expense(models.Model):
     """
     Canonical money-out record — replaces the informal 'PurchaseSlip as
@@ -1470,6 +1529,14 @@ class Expense(models.Model):
         choices=[('cogs', 'Cost of Goods Sold'), ('operating', 'Operating Expense'), ('capital', 'Capital / Asset Purchase')],
     )
     account = models.ForeignKey(Account, on_delete=models.PROTECT, related_name='expenses')
+    expense_category = models.ForeignKey(
+        ExpenseCategory, on_delete=models.SET_NULL, null=True, blank=True, related_name='expenses',
+    )
+    # Optional link to the quotation/job this cost was incurred for — lets the
+    # quotation show quoted-vs-actual cost and real margin.
+    quotation = models.ForeignKey(
+        'Quotation', on_delete=models.SET_NULL, null=True, blank=True, related_name='expenses',
+    )
     amount = models.DecimalField(max_digits=12, decimal_places=2)
     vendor = models.CharField(max_length=255)
     description = models.CharField(max_length=500, blank=True)
@@ -1509,6 +1576,106 @@ class Expense(models.Model):
 
     def __str__(self):
         return f"{self.vendor} R{self.amount} ({self.expense_date})"
+
+
+class QuotationStatus(models.TextChoices):
+    DRAFT = 'draft', _('Draft')
+    SENT = 'sent', _('Sent')
+    ACCEPTED = 'accepted', _('Accepted')
+    DECLINED = 'declined', _('Declined')
+    EXPIRED = 'expired', _('Expired')
+    INVOICED = 'invoiced', _('Invoiced')
+
+
+class Quotation(models.Model):
+    """
+    Customer quotation. Line items are priced from the website service
+    catalogue (ServicePrice) and can carry an expected unit cost + cost
+    category, which links the quote to the expense system: expenses tagged to
+    the quotation are compared with the estimate to show the real margin.
+    Accepting a quote converts it to an Invoice.
+    """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    quote_number = models.CharField(max_length=30, unique=True, db_index=True)
+    company = models.ForeignKey(
+        Company, on_delete=models.SET_NULL, null=True, blank=True, related_name='quotations',
+    )
+    client_name = models.CharField(max_length=200)
+    client_email = models.EmailField(blank=True)
+    client_phone = models.CharField(max_length=50, blank=True)
+    title = models.CharField(max_length=200, blank=True)
+    status = models.CharField(max_length=12, choices=QuotationStatus.choices, default='draft', db_index=True)
+    issue_date = models.DateField()
+    valid_until = models.DateField(null=True, blank=True)
+    subtotal = models.DecimalField(max_digits=14, decimal_places=2, default=0)
+    vat_rate = models.DecimalField(max_digits=5, decimal_places=2, default=0, help_text='Percent, e.g. 15')
+    tax_amount = models.DecimalField(max_digits=14, decimal_places=2, default=0)
+    total_amount = models.DecimalField(max_digits=14, decimal_places=2, default=0)
+    estimated_cost = models.DecimalField(max_digits=14, decimal_places=2, default=0)
+    notes = models.TextField(blank=True)
+    terms = models.TextField(blank=True)
+    invoice = models.OneToOneField(
+        'Invoice', on_delete=models.SET_NULL, null=True, blank=True, related_name='source_quotation',
+    )
+    created_by = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, related_name='quotations_created',
+    )
+    sent_at = models.DateTimeField(null=True, blank=True)
+    decided_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'quotations'
+        ordering = ['-issue_date', '-created_at']
+
+    def __str__(self):
+        return f"{self.quote_number} — {self.client_name}"
+
+    def recalculate(self):
+        """Recompute subtotal / VAT / total / estimated cost from line items."""
+        from decimal import Decimal, ROUND_HALF_UP
+        cent = Decimal('0.01')
+        items = list(self.items.all())
+        subtotal = sum((i.line_total for i in items), Decimal('0'))
+        rate = Decimal(self.vat_rate or 0)
+        tax = (subtotal * rate / Decimal('100')).quantize(cent, ROUND_HALF_UP)
+        self.subtotal = subtotal.quantize(cent, ROUND_HALF_UP)
+        self.tax_amount = tax
+        self.total_amount = self.subtotal + tax
+        self.estimated_cost = sum((i.line_cost for i in items), Decimal('0')).quantize(cent, ROUND_HALF_UP)
+        self.save(update_fields=['subtotal', 'tax_amount', 'total_amount', 'estimated_cost', 'updated_at'])
+
+
+class QuotationItem(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    quotation = models.ForeignKey(Quotation, on_delete=models.CASCADE, related_name='items')
+    service_price = models.ForeignKey(
+        'ServicePrice', on_delete=models.SET_NULL, null=True, blank=True, related_name='quotation_items',
+    )
+    description = models.CharField(max_length=255)
+    quantity = models.DecimalField(max_digits=10, decimal_places=2, default=1)
+    unit_price = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    unit_cost = models.DecimalField(
+        max_digits=12, decimal_places=2, default=0,
+        help_text='Expected cost to Rehumile per unit (parts, wholesale, labour) — internal only.',
+    )
+    cost_category = models.ForeignKey(
+        ExpenseCategory, on_delete=models.SET_NULL, null=True, blank=True, related_name='quotation_items',
+    )
+    display_order = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        db_table = 'quotation_items'
+        ordering = ['display_order', 'id']
+
+    @property
+    def line_total(self):
+        return (self.quantity or 0) * (self.unit_price or 0)
+
+    @property
+    def line_cost(self):
+        return (self.quantity or 0) * (self.unit_cost or 0)
 
 
 # ============================================================================
@@ -1680,6 +1847,14 @@ class Employee(models.Model):
     gross_monthly_salary = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     hourly_rate = models.DecimalField(max_digits=8, decimal_places=2, default=0)
     scheduled_hours_per_week = models.DecimalField(max_digits=5, decimal_places=2, default=40)
+    monthly_allowance = models.DecimalField(
+        max_digits=10, decimal_places=2, default=0,
+        help_text='Fixed taxable allowance paid every month (transport, phone, ...).',
+    )
+    monthly_other_deduction = models.DecimalField(
+        max_digits=10, decimal_places=2, default=0,
+        help_text='Fixed after-tax deduction every month (staff loan repayment, garnishee, ...).',
+    )
     start_date = models.DateField(null=True, blank=True)
     end_date = models.DateField(null=True, blank=True)
     is_active = models.BooleanField(default=True)
@@ -1767,10 +1942,14 @@ class PayrollEntry(models.Model):
     overtime_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     total_gross = models.DecimalField(max_digits=10, decimal_places=2)
     paye_amount = models.DecimalField(max_digits=10, decimal_places=2)
+    allowances = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    other_deductions = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     uif_employee = models.DecimalField(max_digits=8, decimal_places=2)
     uif_employer = models.DecimalField(max_digits=8, decimal_places=2)
+    sdl_employer = models.DecimalField(max_digits=8, decimal_places=2, default=0)
     net_pay = models.DecimalField(max_digits=10, decimal_places=2)
     is_frozen = models.BooleanField(default=False)
+    paid_on = models.DateField(null=True, blank=True)
     payslip_emailed = models.BooleanField(default=False)
     notes = models.TextField(blank=True)
     calculated_at = models.DateTimeField(auto_now=True)
@@ -1779,6 +1958,11 @@ class PayrollEntry(models.Model):
         db_table = 'payroll_entries'
         unique_together = ['employee', 'compliance_period']
         ordering = ['-compliance_period__period_start', 'employee__last_name']
+
+    @property
+    def employer_cost(self):
+        """What this employee really costs the business this month."""
+        return (self.total_gross or 0) + (self.uif_employer or 0) + (self.sdl_employer or 0)
 
 
 # ============================================================================
@@ -1860,6 +2044,13 @@ class ServicePrice(models.Model):
     description = models.TextField(blank=True)
     price = models.DecimalField(max_digits=10, decimal_places=2)
     unit = models.CharField(max_length=60, default='per visit', help_text='e.g. per device, per month, per hour')
+    price_prefix = models.CharField(max_length=20, blank=True, help_text='e.g. "From" — shown before the price on the website')
+    group = models.CharField(
+        max_length=20, blank=True, db_index=True,
+        help_text='Pricing card on the website this item appears in.',
+        choices=[('hardware', 'Hardware & Support'), ('software', 'Software Products'),
+                 ('pos', 'Point of Sale'), ('combo', 'Combos & Value Packages')],
+    )
     is_featured = models.BooleanField(default=False, help_text='Show on website hero/pricing section')
     is_active = models.BooleanField(default=True)
     display_order = models.PositiveIntegerField(default=0)
@@ -2077,6 +2268,11 @@ class CompanySettings(models.Model):
     payment_terms = models.TextField(
         default='Payment is due as per terms. Please use the invoice number as reference. '
                 'Late payments may attract interest as per our standard terms.'
+    )
+
+    payroll_sdl_enabled = models.BooleanField(
+        default=False,
+        help_text='Charge the 1% Skills Development Levy on payroll. Employers with an annual payroll under R500,000 are exempt.',
     )
 
     updated_at = models.DateTimeField(auto_now=True)

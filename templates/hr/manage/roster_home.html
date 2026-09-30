@@ -1,0 +1,30 @@
+{% extends "hr/base_manage.html" %}
+{% block title %}Roster{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+  <h4 class="mb-0">Roster</h4>
+  {% if is_admin %}<div class="d-flex gap-1 flex-wrap">
+    <a class="btn btn-outline-secondary btn-sm" href="{% url 'hr:manage_roster_setup' %}">Set-up</a>
+    <a class="btn btn-outline-secondary btn-sm" href="{% url 'hr:manage_requests' %}">Requests</a>
+    <a class="btn btn-outline-secondary btn-sm" href="{% url 'hr:manage_roster_flags' %}">Flags</a>
+    <a class="btn btn-outline-secondary btn-sm" href="{% url 'hr:manage_roster_reports' 'coverage' %}">Reports</a>
+  </div>{% else %}<a class="btn btn-outline-secondary btn-sm" href="{% url 'hr:manage_requests' %}">Requests</a>{% endif %}
+</div>
+
+{% if checks %}<div class="alert alert-warning"><strong>Set-up checks</strong><ul class="mb-0">{% for c in checks %}<li>{{ c }}</li>{% endfor %}</ul></div>{% endif %}
+{% if expiring %}<div class="alert alert-warning"><strong>Flags expiring soon</strong><ul class="mb-0">{% for f in expiring %}<li>{{ f.employee }}: {{ f.flag }} {% if f.expires_on < today %}expired{% else %}expires{% endif %} {{ f.expires_on|date:"j M Y" }}</li>{% endfor %}</ul></div>{% endif %}
+
+<div class="card mb-4"><div class="card-header">Generate a draft roster</div><div class="card-body">
+  <form method="post" action="{% url 'hr:manage_roster_generate' %}" class="row g-2">{% csrf_token %}
+    <div class="col-md-3"><label class="small text-muted">From</label><input type="date" name="start" value="{{ default_start|date:'Y-m-d' }}" class="form-control" required></div>
+    <div class="col-md-3"><label class="small text-muted">To</label><input type="date" name="end" value="{{ default_end|date:'Y-m-d' }}" class="form-control" required></div>
+    <div class="col-md-4"><label class="small text-muted">Sites (none ticked = all)</label><div>{% for s in sites %}<label class="me-2 small"><input type="checkbox" name="sites" value="{{ s.pk }}"> {{ s.name }}</label>{% endfor %}</div></div>
+    <div class="col-md-2 d-flex align-items-end"><button class="btn btn-primary w-100">Generate</button></div>
+  </form>
+  <div class="small text-muted mt-2">The draft fills every slot within the rules, offers what is left to casuals when published, and lists anything it could not do and why. Nothing is visible to staff until you publish.</div>
+</div></div>
+
+<div class="card"><table class="table align-middle mb-0"><thead class="table-light"><tr><th>Period</th><th>Status</th><th>Version</th><th>Score</th><th>Unfilled</th><th></th></tr></thead>
+{% for r in rosters %}<tr><td>{{ r.start_date|date:"j M" }} to {{ r.end_date|date:"j M Y" }}</td><td><span class="badge {% if r.status == 'PUBLISHED' %}bg-success{% elif r.status == 'DRAFT' %}bg-warning text-dark{% else %}bg-secondary{% endif %}">{{ r.get_status_display }}</span></td><td>{{ r.version }}</td><td>{{ r.quality_score|default:"-" }}</td><td>{{ r.summary.unfilled_required|default:0 }}</td><td><a href="{% url 'hr:manage_roster_detail' r.pk %}">Open</a></td></tr>
+{% empty %}<tr><td colspan="6" class="text-muted text-center py-4">No rosters yet.</td></tr>{% endfor %}</table></div>
+{% endblock %}

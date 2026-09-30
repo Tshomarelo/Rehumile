@@ -1,0 +1,41 @@
+{% extends "hr/base_portal.html" %}
+{% block title %}Documents{% endblock %}
+{% block content %}
+<h4 class="mb-3">Documents</h4>
+{% if to_sign or to_ack %}<div class="alert alert-warning py-2">{% if to_sign %}{{ to_sign }} document(s) waiting for your signature. {% endif %}{% if to_ack %}{{ to_ack }} polic{{ to_ack|pluralize:"y,ies" }} waiting for your acknowledgement.{% endif %}</div>{% endif %}
+
+<h6 class="text-muted">My documents</h6>
+<ul class="list-group mb-4">
+  {% for d in docs %}<li class="list-group-item">
+    <div class="d-flex justify-content-between align-items-center">
+      <span>{{ d.title }} <span class="text-muted small">{{ d.get_category_display }} &middot; {{ d.created_at|date:"j M Y" }}</span>
+        {% if d.requires_signature %}{% if d.signed_at %}<span class="badge bg-success">signed {{ d.signed_at|date:"j M Y" }}</span>{% else %}<span class="badge bg-warning text-dark">needs signature</span>{% endif %}{% endif %}</span>
+      <span><a class="btn btn-sm btn-outline-primary" target="_blank" href="{{ d.open_url }}">Open</a> <a class="btn btn-sm btn-outline-secondary" href="{{ d.dl_url }}">PDF</a></span>
+    </div>
+    {% if d.requires_signature and not d.signed_at %}
+    <form method="post" action="{% url 'hr:doc_sign' d.pk %}" class="d-flex gap-1 mt-2">{% csrf_token %}
+      <input name="name" class="form-control form-control-sm" placeholder="Type your full name to sign" required>
+      <button class="btn btn-sm btn-success">Sign</button></form>{% endif %}
+  </li>{% empty %}<li class="list-group-item text-muted">No documents yet.</li>{% endfor %}
+</ul>
+
+<h6 class="text-muted">Company policies</h6>
+<ul class="list-group mb-4">
+  {% for x in policies %}<li class="list-group-item d-flex justify-content-between align-items-center">
+    <span>{{ x.p.title }} <span class="text-muted small">v{{ x.v.version }}, effective {{ x.v.effective_date|date:"j M Y" }}</span>{% if x.v.change_note %}<div class="small text-muted">{{ x.v.change_note }}</div>{% endif %}</span>
+    <span class="d-flex gap-1 align-items-center"><a class="btn btn-sm btn-outline-primary" target="_blank" href="{{ x.url }}">Read</a>
+      {% if x.v.requires_ack %}{% if x.acked %}<span class="badge bg-success">acknowledged</span>{% else %}
+      <form method="post" action="{% url 'hr:policy_ack' x.v.pk %}">{% csrf_token %}<button class="btn btn-sm btn-success">I have read this</button></form>{% endif %}{% endif %}</span>
+  </li>{% empty %}<li class="list-group-item text-muted">No policies published.</li>{% endfor %}
+</ul>
+
+<h6 class="text-muted">Request a letter</h6>
+<form method="post" action="{% url 'hr:request_letter' %}" class="row g-2 mb-2">{% csrf_token %}
+  <div class="col-md-4"><select name="doc_type" class="form-select">{% for k, v in types %}<option value="{{ k }}">{{ v }}</option>{% endfor %}</select></div>
+  <div class="col-md-6"><input name="note" class="form-control" placeholder="Who is it for, and why? (optional)"></div>
+  <div class="col-md-2"><button class="btn btn-primary w-100">Request</button></div>
+</form>
+<ul class="list-group mb-4">
+  {% for r in requests %}<li class="list-group-item d-flex justify-content-between"><span>{{ r.get_doc_type_display }} <span class="text-muted small">{{ r.created_at|date:"j M" }}{% if r.decision_note %} &middot; {{ r.decision_note }}{% endif %}</span></span><span class="badge bg-secondary">{{ r.get_status_display }}</span></li>{% endfor %}
+</ul>
+{% endblock %}

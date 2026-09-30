@@ -1,0 +1,22 @@
+{% extends "hr/base_manage.html" %}
+{% block title %}Upload{% endblock %}
+{% block content %}
+<h4 class="mb-3">Upload {% if kind == 'PAYSLIP' %}payslips{% else %}tax certificates{% endif %}</h4>
+<div class="card" style="max-width:640px"><div class="card-body">
+  <p class="small text-muted">Pages are matched to employees by the employee number in the page text (combined PDF) or in the file name (ZIP). You preview everything before anyone can see it.</p>
+  <form method="post" enctype="multipart/form-data">{% csrf_token %}
+    {% if kind == 'PAYSLIP' %}
+    <div class="mb-3"><label class="form-label">Pay period</label>
+      <select name="period" class="form-select" required>{% for p in periods %}<option value="{{ p.pk }}">{{ p.label }}</option>{% endfor %}</select>
+      {% if not periods %}<div class="small text-danger">Add a pay period first.</div>{% endif %}</div>
+    {% else %}
+    <div class="mb-3"><label class="form-label">Tax year</label>
+      <select name="year" class="form-select" required>{% for y in years %}<option value="{{ y.pk }}">{{ y }}</option>{% endfor %}</select></div>
+    <div class="mb-3"><label class="form-label">Certificate type</label>
+      <select name="cert_type" class="form-select"><option>IRP5</option><option value="IT3A">IT3(a)</option></select></div>
+    {% endif %}
+    {% for f in form %}<div class="mb-3"><label class="form-label">{{ f.label }}</label>{{ f }}{% for e in f.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}</div>{% endfor %}
+    <button class="btn btn-primary">Upload and preview</button>
+  </form>
+</div></div>
+{% endblock %}

@@ -1,0 +1,21 @@
+{% extends "hr/base_manage.html" %}
+{% block title %}Leave balances{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+  <h4 class="mb-0">Leave balances</h4>
+  {% if 'HR_ADMIN' in hr_roles or 'SUPER_ADMIN' in hr_roles %}
+  <div class="d-flex gap-2">
+    <form method="post" action="{% url 'hr:manage_leave_accruals' %}" onsubmit="return confirm('Credit this month\'s leave to every employee? Months already credited are skipped.')">{% csrf_token %}<button class="btn btn-sm btn-primary"><i class="bi bi-play-fill"></i> Run this month's accruals</button></form>
+    <form method="post" action="{% url 'hr:manage_leave_accruals' %}" onsubmit="return confirm('Run year-end carry-over and expiry for {{ year|add:'-1' }}?')" class="d-flex gap-1">{% csrf_token %}<input type="hidden" name="run" value="year_end"><input type="hidden" name="year" value="{{ year|add:'-1' }}"><button class="btn btn-sm btn-outline-secondary">Year-end {{ year|add:'-1' }}</button></form>
+  </div>
+  {% endif %}
+</div>
+<div class="card"><div class="table-responsive"><table class="table t table-sm table-hover mb-0 align-middle">
+  <thead class="table-light"><tr><th>Employee</th>{% for t in types %}<th class="text-end">{{ t.name }}</th>{% endfor %}</tr></thead>
+  <tbody>
+    {% for r in rows %}<tr><td><a class="text-decoration-none" href="{% url 'hr:manage_employee' r.e.pk %}">{{ r.e.display_name }}</a></td>
+      {% for c in r.cells %}<td class="text-end">{% if c %}<strong>{{ c.available|floatformat:"-2" }}</strong>{% if c.pending %} <span class="text-muted small">({{ c.pending|floatformat:"-2" }} pending)</span>{% endif %}{% else %}<span class="text-muted">-</span>{% endif %}</td>{% endfor %}</tr>
+    {% empty %}<tr><td colspan="{{ types|length|add:1 }}" class="text-center text-muted py-4">No employees yet.</td></tr>{% endfor %}
+  </tbody></table></div></div>
+<div class="small text-muted mt-2">Balances come from each employee's leave ledger. Accruals credit once per month per employee (running twice does nothing extra).</div>
+{% endblock %}

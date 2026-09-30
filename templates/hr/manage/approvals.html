@@ -1,0 +1,35 @@
+{% extends "hr/base_manage.html" %}
+{% block title %}Approvals{% endblock %}
+{% block content %}
+<h4 class="mb-3">Approvals</h4>
+<div class="card mb-3">
+  <div class="table-responsive">
+    <table class="table t table-hover align-middle mb-0">
+      <thead class="table-light"><tr><th>Request</th><th>Type</th><th>Waiting</th><th>Due</th><th style="min-width:330px">Decision</th></tr></thead>
+      <tbody>
+        {% for s in steps %}
+        <tr>
+          <td><div class="fw-semibold">{{ s.instance.summary }}</div><div class="small text-muted">Submitted by {{ s.instance.submitter.get_full_name|default:s.instance.submitter.get_username }}{% if s.escalated %} &middot; <span class="badge bg-info text-dark">escalated</span>{% endif %}</div>{% if s.diff %}<table class="table table-sm mt-2 mb-0 small"><tr><th></th><th>Now</th><th>Requested</th></tr>{% for d in s.diff %}<tr><td>{{ d.label }}</td><td>{{ d.old|default:"-" }}</td><td class="{% if d.changed %}fw-bold text-success{% endif %}">{{ d.new|default:"-" }}</td></tr>{% endfor %}</table>{% if s.proof_url %}<a target="_blank" href="{{ s.proof_url }}">View proof</a>{% endif %}{% endif %}</td>
+          <td>{{ s.instance.get_key_display_safe }}<div class="small text-muted">step {{ s.order }} &middot; {{ s.get_role_display }}</div></td>
+          <td>{{ s.activated_at|timesince }}</td>
+          <td class="{% if s.due_at and s.reminded_at %}text-danger{% endif %}">{{ s.due_at|date:"j M" }}</td>
+          <td>
+            <form method="post" action="{% url 'hr:manage_approval_decide' s.pk %}" class="d-flex gap-1">
+              {% csrf_token %}
+              <input name="comment" class="form-control form-control-sm" placeholder="Comment (required to decline)">
+              <button name="action" value="approve" class="btn btn-sm btn-success">Approve</button>
+              <button name="action" value="reject" class="btn btn-sm btn-outline-danger">Decline</button>
+            </form>
+          </td>
+        </tr>
+        {% empty %}<tr><td colspan="5" class="text-center text-muted py-4">Nothing is waiting for you.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+<h6 class="text-muted">Recently decided by me</h6>
+<div class="card"><ul class="list-group list-group-flush">
+  {% for d in decided %}<li class="list-group-item d-flex justify-content-between"><span>{{ d.instance.summary }}</span><span class="small"><span class="badge {% if d.status == 'APPROVED' %}bg-success{% else %}bg-danger{% endif %}">{{ d.get_status_display }}</span> {{ d.acted_at|date:"j M H:i" }}</span></li>
+  {% empty %}<li class="list-group-item text-muted">Nothing yet.</li>{% endfor %}
+</ul></div>
+{% endblock %}

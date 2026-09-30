@@ -1,0 +1,15 @@
+{% extends "hr/base_manage.html" %}
+{% block title %}Payrun input{% endblock %}
+{% block content %}
+<h4 class="mb-3">Payrun input</h4>
+<form method="get" class="d-flex gap-2 mb-3 flex-wrap">
+  <select name="period" class="form-select w-auto" onchange="this.form.submit()">{% for p in periods %}<option value="{{ p.pk }}" {% if p.pk == pid %}selected{% endif %}>{{ p.label }}</option>{% endfor %}</select>
+  {% if pid %}<a class="btn btn-outline-primary" href="{% url 'hr:manage_payrun_export' pid %}">Export approved (CSV)</a>{% endif %}
+</form>
+{% if pid %}<form method="post" action="{% url 'hr:manage_payrun_cutoff' pid %}" class="d-flex gap-2 mb-3 align-items-center">{% csrf_token %}
+  <label class="small text-muted">Input cut-off</label><input type="date" name="cutoff" class="form-control w-auto"><button class="btn btn-sm btn-outline-secondary">Save</button></form>{% endif %}
+<p class="small text-muted">Approve or decline lines in <a href="{% url 'hr:manage_approvals' %}">Approvals</a>.</p>
+<div class="card"><table class="table mb-0 align-middle"><thead class="table-light"><tr><th>Employee</th><th>Type</th><th>Description</th><th>Hours</th><th>Amount</th><th>Status</th></tr></thead>
+{% for r in rows %}<tr><td>{{ r.employee }}</td><td>{{ r.get_kind_display }}</td><td>{{ r.description }}</td><td>{{ r.hours|default:"" }}</td><td>{{ r.amount|default:"" }}</td><td>{{ r.get_status_display }}</td></tr>
+{% empty %}<tr><td colspan="6" class="text-center text-muted py-3">Nothing submitted for this period.</td></tr>{% endfor %}</table></div>
+{% endblock %}

@@ -44,6 +44,7 @@ INSTALLED_APPS = [
     'django_filters',
     'drf_spectacular',
     'ims',
+    'HR.apps.HRConfig',   # HR system: employee self-service, leave, payslips, roster, advances
 ]
 
 # ── Middleware ────────────────────────────────────────────────────────────────
@@ -55,6 +56,7 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'HR.middleware.SecurityMiddleware',   # forces a first-login password change inside /hr/
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
@@ -64,13 +66,14 @@ ROOT_URLCONF = 'config.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [BASE_DIR / 'templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'HR.context.hr',
             ],
         },
     },
@@ -181,3 +184,15 @@ SPECTACULAR_SETTINGS = {
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 PASSWORD_RESET_TIMEOUT = 86400  # 24 hours
+
+# ── HR system ────────────────────────────────────────────────────────────────
+# Django-session login is used by the /hr/ pages. The portal signs people in
+# with JWT; the portal login also opens a session (see LoginView), and
+# /portal/hr-access/ converts an existing JWT into one.
+LOGIN_URL = '/portal/login/'
+
+# Fernet key that encrypts ID numbers, bank accounts and salaries at rest.
+# Generate one with:  python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+# Set it ONCE in .env — changing it later makes stored values unreadable.
+HR_FIELD_ENCRYPTION_KEY = config('HR_FIELD_ENCRYPTION_KEY', default='')
+HR_EMAIL_FROM = config('HR_EMAIL_FROM', default=DEFAULT_FROM_EMAIL)

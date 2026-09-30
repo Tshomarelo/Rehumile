@@ -1,0 +1,13 @@
+{% extends "hr/base_manage.html" %}
+{% block title %}Import roster staff{% endblock %}
+{% block content %}
+<h4 class="mb-3">Import staff, flags and approvals</h4>
+<form method="post" enctype="multipart/form-data" class="card card-body mb-3" style="max-width:640px">{% csrf_token %}
+  <input type="file" name="file" accept=".csv" class="form-control mb-2" required>
+  <div class="form-check mb-2"><input type="checkbox" name="apply" value="1" class="form-check-input" id="ap"><label for="ap" class="form-check-label">Save the rows if there are no problems (leave unticked to only check)</label></div>
+  <button class="btn btn-primary" style="width:160px">Check / import</button>
+</form>
+{% if report %}<div class="card"><table class="table table-sm mb-0"><thead class="table-light"><tr><th>Line</th><th>Employee</th><th>Result</th><th>Detail</th></tr></thead>
+{% for r in report %}<tr class="{% if r.status == 'rejected' %}table-danger{% endif %}"><td>{{ r.line }}</td><td>{{ r.number }}</td><td>{{ r.status }}</td><td>{{ r.detail }}</td></tr>{% endfor %}</table></div>{% endif %}
+<a href="{% url 'hr:manage_roster_setup' %}">Back to set-up</a>
+{% endblock %}

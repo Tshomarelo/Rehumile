@@ -1,0 +1,44 @@
+{% extends "hr/base_portal.html" %}
+{% block title %}Leave request{% endblock %}
+{% block content %}
+<a href="{% url 'hr:leave_home' %}" class="small">&larr; Back to leave</a>
+<h4 class="my-2">{{ req.leave_type.name }}
+  <span class="badge {% if req.status == 'APPROVED' %}bg-success{% elif req.status == 'PENDING' or req.status == 'CANCEL_REQUESTED' %}bg-warning text-dark{% elif req.status == 'DECLINED' %}bg-danger{% else %}bg-secondary{% endif %} fs-6">{{ req.get_status_display }}</span></h4>
+<div class="card mb-3" style="max-width:640px">
+  <div class="card-body">
+    {% if not is_mine %}<div class="mb-2"><div class="k">Employee</div>{{ req.employee.display_name }}</div>{% endif %}
+    <div class="row g-3">
+      <div class="col-6"><div class="k">From</div>{{ req.start_date|date:"l j F Y" }}{% if req.half_day_start %} (afternoon){% endif %}</div>
+      <div class="col-6"><div class="k">To</div>{{ req.end_date|date:"l j F Y" }}{% if req.half_day_end %} (morning){% endif %}</div>
+      <div class="col-6"><div class="k">Working days</div>{{ req.days|floatformat:"-2" }}</div>
+      <div class="col-6"><div class="k">Submitted</div>{{ req.created_at|date:"j M Y H:i" }}</div>
+    </div>
+    {% if req.reason %}<div class="mt-3"><div class="k">Reason</div>{{ req.reason }}</div>{% endif %}
+    {% if req.attachment %}<div class="mt-2"><a href="{{ req.attachment.url }}" target="_blank"><i class="bi bi-paperclip"></i> Supporting document</a></div>{% endif %}
+    {% if req.captured_by %}<div class="small text-muted mt-2">Captured by HR on the employee's behalf.</div>{% endif %}
+    {% if req.decision_note %}<div class="alert alert-danger mt-3 mb-0"><strong>Reason given:</strong> {{ req.decision_note }}</div>{% endif %}
+  </div>
+</div>
+
+<div class="card mb-3" style="max-width:640px">
+  <div class="card-header bg-white fw-bold">Approval</div>
+  <ul class="list-group list-group-flush">
+    {% for s in steps %}
+    <li class="list-group-item">
+      <div class="d-flex justify-content-between">
+        <span>{{ s.get_role_display }}{% if s.assigned_to %} &middot; {{ s.assigned_to.get_full_name|default:s.assigned_to.get_username }}{% endif %}{% if s.escalated %} <span class="badge bg-info text-dark">escalated</span>{% endif %}</span>
+        <span class="badge {% if s.status == 'APPROVED' %}bg-success{% elif s.status == 'REJECTED' %}bg-danger{% elif s.status == 'PENDING' %}bg-warning text-dark{% else %}bg-secondary{% endif %}">{{ s.get_status_display }}</span>
+      </div>
+      {% if s.acted_by %}<div class="small text-muted">{{ s.acted_by.get_full_name|default:s.acted_by.get_username }} on {{ s.acted_at|date:"j M Y H:i" }}{% if s.comment %}: {{ s.comment }}{% endif %}</div>{% endif %}
+    </li>
+    {% empty %}<li class="list-group-item text-muted">No approval steps.</li>{% endfor %}
+  </ul>
+</div>
+
+{% if is_mine and req.status == 'PENDING' or is_mine and req.status == 'APPROVED' %}
+<form method="post" action="{% url 'hr:leave_cancel' req.pk %}" onsubmit="return confirm('{% if req.status == 'APPROVED' %}Ask your manager to cancel this approved leave?{% else %}Withdraw this request?{% endif %}');">
+  {% csrf_token %}
+  <button class="btn btn-outline-danger">{% if req.status == 'APPROVED' %}Request cancellation{% else %}Withdraw request{% endif %}</button>
+</form>
+{% endif %}
+{% endblock %}

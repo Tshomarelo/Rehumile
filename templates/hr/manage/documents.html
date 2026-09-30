@@ -1,0 +1,45 @@
+{% extends "hr/base_manage.html" %}
+{% block title %}Documents{% endblock %}
+{% block content %}
+<h4 class="mb-3">Documents and policies</h4>
+
+{% if requests %}<div class="card mb-3"><div class="card-header">Letter requests to prepare</div><ul class="list-group list-group-flush">
+  {% for r in requests %}<li class="list-group-item">
+    <div class="fw-semibold">{{ r.employee }} &middot; {{ r.get_doc_type_display }} <span class="badge bg-secondary">{{ r.get_status_display }}</span></div>
+    <div class="small text-muted">{{ r.note }}</div>
+    {% if r.status == 'APPROVED' %}<form method="post" enctype="multipart/form-data" action="{% url 'hr:manage_request_fulfil' r.pk %}" class="d-flex gap-1 mt-1">{% csrf_token %}<input type="file" name="file" class="form-control form-control-sm" required><button class="btn btn-sm btn-success">Send</button></form>{% endif %}
+  </li>{% endfor %}</ul></div>{% endif %}
+
+<div class="row g-3">
+  <div class="col-lg-6"><div class="card"><div class="card-header">File a document for an employee</div><div class="card-body">
+    <form method="post" enctype="multipart/form-data" action="{% url 'hr:manage_doc_upload' %}">{% csrf_token %}
+      <select name="employee" class="form-select mb-2" required>{% for p in people %}<option value="{{ p.pk }}">{{ p }} ({{ p.employee_number }})</option>{% endfor %}</select>
+      <input name="title" class="form-control mb-2" placeholder="Title, e.g. Employment contract" required>
+      <select name="category" class="form-select mb-2">{% for k, v in categories %}<option value="{{ k }}">{{ v }}</option>{% endfor %}</select>
+      <input type="file" name="file" class="form-control mb-2" required>
+      <div class="form-check mb-2"><input type="checkbox" name="requires_signature" class="form-check-input" id="rs"><label for="rs" class="form-check-label">Employee must sign</label></div>
+      <button class="btn btn-primary">File document</button>
+    </form></div></div></div>
+  <div class="col-lg-6"><div class="card"><div class="card-header">Publish a policy or new version</div><div class="card-body">
+    <form method="post" enctype="multipart/form-data" action="{% url 'hr:manage_policy_publish' %}">{% csrf_token %}
+      <select name="policy" class="form-select mb-2"><option value="">New policy...</option>{% for p in policies %}<option value="{{ p.pk }}">New version of {{ p.title }}</option>{% endfor %}</select>
+      <input name="title" class="form-control mb-2" placeholder="Title (for a new policy)">
+      <input name="change_note" class="form-control mb-2" placeholder="What changed? (optional)">
+      <input type="date" name="effective_date" class="form-control mb-2">
+      <input type="file" name="file" class="form-control mb-2" required>
+      <div class="form-check mb-2"><input type="checkbox" name="requires_ack" class="form-check-input" id="ra" checked><label for="ra" class="form-check-label">Employees must acknowledge</label></div>
+      <button class="btn btn-primary">Publish</button>
+    </form></div></div></div>
+</div>
+
+<h6 class="text-muted mt-4">Policies</h6>
+<ul class="list-group mb-3">{% for p in policies %}<li class="list-group-item d-flex justify-content-between">{{ p.title }} <span class="small text-muted">v{{ p.current.version }}</span> <a href="{% url 'hr:manage_policy_acks' p.pk %}">Who has acknowledged</a></li>{% empty %}<li class="list-group-item text-muted">None.</li>{% endfor %}</ul>
+
+<h6 class="text-muted">Recently filed documents</h6>
+<div class="card"><table class="table mb-0 align-middle"><thead class="table-light"><tr><th>Employee</th><th>Document</th><th>Signature</th><th>Seen</th><th></th></tr></thead>
+{% for d in docs %}<tr><td>{{ d.employee }}</td><td>{{ d.title }}{% if d.status != 'ACTIVE' %} <span class="badge bg-secondary">withdrawn</span>{% endif %}</td>
+<td>{% if d.requires_signature %}{% if d.signed_at %}signed {{ d.signed_at|date:"j M H:i" }}{% else %}<span class="text-warning">pending</span>{% endif %}{% else %}-{% endif %}</td>
+<td>{{ d.first_viewed_at|date:"j M"|default:"-" }}</td>
+<td>{% if d.status == 'ACTIVE' %}<form method="post" action="{% url 'hr:manage_doc_withdraw' d.pk %}">{% csrf_token %}<button class="btn btn-sm btn-outline-danger">Withdraw</button></form>{% endif %}</td></tr>
+{% empty %}<tr><td colspan="5" class="text-muted text-center py-3">None yet.</td></tr>{% endfor %}</table></div>
+{% endblock %}

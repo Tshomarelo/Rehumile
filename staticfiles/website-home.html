@@ -340,13 +340,13 @@
     <div class="max-w-2xl space-y-6">
       <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold" style="background:rgba(179,143,67,0.2);border:1px solid rgba(179,143,67,0.5);color:#f0c96a">
         <span class="w-2 h-2 rounded-full bg-green-400" style="animation:pulse 2s infinite"></span>
-        Now serving Jozini, Mkuze, Hluhluwe &amp; Northern KZN
+        <span data-wc="hero_badge">Now serving Jozini, Mkuze, Hluhluwe &amp; Northern KZN</span>
       </div>
       <h1 class="text-4xl md:text-5xl lg:text-6xl font-black text-white leading-tight tracking-tight reveal visible">
         Enterprise-Grade IT<br>Solutions Built to
         <span class="gradient-text"> Power Your Business</span>
       </h1>
-      <p class="text-lg md:text-xl text-gray-200 leading-relaxed reveal visible reveal-delay-1">
+      <p class="text-lg md:text-xl text-gray-200 leading-relaxed reveal visible reveal-delay-1" data-wc="hero_subtitle">
         From robust network infrastructure and bulletproof cybersecurity to custom software and seamless POS systems — we manage your technology so you can focus on growth.
       </p>
       <div class="flex flex-col sm:flex-row gap-3 pt-2 reveal visible reveal-delay-2">
@@ -363,20 +363,20 @@
       <!-- Stat counters -->
       <div class="flex flex-wrap gap-6 pt-4 reveal visible reveal-delay-3">
         <div class="stat-card bg-white/10 backdrop-blur rounded-xl px-5 py-3 border border-white/20 cursor-default">
-          <div class="counter-num text-2xl font-black text-white" data-target="500" data-suffix="+">0</div>
-          <div class="text-xs text-gray-300">Devices Repaired</div>
+          <div class="counter-num text-2xl font-black text-white" data-wc-stat="hero_stat_devices" data-target="500" data-suffix="+">0</div>
+          <div class="text-xs text-gray-300" data-wc="hero_stat_devices_label">Devices Repaired</div>
         </div>
         <div class="stat-card bg-white/10 backdrop-blur rounded-xl px-5 py-3 border border-white/20 cursor-default">
-          <div class="counter-num text-2xl font-black text-white" data-target="98" data-suffix="%">0</div>
-          <div class="text-xs text-gray-300">Client Satisfaction</div>
+          <div class="counter-num text-2xl font-black text-white" data-wc-stat="hero_stat_satisfaction" data-target="98" data-suffix="%">0</div>
+          <div class="text-xs text-gray-300" data-wc="hero_stat_satisfaction_label">Client Satisfaction</div>
         </div>
         <div class="stat-card bg-white/10 backdrop-blur rounded-xl px-5 py-3 border border-white/20 cursor-default">
-          <div class="counter-num text-2xl font-black text-white" data-target="5" data-suffix="+ Yrs">0</div>
-          <div class="text-xs text-gray-300">In Business</div>
+          <div class="counter-num text-2xl font-black text-white" data-wc-stat="hero_stat_years" data-target="5" data-suffix="+ Yrs">0</div>
+          <div class="text-xs text-gray-300" data-wc="hero_stat_years_label">In Business</div>
         </div>
         <div class="stat-card bg-white/10 backdrop-blur rounded-xl px-5 py-3 border border-white/20 cursor-default">
-          <div class="counter-num text-2xl font-black text-white" data-target="24" data-suffix="h">0</div>
-          <div class="text-xs text-gray-300">Turnaround</div>
+          <div class="counter-num text-2xl font-black text-white" data-wc-stat="hero_stat_turnaround" data-target="24" data-suffix="h">0</div>
+          <div class="text-xs text-gray-300" data-wc="hero_stat_turnaround_label">Turnaround</div>
         </div>
       </div>
     </div>
@@ -519,7 +519,7 @@
   <div class="max-w-7xl mx-auto px-4">
     <div class="text-center mb-16 max-w-2xl mx-auto reveal">
       <span class="text-xs font-bold tracking-widest uppercase" style="color:#B38F43">Transparent Pricing</span>
-      <h2 class="text-4xl font-black mt-2 mb-4" style="color:#50181E">Clear, Upfront Costs</h2>
+      <h2 class="text-4xl font-black mt-2 mb-4" style="color:#50181E" data-wc="pricing_headline">Clear, Upfront Costs</h2>
       <p class="text-gray-500">Enterprise-grade technical support and implementation at honest prices.</p>
     </div>
 
@@ -533,7 +533,7 @@
           <p class="text-xs text-gray-400 mt-1">Professional diagnostic and repair services</p>
         </div>
         <div class="p-6 flex-1">
-          <ul class="space-y-4">
+          <ul id="price-list-hardware" class="space-y-4">
             <li class="flex justify-between items-start border-b border-gray-100 pb-3"><span class="text-sm text-gray-700">PC/Laptop Troubleshooting &amp; Diagnostic Report</span><span class="font-semibold text-sm ml-4 shrink-0" style="color:#50181E">R249.99</span></li>
             <li class="flex justify-between items-start border-b border-gray-100 pb-3"><span class="text-sm text-gray-700">Virus Removal + Firmware Updates + Support Assist</span><span class="font-semibold text-sm ml-4 shrink-0" style="color:#50181E">R379.99</span></li>
             <li class="flex justify-between items-start border-b border-gray-100 pb-3"><span class="text-sm text-gray-700">Remote Assistance + Computer Health Check <span class="text-xs text-gray-400 block">per 30 min</span></span><span class="font-semibold text-sm ml-4 shrink-0" style="color:#50181E">R119.99</span></li>
@@ -552,7 +552,7 @@
           <p class="text-xs text-gray-400 mt-1">Permanent licenses and system upgrades</p>
         </div>
         <div class="p-6 flex-1">
-          <ul class="space-y-4">
+          <ul id="price-list-software" class="space-y-4">
             <li class="flex justify-between items-start border-b border-gray-100 pb-3"><span class="text-sm text-gray-700">Latest Windows 11 OS Upgrade</span><span class="font-semibold text-sm ml-4 shrink-0" style="color:#50181E">R599.99</span></li>
             <li class="flex justify-between items-start border-b border-gray-100 pb-3"><span class="text-sm text-gray-700">Windows 10 OS Upgrade</span><span class="font-semibold text-sm ml-4 shrink-0" style="color:#50181E">R479.00</span></li>
             <li class="flex justify-between items-start border-b border-gray-100 pb-3"><span class="text-sm text-gray-700">Ms Office 365 (Latest) Permanent Subscription</span><span class="font-semibold text-sm ml-4 shrink-0" style="color:#50181E">R349.99</span></li>
@@ -576,7 +576,7 @@
             <span class="font-semibold" style="color:#B38F43">Hardware Transparency: </span>
             <span class="text-gray-700">Clients purchase their own hardware. We provide consultation, installation, software provisioning, and training.</span>
           </div>
-          <ul class="space-y-4">
+          <ul id="price-list-pos" class="space-y-4">
             <li class="flex justify-between items-start border-b border-gray-100 pb-3"><span class="text-sm text-gray-700">Basic Retail Software Provisioning <span class="text-xs text-gray-400 block">Single-terminal offline standalone inventory</span></span><span class="font-semibold text-sm ml-4 shrink-0" style="color:#50181E">R1 499.00</span></li>
             <li class="flex justify-between items-start border-b border-gray-100 pb-3"><span class="text-sm text-gray-700">Hardware Peripherals Configuration <span class="text-xs text-gray-400 block">Printer, scanner, cash drawer setup</span></span><span class="font-semibold text-sm ml-4 shrink-0" style="color:#50181E">R699.99</span></li>
             <li class="flex justify-between items-start border-b border-gray-100 pb-3"><span class="text-sm text-gray-700">Smart Speedpoint Integration <span class="text-xs text-gray-400 block">Linking independent card machines</span></span><span class="font-semibold text-sm ml-4 shrink-0" style="color:#50181E">R349.99</span></li>
@@ -594,7 +594,7 @@
           <p class="text-xs mt-1" style="color:rgba(255,255,255,0.6)">Bundled services for maximum value</p>
         </div>
         <div class="p-6 flex-1 flex flex-col">
-          <ul class="space-y-5 flex-1">
+          <ul id="price-list-combo" class="space-y-5 flex-1">
             <li class="flex justify-between items-start pb-4" style="border-bottom:1px solid rgba(255,255,255,0.15)">
               <div><span class="font-semibold block mb-1" style="color:#B38F43">Rehumile Combo 01</span><span class="text-sm" style="color:rgba(255,255,255,0.85)">Ms Office 365 Permanent + Desired Apps + Support Assist + Windows/Firmware Updates</span></div>
               <span class="font-bold text-lg ml-4 shrink-0">R1 299.99</span>
@@ -609,12 +609,12 @@
             </li>
           </ul>
           <div class="mt-6 p-4 rounded-xl text-center font-bold shadow-inner cursor-pointer hover:opacity-90 transition-opacity" style="background:#B38F43;color:#fff" onclick="smoothScroll('contact')">
-            🎉 Discounted Consultation Block (5 Hrs) — Now R349.99!
+            <span data-wc="consultation_banner">🎉 Discounted Consultation Block (5 Hrs) — Now R349.99!</span>
           </div>
         </div>
       </div>
     </div>
-    <p class="text-center text-xs text-gray-400 mt-8 reveal">All prices exclude VAT where applicable. Final quotes provided before any work begins.</p>
+    <p class="text-center text-xs text-gray-400 mt-8 reveal" data-wc="pricing_note">All prices exclude VAT where applicable. Final quotes provided before any work begins.</p>
     <div class="flex justify-center mt-6 reveal">
       <a href="/services/checkout/" class="inline-flex items-center gap-3 rounded-2xl px-8 py-4 font-bold text-white text-lg hover:scale-105 transition-transform ripple-btn" style="background:linear-gradient(135deg,#50181E,#7a2530);box-shadow:0 10px 32px rgba(80,24,30,0.35)">
         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
@@ -636,7 +636,7 @@
 <!-- ─── CTA Banner ────────────────────────────────────────── -->
 <section class="py-16 reveal" style="background:linear-gradient(135deg,#50181E 0%,#7a2530 100%)">
   <div class="max-w-4xl mx-auto px-4 text-center">
-    <h2 class="text-3xl md:text-4xl font-black text-white mb-4">Ready to transform your IT?</h2>
+    <h2 class="text-3xl md:text-4xl font-black text-white mb-4" data-wc="cta_headline">Ready to transform your IT?</h2>
     <p class="text-gray-300 mb-8 text-lg">Join businesses across KZN who trust Rehumile TMW with their technology.</p>
     <div class="flex flex-col sm:flex-row gap-4 justify-center">
       <button onclick="openModal('register')" class="ripple-btn inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl font-bold text-white text-lg hover:scale-105 transition-transform" style="background:#B38F43;box-shadow:0 8px 24px rgba(179,143,67,0.4)">
@@ -667,8 +667,8 @@
             </div>
             <div>
               <p class="font-semibold text-gray-900 text-sm">Email</p>
-              <a href="mailto:infor@rehumile.co.za" class="font-medium" style="color:#50181E">infor@rehumile.co.za</a>
-              <p class="text-xs text-gray-400 mt-0.5">For quotes, general enquiries &amp; support</p>
+              <a href="mailto:infor@rehumile.co.za" class="font-medium" style="color:#50181E" data-wc="contact_email" data-wc-href="mailto:{v}">infor@rehumile.co.za</a>
+              <p class="text-xs text-gray-400 mt-0.5" data-wc="contact_email_note">For quotes, general enquiries &amp; support</p>
             </div>
           </div>
           <div class="flex items-start gap-4 p-4 rounded-xl border border-gray-100 hover:border-primary hover:shadow-sm transition-all">
@@ -677,8 +677,8 @@
             </div>
             <div>
               <p class="font-semibold text-gray-900 text-sm">Phone / WhatsApp</p>
-              <a href="tel:+27683973484" class="font-medium" style="color:#50181E">068 397 3484</a>
-              <p class="text-xs text-gray-400 mt-0.5">Call or WhatsApp us anytime</p>
+              <a href="tel:+27683973484" class="font-medium" style="color:#50181E" data-wc="contact_phone" data-wc-href-key="contact_phone_link" data-wc-href="tel:{v}">068 397 3484</a>
+              <p class="text-xs text-gray-400 mt-0.5" data-wc="contact_phone_note">Call or WhatsApp us anytime</p>
             </div>
           </div>
           <div class="flex items-start gap-4 p-4 rounded-xl border border-gray-100 hover:border-primary hover:shadow-sm transition-all">
@@ -687,8 +687,8 @@
             </div>
             <div>
               <p class="font-semibold text-gray-900 text-sm">Location</p>
-              <p class="font-medium text-gray-900">Jozini, KwaZulu-Natal</p>
-              <p class="text-xs text-gray-400 mt-0.5">Serving Jozini, Mkuze, Hluhluwe &amp; surrounding areas</p>
+              <p class="font-medium text-gray-900" data-wc="contact_location">Jozini, KwaZulu-Natal</p>
+              <p class="text-xs text-gray-400 mt-0.5" data-wc="contact_location_note">Serving Jozini, Mkuze, Hluhluwe &amp; surrounding areas</p>
             </div>
           </div>
           <div class="flex items-start gap-4 p-4 rounded-xl border border-gray-100 hover:border-primary hover:shadow-sm transition-all">
@@ -697,8 +697,8 @@
             </div>
             <div>
               <p class="font-semibold text-gray-900 text-sm">Business Hours</p>
-              <p class="font-medium text-gray-900">Monday – Friday: 08:00 – 17:00</p>
-              <p class="text-xs text-gray-400 mt-0.5">Urgent support available on weekends by arrangement</p>
+              <p class="font-medium text-gray-900" data-wc="contact_hours">Monday – Friday: 08:00 – 17:00</p>
+              <p class="text-xs text-gray-400 mt-0.5" data-wc="contact_hours_note">Urgent support available on weekends by arrangement</p>
             </div>
           </div>
         </div>
@@ -810,15 +810,15 @@
           <li><button onclick="openModal('signin')" class="text-gray-400 hover:text-secondary transition-colors text-left">Client Sign In</button></li>
           <li><button onclick="openModal('register')" class="text-gray-400 hover:text-secondary transition-colors text-left">Create Account</button></li>
           <li><a href="#contact" class="text-gray-400 hover:text-secondary transition-colors">Get a Quote</a></li>
-          <li><a href="mailto:infor@rehumile.co.za" class="text-gray-400 hover:text-secondary transition-colors">Email Us</a></li>
+          <li><a href="mailto:infor@rehumile.co.za" data-wc-href-key="contact_email" data-wc-href="mailto:{v}" class="text-gray-400 hover:text-secondary transition-colors">Email Us</a></li>
         </ul>
       </div>
     </div>
     <div class="border-t pt-8 flex flex-col md:flex-row justify-between items-center gap-4 text-sm" style="border-color:rgba(255,255,255,0.08)">
       <div class="flex flex-col md:flex-row items-center gap-4">
-        <a href="mailto:infor@rehumile.co.za" class="text-gray-400 hover:text-secondary transition-colors">infor@rehumile.co.za</a>
+        <a href="mailto:infor@rehumile.co.za" class="text-gray-400 hover:text-secondary transition-colors" data-wc="contact_email" data-wc-href="mailto:{v}">infor@rehumile.co.za</a>
         <span class="hidden md:inline" style="color:#B38F43">•</span>
-        <a href="tel:+27683973484" class="text-gray-400 hover:text-secondary transition-colors">+27 68 397 3484</a>
+        <a href="tel:+27683973484" class="text-gray-400 hover:text-secondary transition-colors" data-wc="contact_phone_intl" data-wc-href-key="contact_phone_link" data-wc-href="tel:{v}">+27 68 397 3484</a>
       </div>
       <div class="text-gray-600">© 2026 Rehumile TMW. All rights reserved. | Jozini, KZN 🇿🇦</div>
     </div>
@@ -863,7 +863,9 @@ document.querySelectorAll('.reveal').forEach(el => revealObserver.observe(el));
 
 // ── Counter animation ──────────────────────────────────────────────
 function animateCounter(el) {
-  const target = parseInt(el.dataset.target);
+  const target = parseFloat(el.dataset.target);
+  if (isNaN(target)) return;
+  const decimals = ((el.dataset.target.split('.')[1]) || '').length;
   const suffix = el.dataset.suffix || '';
   const duration = 1600;
   const start = performance.now();
@@ -871,7 +873,7 @@ function animateCounter(el) {
     const elapsed = now - start;
     const progress = Math.min(elapsed / duration, 1);
     const eased = 1 - Math.pow(1 - progress, 3);
-    el.textContent = Math.round(eased * target) + suffix;
+    el.textContent = (eased * target).toFixed(decimals) + suffix;
     if (progress < 1) requestAnimationFrame(tick);
   }
   requestAnimationFrame(tick);
@@ -1079,27 +1081,79 @@ function resetForm() {
   draw();
 })();
 
-// ── Load dynamic prices from HQ Website Manager ────────────────────
+// ── Load editable content + prices from HQ Website Manager ────────
+// Everything below is optional: the hard-coded text/prices in the page are the
+// fallback, so the site still works if the API is slow or unreachable.
 (async function() {
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  const money = n => 'R' + parseFloat(n).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+  try {
+    const res = await fetch('/portal/api/website/content/');
+    if (res.ok) {
+      const map = {};
+      (await res.json()).forEach(c => { map[c.key] = c.value; });
+      document.querySelectorAll('[data-wc]').forEach(el => {
+        const v = map[el.dataset.wc];
+        if (v === undefined || v === '') return;
+        el.textContent = v;
+        if (el.dataset.wcHref) {
+          const hv = el.dataset.wcHrefKey ? map[el.dataset.wcHrefKey] : v;
+          if (hv) el.setAttribute('href', el.dataset.wcHref.replace('{v}', hv));
+        }
+      });
+      document.querySelectorAll('[data-wc-href-key]:not([data-wc])').forEach(el => {
+        const hv = map[el.dataset.wcHrefKey];
+        if (hv) el.setAttribute('href', el.dataset.wcHref.replace('{v}', hv));
+      });
+      // stat counters: "500+" -> animate 500, suffix "+"; non-numeric text is shown as is
+      document.querySelectorAll('[data-wc-stat]').forEach(el => {
+        const v = map[el.dataset.wcStat];
+        if (v === undefined || v === '') return;
+        const m = String(v).trim().match(/^(\d+(?:\.\d+)?)(.*)$/);
+        if (m) { el.dataset.target = m[1]; el.dataset.suffix = m[2]; if (el.dataset.counted === '1') animateCounter(el); }
+        else { el.dataset.counted = '1'; el.textContent = v; }
+      });
+    }
+  } catch {}
   try {
     const res = await fetch('/portal/api/website/prices/');
     if (!res.ok) return;
-    const prices = await res.json();
-    const active = prices.filter(p => p.is_active);
-    if (!active.length) return;
+    const prices = (await res.json()).filter(p => p.is_active);
+    // 1. pricing cards (grouped prices)
+    ['hardware', 'software', 'pos'].forEach(g => {
+      const items = prices.filter(p => p.group === g);
+      const ul = document.getElementById('price-list-' + g);
+      if (!ul || !items.length) return;
+      ul.innerHTML = items.map((p, i) => `
+        <li class="flex justify-between items-start ${i < items.length - 1 ? 'border-b border-gray-100 pb-3' : ''}">
+          <span class="text-sm text-gray-700">${esc(p.name)}${(p.unit || p.description) ? `<span class="text-xs text-gray-400 block">${esc(p.description || p.unit)}</span>` : ''}</span>
+          <span class="font-semibold text-sm ml-4 shrink-0" style="color:#50181E">${p.price_prefix ? esc(p.price_prefix) + ' ' : ''}${money(p.price)}</span>
+        </li>`).join('');
+    });
+    const combos = prices.filter(p => p.group === 'combo');
+    const cul = document.getElementById('price-list-combo');
+    if (cul && combos.length) {
+      cul.innerHTML = combos.map((p, i) => `
+        <li class="flex justify-between items-start ${i < combos.length - 1 ? 'pb-4' : ''}" ${i < combos.length - 1 ? 'style="border-bottom:1px solid rgba(255,255,255,0.15)"' : ''}>
+          <div><span class="font-semibold block mb-1" style="color:#B38F43">${esc(p.name)}</span><span class="text-sm" style="color:rgba(255,255,255,0.85)">${esc(p.description)}</span></div>
+          <span class="font-bold text-lg ml-4 shrink-0">${money(p.price)}</span>
+        </li>`).join('');
+    }
+    // 2. "Live rates" strip = prices that are not part of a pricing card
+    const loose = prices.filter(p => !p.group);
+    if (!loose.length) return;
     const strip = document.getElementById('dynamic-pricing-strip');
     const wrap = document.getElementById('dynamic-prices-wrap');
     strip.style.display = 'block';
     const CAT = { it_support:'IT Support', networking:'Networking', cctv:'CCTV', software:'Software', hardware:'Hardware', cloud:'Cloud', other:'Other' };
-    wrap.innerHTML = active.map(p => `
+    wrap.innerHTML = loose.map(p => `
       <div class="inline-flex flex-col items-center bg-white border rounded-xl px-5 py-3 shadow-sm hover:shadow-md transition-shadow ${p.is_featured ? 'border-secondary' : 'border-gray-200'}">
         ${p.is_featured ? '<span style="font-size:9px;background:#B38F43;color:white;padding:2px 6px;border-radius:999px;font-weight:700;margin-bottom:4px">POPULAR</span>' : ''}
-        <span style="font-size:11px;color:#B38F43;font-weight:700;text-transform:uppercase;letter-spacing:.5px">${CAT[p.category]||p.category}</span>
-        <span style="font-size:13px;font-weight:600;color:#111;margin:2px 0">${p.name}</span>
+        <span style="font-size:11px;color:#B38F43;font-weight:700;text-transform:uppercase;letter-spacing:.5px">${esc(CAT[p.category] || p.category)}</span>
+        <span style="font-size:13px;font-weight:600;color:#111;margin:2px 0">${esc(p.name)}</span>
         <span style="font-size:18px;font-weight:800;color:#50181E">R ${parseFloat(p.price).toFixed(0)}</span>
-        <span style="font-size:11px;color:#9ca3af">${p.unit}</span>
-      </div>
-    `).join('');
+        <span style="font-size:11px;color:#9ca3af">${esc(p.unit)}</span>
+      </div>`).join('');
   } catch {}
 })();
 

@@ -1,0 +1,20 @@
+{% extends "hr/base_manage.html" %}
+{% block title %}{{ entry.title }}{% endblock %}
+{% block content %}
+<a href="{% url 'hr:manage_crud' key %}" class="small">&larr; {{ entry.title }}</a>
+<h4 class="mb-3">{% if obj %}Edit{% else %}Add{% endif %} - {{ entry.title }}</h4>
+{% if intro %}<div class="alert alert-info" style="max-width:720px">{{ intro }}</div>{% endif %}
+<div class="card" style="max-width:720px"><div class="card-body">
+  <form method="post" enctype="multipart/form-data">{% csrf_token %}<input type="hidden" name="next" value="{{ request.GET.next }}">
+    {{ form.non_field_errors }}
+    {% for f in form %}
+    <div class="mb-3">
+      {% if f.field.widget.input_type == 'checkbox' %}<div class="form-check">{{ f }} <label class="form-check-label" for="{{ f.id_for_label }}">{{ f.label }}</label></div>
+      {% else %}{{ f.label_tag }} {{ f }}{% for n, qa in quick_add.items %}{% if n == f.name %}<a class="small" href="{% url 'hr:manage_crud_new' qa.0 %}?next={{ next|urlencode }}">+ Add {{ qa.1 }}</a>{% endif %}{% endfor %}{% endif %}
+      {% if f.help_text %}<div class="form-text">{{ f.help_text }}</div>{% endif %}{% for err in f.errors %}<div class="text-danger small">{{ err }}</div>{% endfor %}
+    </div>
+    {% endfor %}
+    <button class="btn btn-warning fw-bold">Save</button> <a class="btn btn-link" href="{% url 'hr:manage_crud' key %}">Cancel</a>
+  </form>
+</div></div>
+{% endblock %}

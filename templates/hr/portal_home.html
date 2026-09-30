@@ -1,0 +1,57 @@
+{% extends "hr/base_portal.html" %}
+{% block title %}This is me{% endblock %}
+{% block content %}
+<div class="card mb-3 overflow-hidden">
+  {% if emp.company.banner %}<img src="{{ emp.company.banner.url }}" alt="" style="width:100%;max-height:150px;object-fit:cover">{% else %}<div style="height:70px;background:linear-gradient(120deg,var(--brand),#2c5a8a)"></div>{% endif %}
+  <div class="card-body text-center" style="margin-top:-48px">
+    {% if emp.photo %}<img src="{{ emp.photo.url }}" alt="" class="rounded-circle border border-4 border-white" style="width:96px;height:96px;object-fit:cover">
+    {% else %}<div class="rounded-circle border border-4 border-white bg-secondary text-white d-inline-flex align-items-center justify-content-center" style="width:96px;height:96px;font-size:2rem">{{ emp.known_as|slice:":1" }}{{ emp.surname|slice:":1" }}</div>{% endif %}
+    <h4 class="mt-2 mb-0">{{ emp.display_name }}</h4>
+    <div class="text-muted">{{ emp.job_title|default:"No job title yet" }}{% if emp.department %} &middot; {{ emp.department.name }}{% endif %}</div>
+    <div class="small text-muted">{{ emp.company.name }}</div>
+    <form method="post" action="{% url 'hr:portal_photo' %}" enctype="multipart/form-data" class="mt-2 d-inline-flex gap-2 align-items-center">
+      {% csrf_token %}
+      <input type="file" name="photo" accept="image/*" class="form-control form-control-sm" style="max-width:220px" required>
+      <button class="btn btn-sm btn-outline-primary">Update photo</button>
+    </form>
+  </div>
+</div>
+
+<div class="card mb-3">
+  <div class="card-header bg-white fw-bold">Personal</div>
+  <div class="card-body">
+    <div class="row g-3">
+      <div class="col-6 col-md-4"><div class="k">Known as</div>{{ emp.known_as }}</div>
+      <div class="col-6 col-md-4"><div class="k">Surname</div>{{ emp.surname }}</div>
+      <div class="col-6 col-md-4"><div class="k">Employee number</div>{{ emp.employee_number }}</div>
+      <div class="col-6 col-md-4"><div class="k">Gender</div>{{ emp.get_gender_display|default:"-" }}</div>
+      <div class="col-6 col-md-4"><div class="k">Race</div>{{ emp.get_race_display|default:"-" }}</div>
+      <div class="col-6 col-md-4"><div class="k">Date of birth</div>{{ emp.date_of_birth|date:"j F Y"|default:"-" }}</div>
+      <div class="col-6 col-md-4"><div class="k">Age</div>{{ emp.age|default_if_none:"-" }}</div>
+      <div class="col-6 col-md-4"><div class="k">Retirement age</div>{{ emp.retirement_age }}</div>
+      <div class="col-6 col-md-4"><div class="k">Work email</div>{{ emp.work_email|default:"-" }}</div>
+      <div class="col-6 col-md-4"><div class="k">Phone</div>{{ emp.phone|default:"-" }}</div>
+      <div class="col-6 col-md-4"><div class="k">Start date</div>{{ emp.start_date|date:"j F Y"|default:"-" }}</div>
+      <div class="col-6 col-md-4"><div class="k">Department</div>{{ emp.department.name|default:"-" }}</div>
+      <div class="col-6 col-md-4"><div class="k">Manager</div>{{ emp.manager.display_name|default:"-" }}</div>
+      <div class="col-6 col-md-4"><div class="k">Status</div>{{ emp.get_status_display }}</div>
+      <div class="col-6 col-md-4"><div class="k">Contract</div>{{ emp.get_contract_type_display|default:"-" }}</div>
+    </div>
+    <hr>
+    <div class="k">ID number</div>
+    {% if revealed %}
+      <span class="fw-bold">{{ emp.id_number|default:"-" }}</span> <span class="text-muted small">(shown for 5 minutes)</span>
+    {% else %}
+      <span class="font-monospace">{{ emp.masked_id_number|default:"-" }}</span>
+      {% if emp.id_number %}
+      <form method="post" action="{% url 'hr:portal_reveal' %}" class="d-flex gap-2 mt-2" style="max-width:340px">
+        {% csrf_token %}
+        <input type="password" name="password" class="form-control form-control-sm" placeholder="Enter your password to reveal" required autocomplete="current-password">
+        <button class="btn btn-sm btn-outline-secondary">Reveal</button>
+      </form>
+      {% endif %}
+    {% endif %}
+    <div class="small text-muted mt-2">Legal name, ID number, date of birth, race and gender can only be changed by HR with a supporting document.</div>
+  </div>
+</div>
+{% endblock %}

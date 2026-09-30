@@ -1,20 +1,21 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="utf-8"><meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
   <link rel="shortcut icon" href="/portal/static/img/icons/icon-48x48.png"/>
-  <title>HR &amp; Employee Profiles | Rehumile IMS</title>
+  <title>Payroll &amp; Salaries | Rehumile IMS</title>
   <link href="/portal/static/css/app.css" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
   <style>
-    .emp-card{border-left:4px solid #375a7f;cursor:pointer;transition:box-shadow .2s}.emp-card:hover{box-shadow:0 4px 12px rgba(0,0,0,.12)}
-    .leave-bar-wrap{background:#e9ecef;border-radius:4px;height:8px;width:100%}
-    .leave-bar{height:8px;border-radius:4px;background:#375a7f}
-    .leave-bar.danger{background:#dc3545}
+    .emp-card{border-left:4px solid #50181E;cursor:pointer;transition:box-shadow .2s}.emp-card:hover{box-shadow:0 4px 12px rgba(0,0,0,.12)}
     .popia-banner{background:#fff3cd;border:1px solid #ffc107;border-radius:6px;padding:10px 14px;font-size:.83rem}
     .tab-pane{display:none}.tab-pane.active{display:block}
     .nav-tabs .nav-link{cursor:pointer}
+    .neg{color:#b91c1c}.pos{color:#15803d}
+    table.pay td,table.pay th{white-space:nowrap;font-size:.8125rem}
+    .slip{font-size:.9rem}.slip .row-l{display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #f1f1f1}
+    .slip .row-l.tot{font-weight:700;border-top:2px solid #333;border-bottom:0;margin-top:6px}
   </style>
 </head>
 <body>
@@ -47,60 +48,85 @@
     </nav>
     <main class="content">
       <div class="container-fluid p-0">
-        <div class="d-flex align-items-center justify-content-between mb-2">
-          <h1 class="h3 mb-0"><strong>HR &amp; Payroll</strong></h1>
+        <div class="d-flex flex-wrap align-items-center justify-content-between mb-2 gap-2">
+          <div>
+            <h1 class="h3 mb-0"><strong>Payroll &amp; Salaries</strong></h1>
+            <div class="text-muted small">Salaries, monthly payroll, payslips and leave. Approved payroll flows into the finance dashboard as an expense.</div>
+          </div>
           <div class="d-flex gap-2">
-            <a class="btn btn-outline-secondary" href="/portal/dashboard/settings/#banking-details">
-              <i class="align-middle me-1" data-feather="credit-card"></i> Company Banking Details
-            </a>
-            <button class="btn btn-primary" data-hq-show="#addEmpModal">
-              <i class="align-middle me-1" data-feather="user-plus"></i> Add Employee
-            </button>
+            <a class="btn btn-outline-secondary" href="/portal/hr-access/"><i class="align-middle me-1" data-feather="users"></i> Open HR System</a>
+            <button class="btn btn-primary" id="btnNewEmp"><i class="align-middle me-1" data-feather="user-plus"></i> Add Employee</button>
           </div>
         </div>
         <div class="popia-banner mb-3">
-          <i data-feather="lock" style="width:14px"></i> <strong>POPIA Notice:</strong> This section contains legally protected personal information. Access is restricted to Owner and HR Administrator roles. All changes are audit-logged.
+          <i data-feather="lock" style="width:14px"></i> <strong>POPIA Notice:</strong> This section contains legally protected personal and salary information. Access is restricted to Admin and Finance users.
         </div>
         <div id="pageAlert"></div>
 
-        <!-- Tabs -->
         <ul class="nav nav-tabs mb-3" id="hrTabs">
-          <li class="nav-item"><a class="nav-link active" onclick="switchTab('employees')">Employee Profiles</a></li>
-          <li class="nav-item"><a class="nav-link" onclick="switchTab('leave')">Leave Requests</a></li>
+          <li class="nav-item"><a class="nav-link active" data-tab="employees">Employees &amp; Salaries</a></li>
+          <li class="nav-item"><a class="nav-link" data-tab="payroll">Monthly Payroll</a></li>
+          <li class="nav-item"><a class="nav-link" data-tab="leave">Leave Requests</a></li>
         </ul>
 
-        <!-- Employees Tab -->
+        <!-- Employees -->
         <div id="tab-employees" class="tab-pane active">
           <div class="row g-2 mb-3">
-            <div class="col-md-4">
-              <input type="text" class="form-control form-control-sm" id="fEmpSearch" placeholder="Search by name, employee #, or job title…">
-            </div>
-            <div class="col-md-3">
-              <select class="form-select form-select-sm" id="fEmpActive">
-                <option value="true" selected>Active</option>
-                <option value="false">Inactive</option>
-                <option value="all">All</option>
-              </select>
-            </div>
-            <div class="col-md-2">
-              <button class="btn btn-sm btn-outline-secondary w-100" id="fEmpClear">Clear</button>
+            <div class="col-md-4"><input type="text" class="form-control form-control-sm" id="fEmpSearch" placeholder="Search by name, employee #, or job title…"></div>
+            <div class="col-md-2"><select class="form-select form-select-sm" id="fEmpActive"><option value="true" selected>Active</option><option value="false">Inactive</option><option value="all">All</option></select></div>
+            <div class="col-md-2"><select class="form-select form-select-sm" id="fEmpType"><option value="">Any type</option><option value="full_time">Full-time</option><option value="part_time">Part-time</option><option value="contract">Fixed-term</option><option value="hourly">Hourly / casual</option></select></div>
+            <div class="col-md-2"><button class="btn btn-sm btn-outline-secondary w-100" id="fEmpClear">Clear</button></div>
+          </div>
+          <div class="row g-2 mb-3" id="empTotals"></div>
+          <div id="empCards" class="row g-3"><div class="col-12 text-center text-muted py-4">Loading employees…</div></div>
+        </div>
+
+        <!-- Payroll -->
+        <div id="tab-payroll" class="tab-pane">
+          <div class="card mb-3">
+            <div class="card-body">
+              <div class="d-flex flex-wrap gap-2 align-items-end">
+                <div><label class="form-label small mb-1">Pay month</label><input type="month" class="form-control form-control-sm" id="payMonth"></div>
+                <button class="btn btn-sm btn-outline-secondary" id="btnAdjust">Overtime &amp; adjustments…</button>
+                <button class="btn btn-sm btn-primary" id="btnCalc">Calculate payroll</button>
+                <button class="btn btn-sm btn-success" id="btnApproveAll">Approve all drafts</button>
+                <a class="btn btn-sm btn-outline-primary" id="btnUif" href="#">UIF file (CSV)</a>
+                <span class="text-muted small ms-auto" id="taxYearNote"></span>
+              </div>
+              <div id="adjustPanel" style="display:none" class="mt-3">
+                <div class="small text-muted mb-2">Optional — enter this month's variable pay. Leave blank for none. "Hours worked" only applies to hourly/casual staff (otherwise their scheduled hours are used).</div>
+                <div class="table-responsive"><table class="table table-sm pay"><thead><tr><th>Employee</th><th>Overtime hrs</th><th>Hours worked (hourly)</th><th>Extra allowance R</th><th>Extra deduction R</th></tr></thead><tbody id="adjBody"></tbody></table></div>
+              </div>
             </div>
           </div>
-          <div id="empCards" class="row g-3">
-            <div class="col-12 text-center text-muted py-4">Loading employees…</div>
+          <div id="payWarnings"></div>
+          <div class="row g-2 mb-3" id="payKpis"></div>
+          <div class="card">
+            <div class="card-body p-0">
+              <div class="table-responsive">
+                <table class="table table-hover my-0 pay">
+                  <thead><tr><th>Employee</th><th class="text-end">Basic</th><th class="text-end">Overtime</th><th class="text-end">Allowances</th><th class="text-end">Gross</th>
+                    <th class="text-end">PAYE</th><th class="text-end">UIF</th><th class="text-end">Deductions</th><th class="text-end">Net pay</th><th class="text-end" title="Gross + employer UIF/SDL">Cost to business</th><th>Status</th><th>Actions</th></tr></thead>
+                  <tbody id="payTbody"><tr><td colspan="12" class="text-center text-muted py-4">Choose a month and click "Calculate payroll".</td></tr></tbody>
+                  <tfoot id="payTfoot"></tfoot>
+                </table>
+              </div>
+            </div>
+          </div>
+          <div class="text-muted small mt-2">
+            Draft → <b>Approved</b> (books salaries, PAYE/UIF owed to SARS and net pay in the accounts — the payslip is then locked) → <b>Paid</b>.
+            Only approved payroll counts as a business expense.
+            Rates: PAYE tables, rebates and UIF ceiling are for the <span id="taxYearNote2"></span> tax year. The 1% Skills Development Levy applies only if switched on in <a href="/portal/dashboard/settings/">Company Settings</a>.
           </div>
         </div>
 
-        <!-- Leave Tab -->
+        <!-- Leave -->
         <div id="tab-leave" class="tab-pane">
           <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
               <h6 class="mb-0">Leave Requests</h6>
               <select class="form-select form-select-sm" id="leaveFilter" style="width:auto">
-                <option value="">All Statuses</option>
-                <option value="pending">Pending</option>
-                <option value="approved">Approved</option>
-                <option value="rejected">Rejected</option>
+                <option value="">All Statuses</option><option value="pending">Pending</option><option value="approved">Approved</option><option value="rejected">Rejected</option>
               </select>
             </div>
             <div class="card-body p-0">
@@ -113,236 +139,349 @@
         </div>
       </div>
     </main>
-    <footer class="footer">
-      <div class="container-fluid">
-        <p class="mb-0 text-muted">Rehumile TMW IMS &copy; 2025</p>
-      </div>
-    </footer>
+    <footer class="footer"><div class="container-fluid"><p class="mb-0 text-muted">Rehumile TMW IMS &copy; 2026</p></div></footer>
   </div>
 </div>
 
-<!-- Add Employee Drawer -->
-<div class="hq-drawer hq-wide" id="addEmpModal">
-  <div class="hq-drawer-header"><h5 class="hq-drawer-title">New Employee Profile</h5><button type="button" class="btn-close btn-close-white" onclick="HQ.hideDrawer('addEmpModal')"></button></div>
+<!-- Employee drawer (add / edit) -->
+<div class="hq-drawer hq-wide" id="empModal">
+  <div class="hq-drawer-header"><h5 class="hq-drawer-title" id="empModalTitle">New Employee Profile</h5><button type="button" class="btn-close btn-close-white" onclick="HQ.hideDrawer('empModal')"></button></div>
   <div class="hq-drawer-body">
-    <div class="row g-2">
-      <div class="col-md-6"><label class="form-label">First Name</label><input class="form-control" id="empFirst"></div>
-      <div class="col-md-6"><label class="form-label">Last Name</label><input class="form-control" id="empLast"></div>
-      <div class="col-md-6"><label class="form-label">SA ID Number</label><input class="form-control" id="empId" maxlength="13"></div>
+    <div id="modalAlert"></div>
+    <input type="hidden" id="empEditId">
+    <h6 class="text-muted">Personal</h6>
+    <div class="row g-2 mb-3">
+      <div class="col-md-6"><label class="form-label">First Name *</label><input class="form-control" id="empFirst"></div>
+      <div class="col-md-6"><label class="form-label">Last Name *</label><input class="form-control" id="empLast"></div>
+      <div class="col-md-6"><label class="form-label">SA ID Number <span class="text-muted small">(13 digits — sets the age rebate)</span></label><input class="form-control" id="empId" maxlength="13" inputmode="numeric"></div>
       <div class="col-md-6"><label class="form-label">Tax Reference Number</label><input class="form-control" id="empTax"></div>
+      <div class="col-md-6"><label class="form-label">Contact Number</label><input class="form-control" id="empContact"></div>
+      <div class="col-md-6"><label class="form-label">Next of Kin</label><input class="form-control" id="empKinName"></div>
+    </div>
+    <h6 class="text-muted">Job &amp; pay</h6>
+    <div class="row g-2 mb-3">
       <div class="col-md-6"><label class="form-label">Job Title</label><input class="form-control" id="empTitle"></div>
       <div class="col-md-6"><label class="form-label">Employment Type</label>
-        <select class="form-select" id="empType">
-          <option value="full_time">Full-Time Permanent</option>
-          <option value="part_time">Part-Time</option>
-          <option value="contract">Fixed-Term Contract</option>
-          <option value="hourly">Hourly / Casual</option>
-        </select>
-      </div>
-      <div class="col-md-6"><label class="form-label">Gross Monthly Salary (R)</label><input class="form-control" type="number" id="empSalary" step="0.01"></div>
+        <select class="form-select" id="empType" onchange="onTypeChange()">
+          <option value="full_time">Full-Time Permanent</option><option value="part_time">Part-Time</option>
+          <option value="contract">Fixed-Term Contract</option><option value="hourly">Hourly / Casual</option>
+        </select></div>
+      <div class="col-md-6" id="rowSalary"><label class="form-label">Gross Monthly Salary (R) *</label><input class="form-control" type="number" id="empSalary" step="0.01" min="0" oninput="preview()"></div>
+      <div class="col-md-6" id="rowHourly" style="display:none"><label class="form-label">Hourly Rate (R) *</label><input class="form-control" type="number" id="empHourly" step="0.01" min="0" oninput="preview()"></div>
+      <div class="col-md-6"><label class="form-label">Scheduled hours / week</label><input class="form-control" type="number" id="empHours" step="0.5" min="0" value="40" oninput="preview()"></div>
+      <div class="col-md-6"><label class="form-label">Monthly allowance (R) <span class="text-muted small">taxable, e.g. transport</span></label><input class="form-control" type="number" id="empAllowance" step="0.01" min="0" value="0" oninput="preview()"></div>
+      <div class="col-md-6"><label class="form-label">Monthly deduction (R) <span class="text-muted small">e.g. staff loan</span></label><input class="form-control" type="number" id="empDeduction" step="0.01" min="0" value="0" oninput="preview()"></div>
       <div class="col-md-6"><label class="form-label">Start Date</label><input class="form-control" type="date" id="empStart"></div>
+      <div class="col-md-6"><label class="form-label">End Date <span class="text-muted small">(leavers)</span></label><input class="form-control" type="date" id="empEnd"></div>
+      <div class="col-12" id="rowActive" style="display:none"><div class="form-check"><input class="form-check-input" type="checkbox" id="empActive" checked><label class="form-check-label" for="empActive">Active — included in payroll</label></div></div>
+    </div>
+    <h6 class="text-muted">Banking</h6>
+    <div class="row g-2 mb-3">
       <div class="col-md-6"><label class="form-label">Bank Name</label><input class="form-control" id="empBank"></div>
       <div class="col-md-3"><label class="form-label">Account Number</label><input class="form-control" id="empAccNum"></div>
       <div class="col-md-3"><label class="form-label">Branch Code</label><input class="form-control" id="empBranch"></div>
-      <div class="col-md-6"><label class="form-label">Contact Number</label><input class="form-control" id="empContact"></div>
-      <div class="col-md-6"><label class="form-label">Next of Kin Name</label><input class="form-control" id="empKinName"></div>
     </div>
+    <div class="card bg-light"><div class="card-body py-2 small" id="empPreview">Enter a salary to see the estimated payslip.</div></div>
   </div>
   <div class="hq-drawer-footer">
-    <button class="btn btn-secondary" onclick="HQ.hideDrawer('addEmpModal')">Cancel</button>
+    <button class="btn btn-secondary" onclick="HQ.hideDrawer('empModal')">Cancel</button>
     <button class="btn btn-primary" id="btnSaveEmp">Save Profile</button>
   </div>
 </div>
-<div class="hq-backdrop" id="addEmpModal-bd" onclick="HQ.hideDrawer('addEmpModal')"></div>
+<div class="hq-backdrop" id="empModal-bd" onclick="HQ.hideDrawer('empModal')"></div>
+
+<!-- Employee detail / payslip drawer -->
+<div class="hq-drawer" id="viewModal">
+  <div class="hq-drawer-header"><h5 class="hq-drawer-title" id="viewTitle">Details</h5><button type="button" class="btn-close btn-close-white" onclick="HQ.hideDrawer('viewModal')"></button></div>
+  <div class="hq-drawer-body" id="viewBody"></div>
+  <div class="hq-drawer-footer" id="viewFooter"></div>
+</div>
+<div class="hq-backdrop" id="viewModal-bd" onclick="HQ.hideDrawer('viewModal')"></div>
 
 <script src="/portal/static/js/app.js"></script>
 <script src="/portal/static/js/hq-sidebar-menu.js"></script>
 <script src="/portal/static/js/hq-filters.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
 <script>
+(function(){
 const API = '/portal/api';
 const tok = () => localStorage.getItem('ims_access');
-const fmt = n => 'R ' + parseFloat(n||0).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,',');
-
+const user = JSON.parse(localStorage.getItem('ims_user')||'{}');
+if(!tok()){ location.href='/portal/login/'; return; }
+if(!['admin','finance'].includes(user.role)){ location.href='/portal/dashboard/'; return; }
+const esc = s => String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const fmt = n => 'R ' + (parseFloat(n)||0).toLocaleString('en-ZA',{minimumFractionDigits:2,maximumFractionDigits:2});
 async function apiFetch(url, opts={}) {
   opts.headers = {...(opts.headers||{}), 'Authorization':'Bearer '+tok(), 'Content-Type':'application/json'};
   const r = await fetch(url, opts);
-  if (r.status === 401) { location.href='/portal/login/'; return null; }
+  if (r.status === 401) { localStorage.clear(); location.href='/portal/login/'; return null; }
   return r;
 }
-
-async function loadUser() {
-  const r = await apiFetch(API+'/auth/me/');
-  if (!r) return;
-  const d = await r.json();
-  document.getElementById('navUserName').textContent = d.full_name||d.username||'User';
-  document.getElementById('navUserRole').textContent = d.role||'';
+function showAlert(id, message, type='danger') {
+  const el = document.getElementById(id); if (!el) return;
+  el.innerHTML = `<div class="alert alert-${type} alert-dismissible fade show" role="alert">${esc(message)}<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>`;
 }
+document.getElementById('navUserName').textContent=((user.first_name||'')+' '+(user.last_name||'')).trim()||user.email||'User';
+document.getElementById('navUserRole').textContent=(user.role||'').toUpperCase();
+document.getElementById('logoutBtn').addEventListener('click', e => { e.preventDefault(); localStorage.clear(); location.href='/portal/login/'; });
 
-function switchTab(name) {
+// ── tabs ──
+function switchTab(name){
   document.querySelectorAll('.tab-pane').forEach(t=>t.classList.remove('active'));
-  document.querySelectorAll('#hrTabs .nav-link').forEach(a=>a.classList.remove('active'));
+  document.querySelectorAll('#hrTabs .nav-link').forEach(a=>a.classList.toggle('active',a.dataset.tab===name));
   document.getElementById('tab-'+name).classList.add('active');
-  document.querySelector(`[onclick="switchTab('${name}')"]`).classList.add('active');
-  if (name==='leave') loadLeave();
+  if(name==='leave') loadLeave();
+  if(name==='payroll') loadPayroll();
+  history.replaceState(null,'','#'+name);
 }
+document.getElementById('hrTabs').addEventListener('click',e=>{ const a=e.target.closest('.nav-link'); if(a) switchTab(a.dataset.tab); });
 
-function currentEmployeeFilters() {
-  return {
-    search: document.getElementById('fEmpSearch').value.trim(),
-    is_active: document.getElementById('fEmpActive').value,
-  };
-}
-
+// ── employees ──
+let employees=[];
+const TYPE={full_time:'Full-time',part_time:'Part-time',contract:'Fixed-term',hourly:'Hourly / casual'};
 async function loadEmployees() {
-  const params = HQFilters.qs(currentEmployeeFilters());
-  const r = await apiFetch(API+'/employees/'+(params?'?'+params:''));
-  if (!r) return;
-  const list = await r.json();
+  const params = HQFilters.qs({search:fEmpSearch.value.trim(), is_active:fEmpActive.value, employment_type:fEmpType.value});
+  const r = await apiFetch(API+'/employees/'+(params?'?'+params:'')); if (!r) return;
+  if(!r.ok){ document.getElementById('empCards').innerHTML='<div class="col-12 text-center text-danger py-4">You do not have access to employee data.</div>'; return; }
+  employees = await r.json();
   const cont = document.getElementById('empCards');
-  if (!list.length) { cont.innerHTML='<div class="col-12 text-center text-muted py-4">No employees yet. Add the first profile.</div>'; return; }
-  cont.innerHTML = list.map(e => {
-    const paye = calcPAYE(parseFloat(e.gross_monthly_salary||0));
-    const uif = Math.min(parseFloat(e.gross_monthly_salary||0)*0.01, 1476).toFixed(2);
-    const net = (parseFloat(e.gross_monthly_salary||0)-paye-parseFloat(uif)).toFixed(2);
-    return `<div class="col-md-6 col-xl-4">
+  const act = employees.filter(e=>e.is_active);
+  document.getElementById('empTotals').innerHTML = [
+    ['Active employees', act.length, ''],
+    ['Monthly gross (estimate)', fmt(act.reduce((s,e)=>s+e.est_gross,0)), 'salaries + allowances'],
+    ['Monthly net pay (estimate)', fmt(act.reduce((s,e)=>s+e.est_net,0)), 'what staff take home'],
+    ['Monthly cost to business', fmt(act.reduce((s,e)=>s+e.employer_cost,0)), 'gross + employer UIF/SDL'],
+  ].map(t=>`<div class="col-md-3"><div class="card mb-0"><div class="card-body py-2"><div class="text-muted small">${t[0]}</div><div class="h5 mb-0">${t[1]}</div><div class="text-muted small">${t[2]}</div></div></div></div>`).join('');
+  if (!employees.length) { cont.innerHTML='<div class="col-12 text-center text-muted py-4">No employees found.</div>'; return; }
+  cont.innerHTML = employees.map(e => `<div class="col-md-6 col-xl-4">
       <div class="card emp-card h-100 p-3" onclick="viewEmployee('${e.id}')">
         <div class="d-flex justify-content-between align-items-start mb-2">
-          <div>
-            <strong>${e.first_name} ${e.last_name}</strong><br>
-            <small class="text-muted">${e.job_title||'—'} &bull; ${e.employee_number}</small>
-          </div>
+          <div><strong>${esc(e.first_name)} ${esc(e.last_name)}</strong><br><small class="text-muted">${esc(e.job_title)||'—'} &bull; ${esc(e.employee_number)} &bull; ${TYPE[e.employment_type]||''}</small></div>
           <span class="badge ${e.is_active?'bg-success':'bg-secondary'}">${e.is_active?'Active':'Inactive'}</span>
         </div>
         <div class="small">
-          <div class="d-flex justify-content-between"><span>Gross:</span><strong>${fmt(e.gross_monthly_salary)}</strong></div>
-          <div class="d-flex justify-content-between text-danger"><span>PAYE:</span><strong>-${fmt(paye)}</strong></div>
-          <div class="d-flex justify-content-between"><span>UIF (emp):</span><strong>-${fmt(uif)}</strong></div>
-          <div class="d-flex justify-content-between border-top pt-1 mt-1"><span><strong>Net Pay:</strong></span><strong class="text-success">${fmt(net)}</strong></div>
+          <div class="d-flex justify-content-between"><span>Gross${e.employment_type==='hourly'?' (estimate)':''}:</span><strong>${fmt(e.est_gross)}</strong></div>
+          <div class="d-flex justify-content-between text-danger"><span>PAYE:</span><strong>-${fmt(e.est_paye)}</strong></div>
+          <div class="d-flex justify-content-between"><span>UIF (employee):</span><strong>-${fmt(e.est_uif)}</strong></div>
+          ${e.monthly_other_deduction>0?`<div class="d-flex justify-content-between"><span>Deduction:</span><strong>-${fmt(e.monthly_other_deduction)}</strong></div>`:''}
+          <div class="d-flex justify-content-between border-top pt-1 mt-1"><span><strong>Net pay:</strong></span><strong class="text-success">${fmt(e.est_net)}</strong></div>
         </div>
-      </div>
-    </div>`;
-  }).join('');
-  feather.replace();
+      </div></div>`).join('');
 }
+window.viewEmployee = async function(id){
+  const r = await apiFetch(API+'/employees/'+id+'/'); if(!r) return;
+  const e = await r.json(); const c = e.estimate||{};
+  document.getElementById('viewTitle').textContent = e.first_name+' '+e.last_name;
+  document.getElementById('viewBody').innerHTML = `
+    <div class="mb-3 small text-muted">${esc(e.employee_number)} · ${esc(e.job_title)||'—'} · ${TYPE[e.employment_type]||''} · started ${esc(e.start_date)||'—'}${e.end_date?' · ends '+esc(e.end_date):''}</div>
+    ${(e.warnings||[]).map(w=>`<div class="alert alert-warning py-1 small">${esc(w)}</div>`).join('')}
+    <h6>Estimated monthly payslip ${c.age!=null?`<span class="text-muted small">(age ${c.age})</span>`:''}</h6>
+    <div class="slip">
+      <div class="row-l"><span>Basic ${e.employment_type==='hourly'?'(scheduled hours × rate)':'salary'}</span><span>${fmt(c.basic)}</span></div>
+      ${c.allowances>0?`<div class="row-l"><span>Allowance</span><span>${fmt(c.allowances)}</span></div>`:''}
+      <div class="row-l"><b>Gross</b><b>${fmt(c.gross)}</b></div>
+      <div class="row-l"><span>PAYE</span><span>-${fmt(c.paye)}</span></div>
+      <div class="row-l"><span>UIF (1%, capped)</span><span>-${fmt(c.uif_employee)}</span></div>
+      ${c.other_deductions>0?`<div class="row-l"><span>Deduction</span><span>-${fmt(c.other_deductions)}</span></div>`:''}
+      <div class="row-l tot"><span>Net pay</span><span>${fmt(c.net)}</span></div>
+      <div class="row-l text-muted"><span>Employer UIF${c.sdl>0?' + SDL':''}</span><span>${fmt((c.uif_employer||0)+(c.sdl||0))}</span></div>
+      <div class="row-l text-muted"><span>Cost to business</span><span>${fmt(c.employer_cost)}</span></div>
+    </div>
+    <h6 class="mt-4">Banking</h6><div class="small">${esc(e.bank_name)||'—'} · ${esc(e.bank_account_number)||'—'} · branch ${esc(e.bank_branch_code)||'—'}</div>
+    <h6 class="mt-3">Contact</h6><div class="small">${esc(e.contact_number)||'—'} · Next of kin: ${esc(e.next_of_kin_name)||'—'}</div>
+    <h6 class="mt-3">Leave balances</h6>
+    ${(e.leave_balances||[]).map(b=>`<div class="d-flex justify-content-between small"><span class="text-capitalize">${esc(b.leave_type)}</span><span>${(+b.available_days).toFixed(1)} of ${(+b.total_days).toFixed(1)} days left</span></div>`).join('')||'<div class="text-muted small">None</div>'}`;
+  document.getElementById('viewFooter').innerHTML = `<button class="btn btn-primary" onclick="HQ.hideDrawer('viewModal');editEmployee('${e.id}')">Edit</button>`;
+  HQ.showDrawer('viewModal');
+};
 
-function calcPAYE(monthly) {
-  const annual = monthly * 12;
-  if (annual <= 95750) return 0;
-  const brackets = [[237100,0,0.18],[370500,237100,0.26],[512800,370500,0.31],[673000,512800,0.36],[857900,673000,0.39],[1817000,857900,0.41],[Infinity,1817000,0.45]];
-  const bases = [0,42678,77362,121475,179147,251258,644489];
-  let tax = 0;
-  for (let i=0;i<brackets.length;i++) {
-    if (annual<=brackets[i][0]) { tax=bases[i]+(annual-brackets[i][1])*brackets[i][2]; break; }
+// ── employee form ──
+window.onTypeChange = function(){
+  const h = empType.value==='hourly';
+  rowHourly.style.display = h?'':'none'; rowSalary.style.display = h?'none':''; preview();
+};
+function clearEmpForm(){
+  ['empFirst','empLast','empId','empTax','empContact','empKinName','empTitle','empSalary','empHourly','empStart','empEnd','empBank','empAccNum','empBranch'].forEach(i=>document.getElementById(i).value='');
+  empHours.value=40; empAllowance.value=0; empDeduction.value=0; empType.value='full_time'; empActive.checked=true;
+  document.getElementById('modalAlert').innerHTML=''; empEditId.value=''; rowActive.style.display='none'; onTypeChange();
+}
+document.getElementById('btnNewEmp').onclick=()=>{ clearEmpForm(); empModalTitle.textContent='New Employee Profile'; HQ.showDrawer('empModal'); };
+window.editEmployee = async function(id){
+  const r = await apiFetch(API+'/employees/'+id+'/'); if(!r) return; const e = await r.json();
+  clearEmpForm(); empModalTitle.textContent='Edit '+e.first_name+' '+e.last_name; empEditId.value=id; rowActive.style.display='';
+  const set=(i,v)=>document.getElementById(i).value=v==null?'':v;
+  set('empFirst',e.first_name);set('empLast',e.last_name);set('empId',e.id_number);set('empTax',e.tax_reference_number);set('empContact',e.contact_number);set('empKinName',e.next_of_kin_name);
+  set('empTitle',e.job_title);set('empType',e.employment_type);set('empSalary',e.gross_monthly_salary);set('empHourly',e.hourly_rate);set('empHours',e.scheduled_hours_per_week);
+  set('empAllowance',e.monthly_allowance);set('empDeduction',e.monthly_other_deduction);set('empStart',e.start_date);set('empEnd',e.end_date);
+  set('empBank',e.bank_name);set('empAccNum',e.bank_account_number);set('empBranch',e.bank_branch_code); empActive.checked=e.is_active;
+  onTypeChange(); HQ.showDrawer('empModal');
+};
+let previewTimer;
+window.preview = function(){
+  clearTimeout(previewTimer);
+  previewTimer=setTimeout(()=>{
+    const hourly = empType.value==='hourly';
+    const base = parseFloat(hourly?empHourly.value:empSalary.value)||0;
+    if(!base){ empPreview.textContent='Enter a '+(hourly?'rate':'salary')+' to see the estimated payslip.'; return; }
+    const hrs=(parseFloat(empHours.value)||0)*52/12;
+    const gross=(hourly?base*hrs:base)+(parseFloat(empAllowance.value)||0);
+    // Indicative only: the exact figures (age rebate etc.) are calculated on the server when payroll runs.
+    empPreview.innerHTML = 'Gross about <b>'+fmt(gross)+'</b> a month. The exact PAYE, UIF and net pay are calculated when you save and again when payroll runs.';
+  },150);
+};
+document.getElementById('btnSaveEmp').addEventListener('click', async () => {
+  const btn = document.getElementById('btnSaveEmp'); const orig = btn.innerHTML;
+  const id = empEditId.value;
+  const body = {
+    first_name: empFirst.value.trim(), last_name: empLast.value.trim(), id_number: empId.value.trim(), tax_reference_number: empTax.value.trim(),
+    job_title: empTitle.value.trim(), employment_type: empType.value,
+    gross_monthly_salary: empType.value==='hourly' ? 0 : (empSalary.value||0), hourly_rate: empHourly.value||0,
+    scheduled_hours_per_week: empHours.value||40, monthly_allowance: empAllowance.value||0, monthly_other_deduction: empDeduction.value||0,
+    start_date: empStart.value||null, bank_name: empBank.value.trim(), bank_account_number: empAccNum.value.trim(), bank_branch_code: empBranch.value.trim(),
+    contact_number: empContact.value.trim(), next_of_kin_name: empKinName.value.trim(),
+  };
+  if(id){ body.end_date = empEnd.value||null; body.is_active = empActive.checked; }
+  if(!body.first_name||!body.last_name){ showAlert('modalAlert','First and last name are required.'); return; }
+  btn.disabled = true; btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Saving…';
+  try {
+    const r = await apiFetch(API+'/employees/'+(id?id+'/':''), {method:id?'PATCH':'POST', body:JSON.stringify(body)});
+    if (r) {
+      const d = await r.json();
+      if (r.ok) { HQ.hideDrawer('empModal'); showAlert('pageAlert', id?'Employee updated.':'Employee profile saved.', 'success'); loadEmployees(); }
+      else showAlert('modalAlert', d.detail || d.error || JSON.stringify(d));
+    }
+  } catch(e) { showAlert('modalAlert', 'Failed to save employee profile.'); }
+  btn.disabled = false; btn.innerHTML = orig;
+});
+const fEmpSearch=document.getElementById('fEmpSearch'),fEmpActive=document.getElementById('fEmpActive'),fEmpType=document.getElementById('fEmpType');
+fEmpSearch.addEventListener('input', HQFilters.debounce(loadEmployees, 350));
+[fEmpActive,fEmpType].forEach(e=>e.addEventListener('change', loadEmployees));
+document.getElementById('fEmpClear').addEventListener('click', () => { fEmpSearch.value=''; fEmpActive.value='true'; fEmpType.value=''; loadEmployees(); });
+
+// ── payroll ──
+const payMonth=document.getElementById('payMonth');
+payMonth.value = new Date().toISOString().slice(0,7);
+let currentPeriodId=null;
+const STAT={draft:'<span class="badge bg-secondary">Draft</span>',approved:'<span class="badge bg-info">Approved</span>',paid:'<span class="badge bg-success">Paid</span>'};
+async function loadPayroll(){
+  const r = await apiFetch(API+'/payroll/?month='+payMonth.value); if(!r) return;
+  if(!r.ok){ showAlert('pageAlert','Could not load payroll.'); return; }
+  const d = await r.json();
+  currentPeriodId = d.period && d.period.id;
+  document.getElementById('taxYearNote').textContent = 'Tax tables: '+d.tax_year;
+  document.getElementById('taxYearNote2').textContent = d.tax_year;
+  const uif = document.getElementById('btnUif');
+  uif.style.display = currentPeriodId ? '' : 'none';
+  const t=d.totals, c=d.counts;
+  document.getElementById('payKpis').innerHTML = [
+    ['Gross pay',fmt(t.gross),c.draft+' draft · '+c.approved+' approved · '+c.paid+' paid'],
+    ['Net pay to staff',fmt(t.net_pay),'after PAYE, UIF & deductions'],
+    ['Owed to SARS (EMP201)',fmt(t.paye+t.uif_employee+t.uif_employer+t.sdl),'PAYE '+fmt(t.paye)+' · UIF '+fmt(t.uif_employee+t.uif_employer)+(t.sdl?' · SDL '+fmt(t.sdl):'')],
+    ['Cost to business',fmt(t.employer_cost),'gross + employer UIF/SDL'],
+  ].map(x=>`<div class="col-md-3"><div class="card mb-0"><div class="card-body py-2"><div class="text-muted small">${x[0]}</div><div class="h5 mb-0">${x[1]}</div><div class="text-muted small">${x[2]}</div></div></div></div>`).join('');
+  const tb=document.getElementById('payTbody');
+  if(!d.rows.length){ tb.innerHTML='<tr><td colspan="12" class="text-center text-muted py-4">No payroll for this month yet. Click "Calculate payroll".</td></tr>'; document.getElementById('payTfoot').innerHTML=''; return; }
+  tb.innerHTML = d.rows.map(e=>`<tr>
+    <td><strong>${esc(e.name)}</strong><div class="text-muted" style="font-size:.7rem">${esc(e.employee_number)}</div></td>
+    <td class="text-end">${fmt(e.basic)}</td><td class="text-end">${e.overtime_amount?fmt(e.overtime_amount):'—'}</td><td class="text-end">${e.allowances?fmt(e.allowances):'—'}</td>
+    <td class="text-end"><b>${fmt(e.gross)}</b></td><td class="text-end neg">${fmt(e.paye)}</td><td class="text-end">${fmt(e.uif_employee)}</td><td class="text-end">${e.other_deductions?fmt(e.other_deductions):'—'}</td>
+    <td class="text-end pos"><b>${fmt(e.net_pay)}</b></td><td class="text-end">${fmt(e.employer_cost)}</td><td>${STAT[e.status]}${e.paid_on?`<div class="text-muted" style="font-size:.7rem">${esc(e.paid_on)}</div>`:''}</td>
+    <td>${e.status==='draft'?`<button class="btn btn-sm btn-outline-success me-1" onclick="payAction('${e.id}','approve')">Approve</button>`:''}${e.status==='approved'?`<button class="btn btn-sm btn-outline-primary me-1" onclick="payAction('${e.id}','paid')">Mark paid</button>`:''}<button class="btn btn-sm btn-outline-secondary" onclick="payslip('${e.id}')">Payslip</button></td></tr>`).join('');
+  document.getElementById('payTfoot').innerHTML=`<tr class="table-light fw-bold"><td>Total</td><td colspan="3"></td><td class="text-end">${fmt(t.gross)}</td><td class="text-end">${fmt(t.paye)}</td><td class="text-end">${fmt(t.uif_employee)}</td><td class="text-end">${fmt(t.other_deductions)}</td><td class="text-end">${fmt(t.net_pay)}</td><td class="text-end">${fmt(t.employer_cost)}</td><td colspan="2"></td></tr>`;
+}
+payMonth.addEventListener('change', loadPayroll);
+document.getElementById('btnAdjust').onclick = async () => {
+  const p=document.getElementById('adjustPanel');
+  if(p.style.display==='none'){
+    if(!employees.length) await loadEmployees();
+    document.getElementById('adjBody').innerHTML = employees.filter(e=>e.is_active).map(e=>`<tr data-id="${e.id}"><td>${esc(e.first_name)} ${esc(e.last_name)}</td>
+      <td><input type="number" class="form-control form-control-sm a-ot" min="0" step="0.5" style="width:90px"></td>
+      <td><input type="number" class="form-control form-control-sm a-hrs" min="0" step="0.5" style="width:110px" ${e.employment_type==='hourly'?'':'disabled'}></td>
+      <td><input type="number" class="form-control form-control-sm a-al" min="0" step="0.01" style="width:110px"></td>
+      <td><input type="number" class="form-control form-control-sm a-de" min="0" step="0.01" style="width:110px"></td></tr>`).join('');
   }
-  return Math.max(tax-17235,0)/12;
-}
+  p.style.display = p.style.display==='none' ? '' : 'none';
+};
+document.getElementById('btnCalc').onclick = async () => {
+  if(!payMonth.value){ alert('Choose a pay month.'); return; }
+  const adjustments={};
+  document.querySelectorAll('#adjBody tr').forEach(tr=>{
+    const a={overtime_hours:tr.querySelector('.a-ot').value,hours_worked:tr.querySelector('.a-hrs').value,allowance:tr.querySelector('.a-al').value,deduction:tr.querySelector('.a-de').value};
+    if(a.overtime_hours||a.hours_worked||a.allowance||a.deduction) adjustments[tr.dataset.id]=a;
+  });
+  const r = await apiFetch(API+'/payroll/', {method:'POST', body:JSON.stringify({month:payMonth.value, adjustments})}); if(!r) return;
+  const d = await r.json();
+  if(!r.ok){ showAlert('pageAlert', d.detail||d.error||'Calculation failed.'); return; }
+  showAlert('pageAlert', `Payroll calculated for ${d.calculated} employee(s)${d.skipped_approved?` — ${d.skipped_approved} already approved payslip(s) were left untouched`:''}.`, 'success');
+  document.getElementById('payWarnings').innerHTML = (d.warnings||[]).map(w=>`<div class="alert alert-warning py-1 small mb-1">${esc(w)}</div>`).join('');
+  loadPayroll();
+};
+document.getElementById('btnApproveAll').onclick = async () => {
+  if(!confirm('Approve every draft payslip for '+payMonth.value+'? This books the salaries in the accounts and locks the payslips.')) return;
+  const r = await apiFetch(API+'/payroll/', {method:'POST', body:JSON.stringify({month:payMonth.value, action:'approve_all'})}); if(!r) return;
+  const d = await r.json();
+  if(r.ok){ showAlert('pageAlert', d.approved+' payslip(s) approved.', 'success'); loadPayroll(); } else showAlert('pageAlert', d.detail||d.error||'Failed.');
+};
+window.payAction = async function(id, action){
+  const body={action}; if(action==='paid'){ const d=prompt('Date paid (YYYY-MM-DD):', new Date().toISOString().slice(0,10)); if(d===null) return; body.paid_on=d; }
+  const r = await apiFetch(API+'/payroll/'+id+'/', {method:'PATCH', body:JSON.stringify(body)}); if(!r) return;
+  const d = await r.json();
+  if(r.ok) loadPayroll(); else showAlert('pageAlert', d.detail||d.error||'Failed.');
+};
+window.payslip = async function(id){
+  const r = await apiFetch(API+'/payroll/'+id+'/'); if(!r) return; const s = await r.json();
+  const html = `<div class="slip" id="slipPrint">
+    <div class="d-flex justify-content-between"><div><b>${esc(s.company.name)}</b><div class="small text-muted">${esc(s.company.address||'')}</div></div><div class="text-end"><b>PAYSLIP</b><div class="small">${esc(s.period)}</div></div></div><hr>
+    <div class="small mb-2"><b>${esc(s.name)}</b> · ${esc(s.employee_number)} · ${esc(s.job_title||'')}<br>Tax ref: ${esc(s.employee.tax_reference_number||'—')} · Bank: ${esc(s.employee.bank_name||'—')} ${esc(s.employee.bank_account_number||'')}</div>
+    <div class="row-l"><span>Basic</span><span>${fmt(s.basic)}</span></div>
+    ${s.overtime_amount?`<div class="row-l"><span>Overtime (${s.overtime_hours} hrs @1.5)</span><span>${fmt(s.overtime_amount)}</span></div>`:''}
+    ${s.allowances?`<div class="row-l"><span>Allowances</span><span>${fmt(s.allowances)}</span></div>`:''}
+    <div class="row-l"><b>Gross pay</b><b>${fmt(s.gross)}</b></div>
+    <div class="row-l"><span>PAYE</span><span>-${fmt(s.paye)}</span></div>
+    <div class="row-l"><span>UIF</span><span>-${fmt(s.uif_employee)}</span></div>
+    ${s.other_deductions?`<div class="row-l"><span>Other deductions</span><span>-${fmt(s.other_deductions)}</span></div>`:''}
+    <div class="row-l tot"><span>NET PAY</span><span>${fmt(s.net_pay)}</span></div>
+    <div class="small text-muted mt-2">Employer contributions: UIF ${fmt(s.uif_employer)}${s.sdl?' · SDL '+fmt(s.sdl):''}</div>
+    <div class="small mt-1">${s.status==='draft'?'<b class="neg">DRAFT — not yet approved</b>':(s.status==='paid'?'Paid on '+esc(s.paid_on):'Approved')}</div></div>`;
+  document.getElementById('viewTitle').textContent = 'Payslip — '+s.name;
+  document.getElementById('viewBody').innerHTML = html;
+  document.getElementById('viewFooter').innerHTML = '<button class="btn btn-primary" id="btnPrintSlip">Print</button>';
+  document.getElementById('btnPrintSlip').onclick = () => { const w=window.open('','_blank'); w.document.write('<html><head><title>Payslip</title><style>body{font-family:Arial,sans-serif;max-width:520px;margin:30px auto}.row-l{display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #eee}.tot{font-weight:bold;border-top:2px solid #333}.small{font-size:12px;color:#555}</style></head><body>'+document.getElementById('slipPrint').outerHTML+'</body></html>'); w.document.close(); w.print(); };
+  HQ.showDrawer('viewModal');
+};
+document.getElementById('btnUif').onclick = async (e) => {
+  e.preventDefault(); if(!currentPeriodId){ alert('Calculate payroll for the month first.'); return; }
+  const r = await fetch(API+'/compliance/'+currentPeriodId+'/emp201/csv/', {headers:{'Authorization':'Bearer '+tok()}});
+  if(!r.ok){ showAlert('pageAlert','Could not download the UIF file.'); return; }
+  const a=document.createElement('a'); a.href=URL.createObjectURL(await r.blob()); a.download='UIF_'+payMonth.value+'.csv'; a.click();
+};
 
-async function viewEmployee(id) {
-  const r = await apiFetch(API+'/employees/'+id+'/');
-  if (!r) return;
-  const e = await r.json();
-  alert(`${e.first_name} ${e.last_name}\nID: ${e.id_number}\nTax No: ${e.tax_reference_number}\nBank: ${e.bank_name} — ${e.bank_account_number}\nContact: ${e.contact_number}\n\nLeave Balances:\n${e.leave_balances.map(b=>`${b.leave_type}: ${parseFloat(b.available_days||b.total_days-b.used_days).toFixed(1)} days available`).join('\n')}`);
-}
-
+// ── leave ──
 async function loadLeave() {
   const status = document.getElementById('leaveFilter').value;
-  const r = await apiFetch(API+'/leave-requests/'+(status?'?status='+encodeURIComponent(status):''));
-  if (!r) return;
-  const list = await r.json();
-  const tbody = document.getElementById('leaveTbody');
-  if (!list.length) { tbody.innerHTML='<tr><td colspan="7" class="text-center text-muted py-3">No leave requests.</td></tr>'; return; }
+  const r = await apiFetch(API+'/leave-requests/'+(status?'?status='+encodeURIComponent(status):'')); if (!r) return;
+  const list = await r.json(); const tbody = document.getElementById('leaveTbody');
+  if (!Array.isArray(list) || !list.length) { tbody.innerHTML='<tr><td colspan="7" class="text-center text-muted py-3">No leave requests.</td></tr>'; return; }
   tbody.innerHTML = list.map(l => {
-    const bc = {pending:'bg-warning',approved:'bg-success',rejected:'bg-danger',cancelled:'bg-secondary'}[l.status]||'bg-secondary';
-    return `<tr>
-      <td>${l.employee__first_name} ${l.employee__last_name}</td>
-      <td class="text-capitalize">${(l.leave_type||'').replace('_',' ')}</td>
-      <td>${l.start_date}</td>
-      <td>${l.end_date}</td>
-      <td>${parseFloat(l.days_requested).toFixed(1)}</td>
-      <td><span class="badge ${bc} text-white">${l.status}</span></td>
-      <td>${l.status==='pending'?`
-        <button class="btn btn-xs btn-sm btn-outline-success me-1" onclick="reviewLeave('${l.id}','approve')">Approve</button>
-        <button class="btn btn-xs btn-sm btn-outline-danger" onclick="reviewLeave('${l.id}','reject')">Reject</button>`:'—'}
-      </td>
-    </tr>`;
+    const bc = {pending:'bg-warning text-dark',approved:'bg-success',rejected:'bg-danger',cancelled:'bg-secondary'}[l.status]||'bg-secondary';
+    return `<tr><td>${esc(l.employee__first_name)} ${esc(l.employee__last_name)}</td><td class="text-capitalize">${esc((l.leave_type||'').replace('_',' '))}</td><td>${l.start_date}</td><td>${l.end_date}</td>
+      <td>${parseFloat(l.days_requested).toFixed(1)}</td><td><span class="badge ${bc}">${l.status}</span></td>
+      <td>${l.status==='pending'?`<button class="btn btn-sm btn-outline-success me-1" onclick="reviewLeave('${l.id}','approve')">Approve</button><button class="btn btn-sm btn-outline-danger" onclick="reviewLeave('${l.id}','reject')">Reject</button>`:'—'}</td></tr>`;
   }).join('');
 }
-
-async function reviewLeave(id, action) {
+window.reviewLeave = async function(id, action) {
   const note = action==='reject' ? (prompt('Rejection reason:') || '') : '';
-  const r = await apiFetch(API+'/leave-requests/'+id+'/', {method:'PATCH', body:JSON.stringify({action, note})});
-  if (!r) return;
+  const r = await apiFetch(API+'/leave-requests/'+id+'/', {method:'PATCH', body:JSON.stringify({action, note})}); if (!r) return;
+  if(!r.ok){ const d=await r.json(); showAlert('pageAlert', d.error||d.detail||'Failed.'); }
   loadLeave();
-}
-
-function showAlert(targetId, message, type='danger') {
-  const el = document.getElementById(targetId);
-  if (!el) return;
-  el.innerHTML = `<div class="alert alert-${type} alert-dismissible fade show" role="alert">
-    ${message}
-    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-  </div>`;
-}
-
-document.getElementById('btnSaveEmp').addEventListener('click', async () => {
-  const btn = document.getElementById('btnSaveEmp');
-  const orig = btn.innerHTML;
-  btn.disabled = true;
-  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Saving…';
-  const body = {
-    first_name: document.getElementById('empFirst').value,
-    last_name: document.getElementById('empLast').value,
-    id_number: document.getElementById('empId').value,
-    tax_reference_number: document.getElementById('empTax').value,
-    job_title: document.getElementById('empTitle').value,
-    employment_type: document.getElementById('empType').value,
-    gross_monthly_salary: document.getElementById('empSalary').value,
-    start_date: document.getElementById('empStart').value,
-    bank_name: document.getElementById('empBank').value,
-    bank_account_number: document.getElementById('empAccNum').value,
-    bank_branch_code: document.getElementById('empBranch').value,
-    contact_number: document.getElementById('empContact').value,
-    next_of_kin_name: document.getElementById('empKinName').value,
-  };
-  try {
-    const r = await apiFetch(API+'/employees/', {method:'POST', body:JSON.stringify(body)});
-    if (!r) { btn.disabled = false; btn.innerHTML = orig; return; }
-    const d = await r.json();
-    if (r.ok) {
-      HQ.hideDrawer('addEmpModal');
-      showAlert('pageAlert', 'Employee profile saved successfully.', 'success');
-      loadEmployees();
-    } else {
-      showAlert('modalAlert', d.error || d.detail || JSON.stringify(d));
-    }
-  } catch(e) {
-    showAlert('modalAlert', 'Failed to save employee profile.');
-  }
-  btn.disabled = false;
-  btn.innerHTML = orig;
-});
-
-document.getElementById('logoutBtn').addEventListener('click', e => {
-  e.preventDefault(); localStorage.removeItem('ims_access'); localStorage.removeItem('ims_refresh'); location.href='/portal/login/';
-});
-
-document.getElementById('fEmpSearch').addEventListener('input', HQFilters.debounce(loadEmployees, 350));
-document.getElementById('fEmpActive').addEventListener('change', loadEmployees);
-document.getElementById('fEmpClear').addEventListener('click', () => {
-  document.getElementById('fEmpSearch').value = '';
-  document.getElementById('fEmpActive').value = 'true';
-  loadEmployees();
-});
-
+};
 document.getElementById('leaveFilter').addEventListener('change', loadLeave);
 
-// Handle #leave hash
-if (location.hash === '#leave') switchTab('leave');
-
-if (!tok()) location.href='/portal/login/';
-loadUser(); loadEmployees();
+const start = (location.hash||'').replace('#','');
+if(['payroll','leave'].includes(start)) switchTab(start);
+loadEmployees();
 feather.replace();
+})();
 </script>
 </body>
 </html>

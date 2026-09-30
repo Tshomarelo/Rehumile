@@ -26,6 +26,7 @@ SEED_ACCOUNTS = [
     ('1100', 'ACCOUNTS_RECEIVABLE', 'Accounts Receivable (Debtors)', 'asset', 'current_asset', 'debit'),
     ('1200', 'INVENTORY', 'Inventory / Stock on Hand', 'asset', 'current_asset', 'debit'),
     ('1500', 'FIXED_ASSETS', 'Fixed Assets (Lab Equipment & Tools)', 'asset', 'fixed_asset', 'debit'),
+    ('1300', 'STAFF_LOANS', 'Staff Loans & Advances', 'asset', 'current_asset', 'debit'),
     ('1510', 'VAT_INPUT', 'VAT Input (Claimable)', 'asset', 'current_asset', 'debit'),
 
     ('2000', 'ACCOUNTS_PAYABLE', 'Accounts Payable (Creditors)', 'liability', 'current_liability', 'credit'),
@@ -80,8 +81,55 @@ def seed_chart_of_accounts():
     return created
 
 
+# name, kind, account system_key, cash-flow stream, description
+SEED_EXPENSE_CATEGORIES = [
+    ('Hardware & Parts Purchases', 'cogs', 'COGS_HARDWARE', 'ocf', 'Parts, devices and consumables bought for resale or repairs'),
+    ('Rent', 'operating', 'OPEX_RENT', 'ocf', 'Office / workshop rent'),
+    ('Utilities & Internet', 'operating', 'OPEX_UTILITIES', 'ocf', 'Electricity, water, data, airtime'),
+    ('Bank Fees', 'operating', 'OPEX_BANKFEES', 'ocf', 'Account, card-machine and transaction fees'),
+    ('Marketing & Advertising', 'operating', 'OPEX_MARKETING', 'ocf', 'Ads, flyers, sponsorships'),
+    ('Fuel & Travel', 'operating', 'OPEX_OTHER', 'ocf', 'Fuel, tolls, call-out travel'),
+    ('Software & Subscriptions', 'operating', 'OPEX_OTHER', 'ocf', 'Licences, hosting, SaaS'),
+    ('Repairs & Maintenance', 'operating', 'OPEX_OTHER', 'ocf', 'Upkeep of premises and equipment'),
+    ('Office & Sundry', 'operating', 'OPEX_OTHER', 'ocf', 'Stationery, cleaning, refreshments'),
+    ('Equipment & Tools', 'capital', 'FIXED_ASSETS', 'icf', 'Long-life assets — not deducted from profit, shown as an asset'),
+]
+
+
+def seed_expense_categories():
+    """Idempotent: creates the default categories once. Returns how many were created."""
+    from .models import ExpenseCategory
+    created = 0
+    for order, (name, kind, key, stream, desc) in enumerate(SEED_EXPENSE_CATEGORIES):
+        try:
+            acct = Account.objects.get(system_key=key)
+        except Account.DoesNotExist:
+            continue
+        _, was_created = ExpenseCategory.objects.get_or_create(
+            name=name,
+            defaults=dict(kind=kind, account=acct, default_cash_flow_stream=stream,
+                          description=desc, is_system=True, display_order=order),
+        )
+        created += int(was_created)
+    return created
+
+
+def ensure_seeded():
+    """Make sure the Chart of Accounts and default expense categories exist.
+    Cheap when already seeded (two COUNT queries), so views can call it freely."""
+    from .models import ExpenseCategory
+    if Account.objects.count() < len(SEED_ACCOUNTS):
+        seed_chart_of_accounts()
+    if not ExpenseCategory.objects.exists():
+        seed_expense_categories()
+
+
 def account(system_key):
-    return Account.objects.get(system_key=system_key)
+    try:
+        return Account.objects.get(system_key=system_key)
+    except Account.DoesNotExist:
+        seed_chart_of_accounts()   # first posting on a fresh database
+        return Account.objects.get(system_key=system_key)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -208,24 +256,79 @@ def post_expense(expense):
     )
 
 
+def post_expense_payment(expense, pay_date=None, user=None):
+    """An unpaid (payable) expense has now been paid: Dr Accounts Payable, Cr Bank."""
+    amount = Decimal(expense.amount or 0)
+    if amount <= 0:
+        return None
+    from datetime import date as _date
+    return post_transaction(
+        'ExpensePayment', expense.id, pay_date or _date.today(),
+        f"Paid supplier — {expense.vendor}",
+        [
+            ('ACCOUNTS_PAYABLE', amount, Decimal('0'), expense.vendor),
+            ('BANK_CASH', Decimal('0'), amount, expense.vendor),
+        ],
+        cash_flow_stream=expense.cash_flow_stream, user=user,
+    )
+
+
+@db_transaction.atomic
+def reverse_source(source_model, source_id, user=None):
+    """
+    Undo every posting made for a source record by posting mirror-image
+    entries (the ledger is append-only — nothing is ever edited or deleted).
+    Idempotent: a posting that is already reversed is skipped.
+    """
+    from datetime import date as _date
+    reversed_count = 0
+    originals = LedgerTransaction.objects.filter(
+        source_model__in=[source_model, f"{source_model}Payment"], source_id=str(source_id), reverses__isnull=True,
+    )
+    for txn in originals:
+        if txn.reversed_by.exists():
+            continue
+        rev = LedgerTransaction.objects.create(
+            transaction_date=_date.today(), description=f"REVERSAL: {txn.description}",
+            source_model=f"{txn.source_model}:reversal", source_id=str(source_id),
+            cash_flow_stream=txn.cash_flow_stream, reverses=txn,
+            created_by=user if user and getattr(user, 'is_authenticated', False) else None,
+        )
+        LedgerEntry.objects.bulk_create([
+            LedgerEntry(transaction=rev, account=e.account, debit=e.credit, credit=e.debit, memo=f"Reversal — {e.memo}")
+            for e in txn.entries.all()
+        ])
+        reversed_count += 1
+    return reversed_count
+
+
 def post_payroll_entry(entry):
+    """
+    Dr Salaries (gross)             Cr PAYE/UIF/SDL payable (SARS)
+    Dr Employer levies (UIF + SDL)  Cr Staff loans (deductions recovered)
+                                    Cr Bank (net pay)
+    Always balances: net = gross - paye - uif_employee - other_deductions.
+    """
     gross = Decimal(entry.total_gross or entry.gross_salary or 0)
     paye = Decimal(entry.paye_amount or 0)
     uif_employee = Decimal(entry.uif_employee or 0)
     uif_employer = Decimal(entry.uif_employer or 0)
+    sdl = Decimal(entry.sdl_employer or 0)
+    other_deductions = Decimal(entry.other_deductions or 0)
     net_pay = Decimal(entry.net_pay or 0)
     if gross <= 0:
         return None
 
-    lines = [
-        ('OPEX_SALARIES', gross, Decimal('0'), f"Payroll — {entry.employee.employee_number}"),
-    ]
-    if uif_employer > 0:
-        lines.append(('OPEX_PAYE_UIF_EMPLOYER', uif_employer, Decimal('0'), f"Employer UIF — {entry.employee.employee_number}"))
-    statutory_payable = paye + uif_employee + uif_employer
+    ref = entry.employee.employee_number
+    lines = [('OPEX_SALARIES', gross, Decimal('0'), f"Payroll — {ref}")]
+    if uif_employer + sdl > 0:
+        lines.append(('OPEX_PAYE_UIF_EMPLOYER', uif_employer + sdl, Decimal('0'), f"Employer UIF/SDL — {ref}"))
+    statutory_payable = paye + uif_employee + uif_employer + sdl
     if statutory_payable > 0:
-        lines.append(('PAYE_UIF_PAYABLE', Decimal('0'), statutory_payable, f"PAYE/UIF — {entry.employee.employee_number}"))
-    lines.append(('BANK_CASH', Decimal('0'), net_pay, f"Net pay — {entry.employee.employee_number}"))
+        lines.append(('PAYE_UIF_PAYABLE', Decimal('0'), statutory_payable, f"PAYE/UIF/SDL — {ref}"))
+    if other_deductions > 0:
+        lines.append(('STAFF_LOANS', Decimal('0'), other_deductions, f"Deduction recovered — {ref}"))
+    lines.append(('BANK_CASH', Decimal('0'), net_pay, f"Net pay — {ref}"))
 
     return post_transaction(
         'PayrollEntry', entry.id,

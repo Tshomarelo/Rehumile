@@ -1,0 +1,53 @@
+{% extends "hr/base_manage.html" %}
+{% block title %}{{ e.display_name }}{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+  <div>
+    <a href="{% url 'hr:manage_employees' %}" class="small">&larr; Employees</a>
+    <h4 class="mb-0">{{ e.full_name }} <span class="badge {% if e.status == 'ACTIVE' %}bg-success{% elif e.status == 'TERMINATED' %}bg-secondary{% else %}bg-warning text-dark{% endif %} fs-6">{{ e.get_status_display }}</span></h4>
+    <div class="text-muted">{{ e.employee_number }} &middot; {{ e.job_title|default:"No job title" }}{% if e.department %} &middot; {{ e.department.name }}{% endif %}</div>
+  </div>
+  <div class="d-flex gap-2">
+    {% if reveal %}<a class="btn btn-sm btn-outline-secondary" href="{% url 'hr:manage_employee' e.pk %}">Hide sensitive</a>
+    {% else %}<a class="btn btn-sm btn-outline-secondary" href="?reveal=1" title="Recorded in the audit log"><i class="bi bi-eye"></i> Show ID and salary</a>{% endif %}
+    {% if 'HR_ADMIN' in hr_roles or 'SUPER_ADMIN' in hr_roles %}<a class="btn btn-sm btn-primary" href="{% url 'hr:manage_employee_edit' e.pk %}">Edit</a>{% endif %}
+    <a class="btn btn-sm btn-warning fw-bold" href="{% url 'hr:manage_employee_record' e.pk %}">Change job / pay</a>
+  </div>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-6"><div class="card h-100"><div class="card-header bg-white fw-bold">Personal</div><div class="card-body"><div class="row g-3">
+    <div class="col-6"><div class="k">Known as</div>{{ e.known_as }}</div>
+    <div class="col-6"><div class="k">Date of birth</div>{{ e.date_of_birth|date:"j M Y"|default:"-" }}{% if e.age %} ({{ e.age }}){% endif %}</div>
+    <div class="col-6"><div class="k">Gender / race</div>{{ e.get_gender_display|default:"-" }} / {{ e.get_race_display|default:"-" }}</div>
+    <div class="col-6"><div class="k">ID number</div><span class="font-monospace">{% if reveal %}{{ e.id_number|default:"-" }}{% else %}{{ e.masked_id_number|default:"-" }}{% endif %}</span></div>
+    <div class="col-6"><div class="k">Work email</div>{{ e.work_email|default:"-" }}</div>
+    <div class="col-6"><div class="k">Phone</div>{{ e.phone|default:"-" }}</div>
+    <div class="col-6"><div class="k">Start date</div>{{ e.start_date|date:"j M Y"|default:"-" }}</div>
+    <div class="col-6"><div class="k">Login</div>{% if e.user %}{{ e.user.get_username }}{% else %}<span class="text-warning">not linked</span>{% endif %}</div>
+    <div class="col-6"><div class="k">Leave policy</div>{{ e.leave_policy|default:"company default" }}</div>
+    <div class="col-6"><div class="k">Roles</div>{% for r in roles %}<span class="badge bg-secondary">{{ r.get_role_display }}</span> {% empty %}Employee{% endfor %}</div>
+  </div></div></div></div>
+
+  <div class="col-lg-6"><div class="card h-100"><div class="card-header bg-white fw-bold">Leave balances</div>
+    <ul class="list-group list-group-flush">
+      {% for b in balances %}<li class="list-group-item d-flex justify-content-between"><span>{{ b.leave_type.name }}</span><span><strong>{{ b.available|floatformat:"-2" }}</strong> available <span class="text-muted small">(taken {{ b.taken|floatformat:"-2" }}, pending {{ b.pending|floatformat:"-2" }})</span></span></li>
+      {% empty %}<li class="list-group-item text-muted">No leave policy applies.</li>{% endfor %}
+    </ul></div></div>
+
+  <div class="col-12"><div class="card"><div class="card-header bg-white fw-bold">Employment history <span class="fw-normal text-muted small">(effective-dated, nothing is overwritten)</span></div>
+    <div class="table-responsive"><table class="table t table-sm mb-0 align-middle">
+      <thead class="table-light"><tr><th>From</th><th>Reason</th><th>Position</th><th>Department</th><th>Manager</th><th>Contract</th><th>Pay</th></tr></thead>
+      <tbody>
+        {% for r in records %}<tr><td>{{ r.effective_from|date:"j M Y" }}</td><td>{{ r.get_reason_display }}</td><td>{{ r.position|default:"-" }}</td><td>{{ r.department|default:"-" }}</td><td>{{ r.manager.display_name|default:"-" }}</td><td>{{ r.get_contract_type_display|default:"-" }}</td>
+          <td>{% if reveal %}{% if r.salary_amount %}R {{ r.salary_amount|floatformat:2 }} ({{ r.get_pay_type_display }}){% else %}-{% endif %}{% else %}<span class="text-muted">hidden</span>{% endif %}</td></tr>
+        {% empty %}<tr><td colspan="7" class="text-center text-muted py-3">No employment details yet. Use <strong>Change job / pay</strong> to add them.</td></tr>{% endfor %}
+      </tbody></table></div></div></div>
+
+  <div class="col-12"><div class="card"><div class="card-header bg-white fw-bold">Recent leave</div>
+    <ul class="list-group list-group-flush">
+      {% for r in requests %}<li class="list-group-item d-flex justify-content-between"><a href="{% url 'hr:leave_detail' r.pk %}" class="text-decoration-none">{{ r.leave_type.name }} {{ r.start_date|date:"j M" }} to {{ r.end_date|date:"j M Y" }} ({{ r.days|floatformat:"-2" }} d)</a><span class="badge bg-secondary">{{ r.get_status_display }}</span></li>
+      {% empty %}<li class="list-group-item text-muted">No leave requests.</li>{% endfor %}
+    </ul></div></div>
+</div>
+{% endblock %}

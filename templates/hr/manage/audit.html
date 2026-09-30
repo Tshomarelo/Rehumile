@@ -1,0 +1,28 @@
+{% extends "hr/base_manage.html" %}
+{% block title %}Audit log{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h4 class="mb-0">Audit log</h4>
+  <a class="btn btn-sm btn-outline-secondary" href="{% url 'hr:manage_audit_export' %}?{{ request.GET.urlencode }}"><i class="bi bi-download"></i> Export CSV</a>
+</div>
+<form class="row g-2 mb-3" method="get">
+  <div class="col-md-2"><input name="user" value="{{ get.user }}" class="form-control form-control-sm" placeholder="User"></div>
+  <div class="col-md-2"><input name="employee" value="{{ get.employee }}" class="form-control form-control-sm" placeholder="Employee"></div>
+  <div class="col-md-2"><select name="module" class="form-select form-select-sm"><option value="">All modules</option>{% for m in modules %}<option value="{{ m }}" {% if get.module == m %}selected{% endif %}>{{ m }}</option>{% endfor %}</select></div>
+  <div class="col-md-2"><input type="date" name="from" value="{{ get.from }}" class="form-control form-control-sm"></div>
+  <div class="col-md-2"><input type="date" name="to" value="{{ get.to }}" class="form-control form-control-sm"></div>
+  <div class="col-md-1 form-check pt-1"><input type="checkbox" name="sensitive" value="1" class="form-check-input" id="sens" {% if get.sensitive %}checked{% endif %}><label class="form-check-label small" for="sens">Sensitive</label></div>
+  <div class="col-md-1"><button class="btn btn-sm btn-primary w-100">Filter</button></div>
+</form>
+<div class="card"><div class="table-responsive"><table class="table t table-sm table-hover mb-0 align-middle">
+  <thead class="table-light"><tr><th>Time</th><th>User</th><th>Action</th><th>Record</th><th>Employee</th><th>Change</th><th>IP</th></tr></thead>
+  <tbody>
+    {% for a in page %}<tr>
+      <td class="text-nowrap">{{ a.timestamp|date:"Y-m-d H:i:s" }}</td><td>{{ a.username|default:"-" }}</td>
+      <td>{{ a.action }}{% if a.sensitive %} <span class="badge bg-danger">sensitive</span>{% endif %}</td><td>{{ a.object_repr|truncatechars:60 }}</td><td>{{ a.employee.display_name|default:"" }}</td>
+      <td class="small text-muted" style="max-width:280px">{% if a.old_value %}from {{ a.old_value|truncatechars:70 }}{% endif %}{% if a.new_value %}<br>to {{ a.new_value|truncatechars:70 }}{% endif %}</td><td>{{ a.ip_address|default:"" }}</td></tr>
+    {% empty %}<tr><td colspan="7" class="text-center text-muted py-4">No entries match.</td></tr>{% endfor %}
+  </tbody></table></div></div>
+{% if page.has_other_pages %}<div class="mt-2 d-flex gap-2">{% if page.has_previous %}<a class="btn btn-sm btn-outline-secondary" href="?page={{ page.previous_page_number }}&{{ request.GET.urlencode }}">Previous</a>{% endif %}<span class="align-self-center small">Page {{ page.number }} of {{ page.paginator.num_pages }}</span>{% if page.has_next %}<a class="btn btn-sm btn-outline-secondary" href="?page={{ page.next_page_number }}&{{ request.GET.urlencode }}">Next</a>{% endif %}</div>{% endif %}
+<div class="small text-muted mt-2">Entries cannot be edited or deleted by anyone.</div>
+{% endblock %}

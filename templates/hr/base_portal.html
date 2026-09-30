@@ -1,0 +1,91 @@
+{% load static %}<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="{{ hr_company.primary_colour|default:'#1a3a5c' }}">
+  <title>{% block title %}Employee Portal{% endblock %} - {{ hr_company.name|default:'HR' }}</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  <style>
+    :root { --brand: {{ hr_company.primary_colour|default:'#1a3a5c' }}; --accent: #f7a800; --menu-w: 270px; }
+    body { background: #f0f2f5; font-size: .95rem; }
+    .topbar { position: fixed; top: 0; left: 0; right: 0; height: 56px; background: var(--brand); color: #fff; z-index: 1030; display: flex; align-items: center; padding: 0 .75rem; gap: .5rem; }
+    .topbar a, .topbar button { color: #fff; }
+    .topbar .dropdown-menu a.dropdown-item { color: #212529; }
+    .topbar .dropdown-menu a.dropdown-item:hover { background: #e9ecef; color: #000; }
+    .topbar .brand { font-weight: 700; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .topbar img.logo { height: 30px; margin-right: .4rem; background: #fff; border-radius: 4px; padding: 2px 4px; }
+    .bell { position: relative; }
+    .bell .dot { position: absolute; top: 2px; right: 2px; width: 10px; height: 10px; border-radius: 50%; background: var(--accent); border: 2px solid var(--brand); }
+    .menu { background: var(--brand); color: #fff; }
+    .menu .grp { font-size: .65rem; text-transform: uppercase; letter-spacing: .1em; color: rgba(255,255,255,.45); padding: .9rem 1.1rem .25rem; }
+    .menu a.item { display: flex; align-items: center; gap: .6rem; padding: .6rem 1.1rem; color: rgba(255,255,255,.8); text-decoration: none; border-left: 3px solid transparent; }
+    .menu a.item:hover, .menu a.item.on { background: rgba(255,255,255,.1); color: #fff; border-left-color: var(--accent); }
+    .menu .soon { font-size: .6rem; background: rgba(255,255,255,.18); border-radius: 8px; padding: 1px 6px; margin-left: auto; }
+    main { padding: 70px .9rem 2rem; }
+    .card { border: 0; box-shadow: 0 1px 4px rgba(0,0,0,.08); border-radius: 10px; }
+    .k { font-size: .68rem; text-transform: uppercase; letter-spacing: .06em; color: #6c757d; }
+    @media (min-width: 992px) {
+      .menu.offcanvas-lg { background: var(--brand) !important; width: var(--menu-w) !important; position: fixed; top: 56px; bottom: 0; left: 0; width: var(--menu-w); overflow-y: auto; visibility: visible !important; transform: none; }
+      main { margin-left: var(--menu-w); padding: 76px 1.5rem 2rem; max-width: calc(var(--menu-w) + 1000px); }
+      .topbar .toggle { display: none; }
+    }
+  </style>
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+<header class="topbar">
+  <button class="btn btn-link toggle p-1" type="button" data-bs-toggle="offcanvas" data-bs-target="#menu" aria-label="Menu"><i class="bi bi-list fs-3"></i></button>
+  <div class="brand">
+    {% if hr_company.logo %}<img class="logo" src="{{ hr_company.logo.url }}" alt="">{% endif %}{{ hr_company.name|default:'Employee Portal' }}
+  </div>
+  {% if hr_companies %}
+  <div class="dropdown">
+    <button class="btn btn-sm btn-outline-light dropdown-toggle" data-bs-toggle="dropdown"><i class="bi bi-building"></i></button>
+    <ul class="dropdown-menu dropdown-menu-end">{% for c in hr_companies %}<li><a class="dropdown-item" href="{% url 'hr:manage_switch_company' c.pk %}">{{ c.name }}</a></li>{% endfor %}</ul>
+  </div>
+  {% endif %}
+  <a class="btn btn-link bell p-1" href="{% url 'hr:portal_notifications' %}" aria-label="Notifications"><i class="bi bi-bell fs-5"></i>{% if hr_unread %}<span class="dot"></span>{% endif %}</a>
+  <div class="dropdown">
+    <button class="btn btn-link p-1" data-bs-toggle="dropdown" aria-label="More"><i class="bi bi-three-dots-vertical fs-5"></i></button>
+    <ul class="dropdown-menu dropdown-menu-end">
+      {% if hr_can_manage %}<li><a class="dropdown-item" href="{% url 'hr:manage_home' %}"><i class="bi bi-speedometer2"></i> Admin view{% if hr_pending_count %} <span class="badge bg-warning text-dark">{{ hr_pending_count }}</span>{% endif %}</a></li>{% endif %}
+      {% if hr_is_manager %}<li><a class="dropdown-item" href="{% url 'hr:portal_delegations' %}"><i class="bi bi-people"></i> Delegate approvals</a></li>{% endif %}
+      <li><a class="dropdown-item" href="/portal/dashboard/"><i class="bi bi-speedometer2"></i> Finance system</a></li>
+      <li><hr class="dropdown-divider"></li>
+      <li><form method="post" action="{% url 'hr:logout' %}">{% csrf_token %}<button class="dropdown-item"><i class="bi bi-box-arrow-right"></i> Logout</button></form></li>
+    </ul>
+  </div>
+</header>
+
+<nav class="menu offcanvas-lg offcanvas-start" tabindex="-1" id="menu" style="padding-top:.3rem">
+  <div class="offcanvas-header d-lg-none"><span class="fw-bold">Menu</span><button class="btn-close btn-close-white" data-bs-dismiss="offcanvas"></button></div>
+  <div class="offcanvas-body d-block p-0">
+    <div class="grp">Employee Self Service</div>
+    <a class="item {% if active == 'home' %}on{% endif %}" href="{% url 'hr:portal_home' %}"><i class="bi bi-person-circle"></i> This is me</a>
+    <a class="item {% if active == 'payslips' %}on{% endif %}" href="{% url 'hr:payslips' %}"><i class="bi bi-receipt"></i> Payslips</a>
+    <a class="item {% if active == 'leave' %}on{% endif %}" href="{% url 'hr:leave_home' %}"><i class="bi bi-calendar-check"></i> Leave</a>
+    <a class="item {% if active == 'biographical' %}on{% endif %}" href="{% url 'hr:biographical' %}"><i class="bi bi-card-list"></i> Biographical Details</a>
+    <a class="item {% if active == 'payrun-input' %}on{% endif %}" href="{% url 'hr:payrun_input' %}"><i class="bi bi-cash-coin"></i> Payrun Input</a>
+    <a class="item {% if active == 'advances' %}on{% endif %}" href="{% url 'hr:advances' %}"><i class="bi bi-cash-stack"></i> Salary Advances</a>
+    <a class="item {% if active == 'tax-certificate' %}on{% endif %}" href="{% url 'hr:tax_certificates' %}"><i class="bi bi-file-earmark-text"></i> Tax Certificate</a>
+    <a class="item {% if active == 'documents' %}on{% endif %}" href="{% url 'hr:documents' %}"><i class="bi bi-folder2-open"></i> Documents</a>
+    <div class="grp">Employee Relations</div>
+    <a class="item {% if active == 'employee-relations' %}on{% endif %}" href="{% url 'hr:relations' %}"><i class="bi bi-shield-check"></i> Employee Relations</a>
+    <div class="grp">Work</div>
+    <a class="item {% if active == 'roster' %}on{% endif %}" href="{% url 'hr:roster' %}"><i class="bi bi-calendar3-week"></i> My Roster</a>
+    <div class="grp">Account</div>
+    <a class="item {% if active == 'notifications' %}on{% endif %}" href="{% url 'hr:portal_notifications' %}"><i class="bi bi-bell"></i> Notifications{% if hr_unread %} <span class="badge bg-warning text-dark ms-auto">{{ hr_unread }}</span>{% endif %}</a>
+    <form method="post" action="{% url 'hr:logout' %}" class="m-0">{% csrf_token %}<button class="item w-100 border-0 bg-transparent text-start" style="color:rgba(255,255,255,.8)"><i class="bi bi-box-arrow-right"></i> Logout</button></form>
+  </div>
+</nav>
+
+<main>
+  {% for m in messages %}<div class="alert alert-{{ m.tags|default:'info' }} {% if m.tags == 'error' %}alert-danger{% endif %} py-2">{{ m }}</div>{% endfor %}
+  {% block content %}{% endblock %}
+</main>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+{% block extra_js %}{% endblock %}
+</body>
+</html>

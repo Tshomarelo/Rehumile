@@ -1,0 +1,20 @@
+{% extends "hr/base_manage.html" %}
+{% block title %}Roster set-up{% endblock %}
+{% block content %}
+<h4 class="mb-1">Roster set-up guide</h4>
+<p class="text-muted">Set up a new site in this order. Everything is data: a third garage or another building needs no software change.</p>
+{% if checks %}<div class="alert alert-warning"><strong>Checks</strong><ul class="mb-0">{% for c in checks %}<li>{{ c }}</li>{% endfor %}</ul></div>{% endif %}
+<ol class="list-group list-group-numbered mb-4">
+  {% for label, key in steps %}<li class="list-group-item d-flex justify-content-between align-items-center">{{ label }}<a href="{% url 'hr:manage_crud' key %}">Open</a></li>{% endfor %}
+</ol>
+<div class="row g-3">
+  <div class="col-md-6"><div class="card"><div class="card-header">Copy a site's shifts and demand to a new site</div><div class="card-body">
+    <form method="post" action="{% url 'hr:manage_roster_copy_site' %}">{% csrf_token %}
+      <select name="source" class="form-select mb-2">{% for s in sites %}<option value="{{ s.pk }}">{{ s.name }}</option>{% endfor %}</select>
+      <input name="name" class="form-control mb-2" placeholder="New site name" required>
+      <button class="btn btn-primary btn-sm">Copy</button></form></div></div></div>
+  <div class="col-md-6"><div class="card"><div class="card-header">Import staff, flags and site approvals</div><div class="card-body">
+    <p class="small text-muted">CSV columns: employee_number, staff_group, flags (Name or Name:2027-01-31, separated by ;), sites (separated by ;), weekend_team. You see a check report before anything is saved.</p>
+    <a class="btn btn-outline-primary btn-sm" href="{% url 'hr:manage_roster_import' %}">Import from a spreadsheet</a></div></div></div>
+</div>
+{% endblock %}

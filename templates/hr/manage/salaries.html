@@ -1,0 +1,16 @@
+{% extends "hr/base_manage.html" %}
+{% block title %}Salaries{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3"><h4 class="mb-0">Salaries</h4>
+  <div class="d-flex gap-1"><a class="btn btn-outline-secondary btn-sm" href="{% url 'hr:manage_salary_import' %}">Import from a spreadsheet</a>
+  <a class="btn btn-outline-secondary btn-sm" href="{% url 'hr:manage_pay_reports' 'salary' %}">Salary changes report</a></div></div>
+<p class="text-muted small">Amounts are hidden by default. Revealing an amount is recorded in the audit log. Salaries are entered only here: HR captures, Payroll approves.</p>
+{% if revealed %}<div class="alert alert-info py-2">{{ revealed.text }}</div>{% endif %}
+<div class="card"><table class="table align-middle mb-0"><thead class="table-light"><tr><th>Employee</th><th>Current record</th><th>Amount</th><th>Sync</th><th></th></tr></thead>
+{% for r in rows %}<tr><td>{{ r.e }} <span class="text-muted small">{{ r.e.employee_number }}</span></td>
+  <td>{% if r.rec %}{{ r.rec.get_pay_type_display }} from {{ r.rec.start_date|date:"j M Y" }}{% else %}<span class="text-muted">none</span>{% endif %}{% if r.pending %} <span class="badge bg-warning text-dark">change pending</span>{% endif %}</td>
+  <td>{% if r.rec %}<form method="post" action="{% url 'hr:manage_salary_reveal' r.e.pk %}" class="d-inline">{% csrf_token %}<button class="btn btn-sm btn-outline-secondary">R ••••••</button></form>{% else %}-{% endif %}</td>
+  <td class="small">{% if r.rec %}{{ r.rec.get_sync_status_display }}{% endif %}</td>
+  <td class="text-nowrap"><a href="{% url 'hr:manage_salary_history' r.e.pk %}">History</a>{% if can_capture %} &middot; <a href="{% url 'hr:manage_salary_capture' r.e.pk %}">Change</a>{% endif %}</td></tr>
+{% empty %}<tr><td colspan="5" class="text-center text-muted py-4">No active employees.</td></tr>{% endfor %}</table></div>
+{% endblock %}

@@ -1,0 +1,14 @@
+{% extends "hr/base_manage.html" %}
+{% block title %}Pay periods{% endblock %}
+{% block content %}
+<h4 class="mb-3">Pay periods</h4>
+<form method="post" class="row g-2 mb-3">{% csrf_token %}
+  <div class="col-md-3"><input name="label" class="form-control" placeholder="Label, e.g. 2026-09" required></div>
+  <div class="col-md-3"><input type="date" name="start" class="form-control" required></div>
+  <div class="col-md-3"><input type="date" name="end" class="form-control" required></div>
+  <div class="col-md-3"><button class="btn btn-primary">Add period</button></div>
+</form>
+<div class="card"><table class="table mb-0"><thead class="table-light"><tr><th>Label</th><th>From</th><th>To</th><th>Tax year</th></tr></thead>
+  {% for p in periods %}<tr><td>{{ p.label }}</td><td>{{ p.start_date }}</td><td>{{ p.end_date }}</td><td>{{ p.tax_year }}</td></tr>{% empty %}<tr><td colspan="4" class="text-muted text-center py-3">None yet.</td></tr>{% endfor %}
+</table></div>
+{% endblock %}

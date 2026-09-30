@@ -7,6 +7,8 @@
   <title>Business Intelligence | Rehumile IMS</title>
   <link href="/portal/static/css/app.css" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;606&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+  <style>.seg{display:inline-flex;border:1px solid #d1d5db;border-radius:8px;overflow:hidden}.seg button{border:0;background:#fff;padding:6px 14px;font-size:.8125rem;cursor:pointer}.seg button.on{background:#50181E;color:#fff}.neg{color:#b91c1c}.pos{color:#15803d}</style>
 </head>
 <body>
 <div class="wrapper">
@@ -78,7 +80,7 @@
             <div class="card text-center py-3" style="background:#50181E">
               <h6 class="text-white-50 small mb-1">Net Profit</h6>
               <h4 class="mb-0 text-white" id="live-profit">R —</h4>
-              <small class="text-white-50" id="live-margin-pct"></small>
+              <small class="text-white-50" id="live-margin-pct"></small><br><small class="text-white-50">Revenue − all expenses</small>
             </div>
           </div>
         </div>
@@ -156,24 +158,31 @@
           </div>
         </div>
 
-        <!-- ── 12-Month Breakdown ─────────────────────────────────────────── -->
+        <!-- ── Performance over time (weekly / monthly / yearly) ───────────── -->
         <div class="card mb-3">
-          <div class="card-header d-flex align-items-center justify-content-between">
-            <h5 class="card-title mb-0">12-Month Breakdown</h5>
-            <small class="text-muted">Rolling 12 months</small>
+          <div class="card-header d-flex flex-wrap align-items-center justify-content-between gap-2">
+            <div>
+              <h5 class="card-title mb-0">Performance over time</h5>
+              <small class="text-muted" id="trendRange">Same rules as the HQ Dashboard: revenue = paid invoices (excl. VAT) + till sales; expenses include payroll and Axxess cost.</small>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+              <div class="seg" id="granSeg"><button data-g="weekly">Weekly</button><button data-g="monthly" class="on">Monthly</button><button data-g="yearly">Yearly</button></div>
+              <select class="form-select form-select-sm" id="periodsSel" style="width:auto"></select>
+            </div>
+          </div>
+          <div class="card-body">
+            <div style="height:300px"><canvas id="trendChart"></canvas></div>
           </div>
           <div class="card-body p-0">
             <div class="text-center py-4 text-muted" id="monthlyLoading">Loading…</div>
             <div class="table-responsive" id="monthlyTable" style="display:none">
               <table class="table table-hover my-0 small">
                 <thead><tr>
-                  <th>Month</th>
-                  <th>WiFi</th><th>SLA</th><th>Ad-Hoc</th>
-                  <th>Axxess Cost</th><th>Net Profit</th>
-                  <th>Floor %</th><th>Growth %</th>
-                  <th>Owner Draw</th>
+                  <th id="thPeriod">Period</th><th>WiFi</th><th>SLA</th><th>Ad-Hoc</th><th>Till / Vouchers</th>
+                  <th>Revenue</th><th>Axxess</th><th>Expenses &amp; stock</th><th>Payroll</th><th>Total expenses</th><th>Net profit</th><th>Margin</th>
                 </tr></thead>
                 <tbody id="monthlyTbody"></tbody>
+                <tfoot id="monthlyTfoot"></tfoot>
               </table>
             </div>
           </div>
@@ -278,9 +287,10 @@
 
       // Allocation
       const alloc=d.allocation||{};
-      const allocReinvest=netProfit*parseFloat(alloc.reinvestment_pct||0.15);
-      const allocOpex=netProfit*parseFloat(alloc.opex_pct||0.15);
-      const allocOwner=netProfit*parseFloat(alloc.owner_pct||0.70);
+      const allocBase=Math.max(netProfit,0);   // nothing to allocate in a loss-making month
+      const allocReinvest=allocBase*parseFloat(alloc.reinvestment_pct||0.15);
+      const allocOpex=allocBase*parseFloat(alloc.opex_pct||0.15);
+      const allocOwner=allocBase*parseFloat(alloc.owner_pct||0.70);
       document.getElementById('alloc-reinvest').textContent=R(allocReinvest);
       document.getElementById('alloc-reinvest-pct').textContent=pct(alloc.reinvestment_pct);
       document.getElementById('alloc-opex').textContent=R(allocOpex);
@@ -350,51 +360,62 @@
     }
   }
 
-  // ── 12-Month Breakdown ───────────────────────────────────────────────────────
+  // ── Performance over time ────────────────────────────────────────────────────
+  const GRAN = {weekly:{label:'Week starting',options:[[8,'Last 8 weeks'],[12,'Last 12 weeks'],[26,'Last 26 weeks'],[52,'Last 52 weeks']],def:12},
+                monthly:{label:'Month',options:[[6,'Last 6 months'],[12,'Last 12 months'],[24,'Last 24 months']],def:12},
+                yearly:{label:'Year',options:[[3,'Last 3 years'],[5,'Last 5 years'],[10,'Last 10 years']],def:5}};
+  let gran='monthly', trendChart=null;
+  const Rm=n=>'R '+(parseFloat(n)||0).toLocaleString('en-ZA',{minimumFractionDigits:2,maximumFractionDigits:2});
+  function fillPeriods(){
+    const g=GRAN[gran];
+    document.getElementById('periodsSel').innerHTML=g.options.map(o=>`<option value="${o[0]}" ${o[0]===g.def?'selected':''}>${o[1]}</option>`).join('');
+    document.getElementById('thPeriod').textContent=g.label;
+  }
   async function loadMonthly(){
     try{
-      const r=await api('/portal/api/revenue-intelligence/monthly/');
-      const rows=await r.json();
+      const n=document.getElementById('periodsSel').value||GRAN[gran].def;
+      const r=await api('/portal/api/finance/trend/?granularity='+gran+'&periods='+n);
+      const d=await r.json();
+      if(!r.ok){ document.getElementById('monthlyLoading').textContent=d.detail||'Failed to load.'; return; }
+      const rows=d.buckets||[];
       document.getElementById('monthlyLoading').style.display='none';
-      if(!Array.isArray(rows)||!rows.length){
-        document.getElementById('monthlyLoading').textContent='No historical data yet.';
-        document.getElementById('monthlyLoading').style.display='block';
-        return;
-      }
       document.getElementById('monthlyTable').style.display='block';
-      document.getElementById('monthlyTbody').innerHTML=rows.map(m=>{
-        const profit=parseFloat(m.net_profit||0);
-        const profitCls=profit<0?'text-danger':profit===0?'text-muted':'text-success';
-        const floorPct=parseFloat(m.floor_pct||0)*100;
-        const growthPct=parseFloat(m.growth_pct||0)*100;
+      document.getElementById('trendRange').textContent=`${d.range.start} → ${d.range.end}. Revenue = paid invoices (excl. VAT) + till sales; expenses include payroll and Axxess cost.`;
+      const sum=k=>rows.reduce((s,x)=>s+(x[k]||0),0);
+      document.getElementById('monthlyTbody').innerHTML=rows.slice().reverse().map(m=>{
+        const margin=m.revenue>0?(m.profit/m.revenue*100).toFixed(0)+'%':'—';
         return `<tr>
-          <td><strong>${m.label}</strong></td>
-          <td>${R(m.wifi)}</td>
-          <td>${R(m.sla)}</td>
-          <td>${R(m.adhoc)}</td>
-          <td class="text-warning">${R(m.axxess_costs)}</td>
-          <td class="${profitCls} fw-semibold">${R(m.net_profit)}</td>
-          <td>
-            <div class="d-flex align-items-center gap-1">
-              <div class="progress flex-grow-1" style="height:6px;min-width:40px">
-                <div class="progress-bar bg-primary" style="width:${Math.min(floorPct,100)}%"></div>
-              </div>
-              <small>${floorPct.toFixed(0)}%</small>
-            </div>
-          </td>
-          <td>
-            <div class="d-flex align-items-center gap-1">
-              <div class="progress flex-grow-1" style="height:6px;min-width:40px">
-                <div class="progress-bar bg-info" style="width:${Math.min(growthPct,100)}%"></div>
-              </div>
-              <small>${growthPct.toFixed(0)}%</small>
-            </div>
-          </td>
-          <td class="text-primary">${R(m.owner_draw)}</td>
-        </tr>`;
+          <td><strong>${m.label}</strong>${gran==='weekly'?`<div class="text-muted" style="font-size:.7rem">to ${m.end}</div>`:''}</td>
+          <td>${Rm(m.rev_wifi)}</td><td>${Rm(m.rev_sla)}</td><td>${Rm(m.rev_adhoc)}</td><td>${Rm(m.rev_direct)}</td>
+          <td class="fw-semibold">${Rm(m.revenue)}</td>
+          <td class="text-warning">${Rm(m.cost_axxess)}</td><td>${Rm(m.cost_expenses)}</td><td>${Rm(m.cost_payroll)}</td>
+          <td class="fw-semibold">${Rm(m.expenses)}</td>
+          <td class="fw-semibold ${m.profit<0?'neg':m.profit>0?'pos':'text-muted'}">${Rm(m.profit)}</td><td>${margin}</td></tr>`;
       }).join('');
-    }catch(e){ if(e.message!=='Unauth') document.getElementById('monthlyLoading').textContent='Failed to load monthly data.'; }
+      const tp=sum('profit'), tr=sum('revenue');
+      document.getElementById('monthlyTfoot').innerHTML=`<tr class="table-light fw-bold"><td>Total</td><td>${Rm(sum('rev_wifi'))}</td><td>${Rm(sum('rev_sla'))}</td><td>${Rm(sum('rev_adhoc'))}</td><td>${Rm(sum('rev_direct'))}</td><td>${Rm(tr)}</td><td>${Rm(sum('cost_axxess'))}</td><td>${Rm(sum('cost_expenses'))}</td><td>${Rm(sum('cost_payroll'))}</td><td>${Rm(sum('expenses'))}</td><td class="${tp<0?'neg':'pos'}">${Rm(tp)}</td><td>${tr>0?(tp/tr*100).toFixed(0)+'%':'—'}</td></tr>`;
+      try{ if(window.Chart){
+        const labels=rows.map(m=>m.label);
+        const ds=[
+          {type:'bar',label:'WiFi',data:rows.map(m=>m.rev_wifi),backgroundColor:'#3b82f6',stack:'rev'},
+          {type:'bar',label:'SLA',data:rows.map(m=>m.rev_sla),backgroundColor:'#10b981',stack:'rev'},
+          {type:'bar',label:'Ad-hoc',data:rows.map(m=>m.rev_adhoc),backgroundColor:'#06b6d4',stack:'rev'},
+          {type:'bar',label:'Till / vouchers',data:rows.map(m=>m.rev_direct),backgroundColor:'#a78bfa',stack:'rev'},
+          {type:'line',label:'Expenses',data:rows.map(m=>m.expenses),borderColor:'#dc2626',backgroundColor:'#dc2626',tension:.25,pointRadius:3},
+          {type:'line',label:'Net profit',data:rows.map(m=>m.profit),borderColor:'#50181E',borderDash:[5,4],backgroundColor:'#50181E',tension:.25,pointRadius:3},
+        ];
+        if(trendChart){ trendChart.data.labels=labels; trendChart.data.datasets=ds; trendChart.update(); }
+        else trendChart=new Chart(document.getElementById('trendChart'),{data:{labels,datasets:ds},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{position:'top',labels:{usePointStyle:true}}},scales:{x:{stacked:true,grid:{display:false}},y:{stacked:false,ticks:{callback:v=>'R'+v.toLocaleString()}}}}});
+      } }catch(chartErr){ console.warn('Chart unavailable', chartErr); }
+    }catch(e){ if(e.message!=='Unauth') document.getElementById('monthlyLoading').textContent='Failed to load data.'; }
   }
+  document.getElementById('granSeg').addEventListener('click',e=>{
+    const b=e.target.closest('button'); if(!b) return;
+    gran=b.dataset.g; document.querySelectorAll('#granSeg button').forEach(x=>x.classList.toggle('on',x===b));
+    fillPeriods(); loadMonthly();
+  });
+  document.getElementById('periodsSel').addEventListener('change',loadMonthly);
+  fillPeriods();
 
   // ── Edit Allocation ──────────────────────────────────────────────────────────
   document.getElementById('editAllocBtn').onclick=()=>{

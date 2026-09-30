@@ -1,0 +1,25 @@
+{% extends "hr/base_manage.html" %}
+{% block title %}Employees{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h4 class="mb-0">Employees <span class="text-muted fs-6">{{ page.paginator.count }}</span></h4>
+  {% if 'HR_ADMIN' in hr_roles or 'SUPER_ADMIN' in hr_roles %}<a class="btn btn-warning fw-bold btn-sm" href="{% url 'hr:manage_employee_new' %}"><i class="bi bi-plus-lg"></i> New employee</a>{% endif %}
+</div>
+<form class="row g-2 mb-3" method="get">
+  <div class="col-md-4"><input name="q" value="{{ q }}" class="form-control form-control-sm" placeholder="Search name or number"></div>
+  <div class="col-md-3"><select name="status" class="form-select form-select-sm"><option value="ACTIVE" {% if status == 'ACTIVE' %}selected{% endif %}>Not terminated</option><option value="TERMINATED" {% if status == 'TERMINATED' %}selected{% endif %}>Terminated</option><option value="" {% if not status %}selected{% endif %}>All</option></select></div>
+  <div class="col-md-3"><select name="department" class="form-select form-select-sm"><option value="">All departments</option>{% for d in departments %}<option value="{{ d.pk }}" {% if dept == d.pk|stringformat:"s" %}selected{% endif %}>{{ d.name }}</option>{% endfor %}</select></div>
+  <div class="col-md-2"><button class="btn btn-sm btn-primary w-100">Filter</button></div>
+</form>
+<div class="card"><div class="table-responsive">
+  <table class="table t table-hover mb-0 align-middle">
+    <thead class="table-light"><tr><th>Name</th><th>Number</th><th>Job title</th><th>Department</th><th>Manager</th><th>Status</th></tr></thead>
+    <tbody>
+      {% for e in page %}<tr><td><a class="fw-semibold text-decoration-none" href="{% url 'hr:manage_employee' e.pk %}">{{ e.display_name }}</a></td><td>{{ e.employee_number }}</td><td>{{ e.job_title|default:"-" }}</td><td>{{ e.department.name|default:"-" }}</td><td>{{ e.manager.display_name|default:"-" }}</td>
+        <td><span class="badge {% if e.status == 'ACTIVE' %}bg-success{% elif e.status == 'TERMINATED' %}bg-secondary{% else %}bg-warning text-dark{% endif %}">{{ e.get_status_display }}</span></td></tr>
+      {% empty %}<tr><td colspan="6" class="text-center text-muted py-4">No employees found. Use <strong>New employee</strong> to add the first one.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</div></div>
+{% if page.has_other_pages %}<div class="mt-2 d-flex gap-2">{% if page.has_previous %}<a class="btn btn-sm btn-outline-secondary" href="?page={{ page.previous_page_number }}&q={{ q }}&status={{ status }}">Previous</a>{% endif %}<span class="align-self-center small">Page {{ page.number }} of {{ page.paginator.num_pages }}</span>{% if page.has_next %}<a class="btn btn-sm btn-outline-secondary" href="?page={{ page.next_page_number }}&q={{ q }}&status={{ status }}">Next</a>{% endif %}</div>{% endif %}
+{% endblock %}

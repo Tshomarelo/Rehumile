@@ -1,0 +1,10 @@
+{% extends "hr/base_portal.html" %}
+{% block title %}No employee record{% endblock %}
+{% block content %}
+<div class="card" style="max-width:560px"><div class="card-body">
+  <h5>No employee record is linked to your login</h5>
+  <p class="mb-2">The employee portal shows your own details, so HR needs to link your login to your employee record first.</p>
+  {% if hr_can_manage %}<a class="btn btn-primary" href="{% url 'hr:manage_home' %}">Go to the admin view</a>{% endif %}
+  <a class="btn btn-link" href="/portal/dashboard/">Back to the HQ dashboard</a>
+</div></div>
+{% endblock %}

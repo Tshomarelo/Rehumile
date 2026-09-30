@@ -1,0 +1,26 @@
+{% extends "hr/base_manage.html" %}
+{% block title %}Batch preview{% endblock %}
+{% block content %}
+<h4 class="mb-1">{{ b }}</h4>
+<p class="text-muted">{{ b.summary }} &middot; <span class="badge bg-secondary">{{ b.get_status_display }}</span></p>
+{% if b.status == 'PREVIEW' or b.status == 'SCHEDULED' %}
+<form method="post" action="{% url 'hr:manage_batch_action' b.pk %}" class="d-flex gap-2 mb-3">{% csrf_token %}
+  <button name="action" value="publish" class="btn btn-success" onclick="return confirm('Publish matched documents now? Employees will be notified.')">Publish now</button>
+  {% if b.publish_at %}<button name="action" value="schedule" class="btn btn-outline-primary">Schedule for {{ b.publish_at|date:"j M H:i" }}</button>{% endif %}
+  <button name="action" value="cancel" class="btn btn-outline-danger">Cancel batch</button>
+</form>
+<p class="small text-muted">Unmatched pages are skipped on publish. Assign them below first if needed.</p>
+{% endif %}
+<div class="card"><table class="table align-middle mb-0">
+  <thead class="table-light"><tr><th>Employee</th><th>v</th><th>Status</th><th>Note</th><th></th></tr></thead>
+  {% for r in rows %}<tr>
+    <td>{% if r.employee %}{{ r.employee }} <span class="text-muted small">{{ r.employee.employee_number }}</span>{% else %}<span class="text-danger">Unmatched</span>{% endif %}</td>
+    <td>{{ r.version }}</td><td>{{ r.get_status_display }}</td><td class="small">{{ r.match_note }}</td>
+    <td>{% if not r.employee and r.status == 'DRAFT' %}
+      <form method="post" class="d-flex gap-1" action="{% if b.kind == 'PAYSLIP' %}{% url 'hr:manage_row_assign' 'payslip' r.pk %}{% else %}{% url 'hr:manage_row_assign' 'taxcert' r.pk %}{% endif %}">{% csrf_token %}
+        <select name="employee" class="form-select form-select-sm">{% for p in people %}<option value="{{ p.pk }}">{{ p }}</option>{% endfor %}</select><button class="btn btn-sm btn-outline-primary">Assign</button></form>
+      {% elif r.status == 'PUBLISHED' %}
+      <form method="post" action="{% if b.kind == 'PAYSLIP' %}{% url 'hr:manage_row_withdraw' 'payslip' r.pk %}{% else %}{% url 'hr:manage_row_withdraw' 'taxcert' r.pk %}{% endif %}">{% csrf_token %}<button class="btn btn-sm btn-outline-danger">Withdraw</button></form>
+      {% endif %}</td></tr>{% endfor %}
+</table></div>
+{% endblock %}

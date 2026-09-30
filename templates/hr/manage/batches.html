@@ -1,0 +1,21 @@
+{% extends "hr/base_manage.html" %}
+{% block title %}Payslips and tax certificates{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+  <h4 class="mb-0">Payslips and tax certificates</h4>
+  <div class="d-flex gap-2">
+    <a class="btn btn-outline-secondary" href="{% url 'hr:manage_periods' %}">Pay periods</a>
+    <a class="btn btn-primary" href="{% url 'hr:manage_batch_new' 'payslips' %}">Upload payslips</a>
+    <a class="btn btn-primary" href="{% url 'hr:manage_batch_new' 'tax' %}">Upload tax certificates</a>
+  </div>
+</div>
+{% if corrections %}<div class="alert alert-warning"><strong>Correction requests</strong>
+  {% for c in corrections %}<div>{{ c.employee }} &middot; {{ c.tax_year }}: {{ c.correction_note }}
+  <form method="post" action="{% url 'hr:manage_row_withdraw' 'taxcert' c.pk %}" class="d-inline">{% csrf_token %}<button class="btn btn-sm btn-outline-danger">Withdraw certificate</button></form></div>{% endfor %}
+  <div class="small">Upload the corrected certificate as a new batch: it replaces the old one when published.</div></div>{% endif %}
+<div class="card"><table class="table align-middle mb-0">
+  <thead class="table-light"><tr><th>Uploaded</th><th>Type</th><th>For</th><th>Result</th><th>Status</th><th></th></tr></thead>
+  {% for b in batches %}<tr><td>{{ b.created_at|date:"j M H:i" }}</td><td>{{ b.get_kind_display }}</td><td>{{ b.pay_period|default:b.tax_year }}</td><td class="small">{{ b.summary }}</td><td><span class="badge bg-secondary">{{ b.get_status_display }}</span></td><td><a href="{% url 'hr:manage_batch' b.pk %}">Open</a></td></tr>
+  {% empty %}<tr><td colspan="6" class="text-center text-muted py-4">No uploads yet.</td></tr>{% endfor %}
+</table></div>
+{% endblock %}

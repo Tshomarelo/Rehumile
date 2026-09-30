@@ -255,7 +255,7 @@ class CompanySettingsSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'company_name', 'phone', 'email', 'address', 'website', 'vat_number',
             'account_name', 'bank_name', 'account_number', 'branch_code', 'swift_code',
-            'vat_rate', 'payment_terms', 'updated_at',
+            'vat_rate', 'payment_terms', 'payroll_sdl_enabled', 'updated_at',
         ]
         read_only_fields = ['id', 'updated_at']
 

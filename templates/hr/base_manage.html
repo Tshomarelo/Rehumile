@@ -1,0 +1,104 @@
+{% load static %}<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}HR Admin{% endblock %} - HR Admin</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  <style>
+    :root { --brand: #1a3a5c; --accent: #f7a800; --side: 250px; }
+    body { background: #f0f2f5; font-size: .875rem; }
+    .topbar { position: fixed; top: 0; left: 0; right: 0; height: 52px; background: var(--brand); color: #fff; z-index: 1030; display: flex; align-items: center; padding: 0 1rem; gap: .75rem; }
+    .topbar a, .topbar button { color: #fff; }
+    .topbar .dropdown-menu a.dropdown-item { color: #212529; }
+    .topbar .dropdown-menu a.dropdown-item:hover { background: #e9ecef; color: #000; }
+    .topbar .t { font-weight: 700; flex: 1; }
+    .side { background: var(--brand); color: #fff; }
+    .side .grp { font-size: .62rem; text-transform: uppercase; letter-spacing: .1em; color: rgba(255,255,255,.4); padding: .8rem 1rem .2rem; }
+    .side a.item { display: flex; align-items: center; gap: .55rem; padding: .48rem 1rem; color: rgba(255,255,255,.75); text-decoration: none; border-left: 3px solid transparent; font-size: .8rem; }
+    .side a.item:hover, .side a.item.on { background: rgba(255,255,255,.09); color: #fff; border-left-color: var(--accent); }
+    main { padding: 68px 1rem 2rem; }
+    .card { border: 0; box-shadow: 0 1px 4px rgba(0,0,0,.08); border-radius: 9px; }
+    .k { font-size: .65rem; text-transform: uppercase; letter-spacing: .06em; color: #6c757d; }
+    .kpi { border-left: 4px solid var(--accent); }
+    .kpi .v { font-size: 1.6rem; font-weight: 700; color: var(--brand); line-height: 1.1; }
+    table.t th { font-size: .7rem; text-transform: uppercase; letter-spacing: .04em; color: #495057; white-space: nowrap; }
+    @media (min-width: 992px) {
+      .side.offcanvas-lg { background: var(--brand) !important; width: var(--side) !important; position: fixed; top: 52px; bottom: 0; left: 0; width: var(--side); overflow-y: auto; visibility: visible !important; transform: none; }
+      main { margin-left: var(--side); padding: 72px 1.6rem 2rem; }
+      .topbar .toggle { display: none; }
+    }
+  </style>
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+<header class="topbar">
+  <button class="btn btn-link toggle p-1" data-bs-toggle="offcanvas" data-bs-target="#side"><i class="bi bi-list fs-4"></i></button>
+  <div class="t"><i class="bi bi-people-fill"></i> HR Admin{% if hr_company %} <span class="fw-normal opacity-75">&middot; {{ hr_company.name }}</span>{% endif %}</div>
+  {% if hr_companies %}
+  <div class="dropdown">
+    <button class="btn btn-sm btn-outline-light dropdown-toggle" data-bs-toggle="dropdown"><i class="bi bi-building"></i> Company</button>
+    <ul class="dropdown-menu dropdown-menu-end">{% for c in hr_companies %}<li><a class="dropdown-item" href="{% url 'hr:manage_switch_company' c.pk %}">{{ c.name }}</a></li>{% endfor %}</ul>
+  </div>
+  {% endif %}
+  {% if hr_employee %}<a class="btn btn-sm btn-outline-light" href="{% url 'hr:portal_home' %}"><i class="bi bi-person-circle"></i> Employee view</a>{% endif %}
+  <a class="btn btn-link p-1 position-relative" href="{% url 'hr:portal_notifications' %}"><i class="bi bi-bell fs-5"></i>{% if hr_unread %}<span class="position-absolute top-0 end-0 badge rounded-pill bg-warning text-dark">{{ hr_unread }}</span>{% endif %}</a>
+  <form method="post" action="{% url 'hr:logout' %}" class="m-0">{% csrf_token %}<button class="btn btn-sm btn-warning">Logout</button></form>
+</header>
+
+<nav class="side offcanvas-lg offcanvas-start" tabindex="-1" id="side">
+  <div class="offcanvas-header d-lg-none"><span class="fw-bold">Menu</span><button class="btn-close btn-close-white" data-bs-dismiss="offcanvas"></button></div>
+  <div class="offcanvas-body d-block p-0">
+    <div class="grp">Overview</div>
+    <a class="item {% if active == 'dashboard' %}on{% endif %}" href="{% url 'hr:manage_home' %}"><i class="bi bi-speedometer2"></i> Dashboard</a>
+    <a class="item {% if active == 'approvals' %}on{% endif %}" href="{% url 'hr:manage_approvals' %}"><i class="bi bi-inbox"></i> Approvals{% if hr_pending_count %} <span class="badge bg-warning text-dark ms-auto">{{ hr_pending_count }}</span>{% endif %}</a>
+    <a class="item {% if active == 'team' %}on{% endif %}" href="{% url 'hr:manage_team' %}"><i class="bi bi-people"></i> My team</a>
+    <a class="item {% if active == 'leave-calendar' %}on{% endif %}" href="{% url 'hr:leave_calendar' %}"><i class="bi bi-calendar3"></i> Team leave calendar</a>
+    <a class="item {% if active == 'roster' %}on{% endif %}" href="{% url 'hr:manage_roster' %}"><i class="bi bi-calendar3-week"></i> Roster</a>
+    <div class="grp">Pay</div>
+    <a class="item {% if active == 'advances' %}on{% endif %}" href="{% url 'hr:manage_advances' %}"><i class="bi bi-cash-stack"></i> Salary advances</a>
+    {% if hr_is_admin %}<a class="item {% if active == 'pay' %}on{% endif %}" href="{% url 'hr:manage_salaries' %}"><i class="bi bi-wallet2"></i> Salaries</a>
+    <a class="item" href="{% url 'hr:manage_pay_reports' 'outstanding' %}"><i class="bi bi-file-earmark-bar-graph"></i> Pay reports</a>{% endif %}
+    {% if hr_is_payroll %}<a class="item" href="{% url 'hr:manage_runs' %}"><i class="bi bi-calendar-check"></i> Payruns</a>
+    <a class="item" href="{% url 'hr:manage_sync' %}"><i class="bi bi-arrow-repeat"></i> Salary sync</a>{% endif %}
+    {% if hr_is_admin %}
+    <div class="grp">People</div>
+    <a class="item {% if active == 'employees' %}on{% endif %}" href="{% url 'hr:manage_employees' %}"><i class="bi bi-person-lines-fill"></i> Employees</a>
+    {% if hr_is_payroll %}<a class="item {% if active == 'payroll' %}on{% endif %}" href="{% url 'hr:manage_batches' %}"><i class="bi bi-receipt"></i> Payslips &amp; tax certs</a><a class="item" href="{% url 'hr:manage_payrun' %}"><i class="bi bi-cash-coin"></i> Payrun input</a>{% endif %}
+    <a class="item {% if active == 'documents' %}on{% endif %}" href="{% url 'hr:manage_documents' %}"><i class="bi bi-folder2-open"></i> Documents &amp; policies</a>
+    <a class="item {% if active == 'relations' %}on{% endif %}" href="{% url 'hr:manage_relations' %}"><i class="bi bi-shield-check"></i> Employee relations</a>
+    <a class="item {% if active == 'reports' %}on{% endif %}" href="{% url 'hr:manage_reports' %}"><i class="bi bi-bar-chart"></i> Reports</a>
+    <div class="grp">Leave</div>
+    <a class="item {% if active == 'leave' %}on{% endif %}" href="{% url 'hr:manage_leave_requests' %}"><i class="bi bi-calendar-check"></i> All leave requests</a>
+    <a class="item" href="{% url 'hr:manage_leave_balances' %}"><i class="bi bi-table"></i> Balances</a>
+    <a class="item" href="{% url 'hr:manage_leave_capture' %}"><i class="bi bi-telephone-inbound"></i> Capture leave</a>
+    <a class="item" href="{% url 'hr:manage_leave_adjust' %}"><i class="bi bi-sliders"></i> Adjust balance</a>
+    <div class="grp">Setup</div>
+    <a class="item {% if active == 'setup-leave-types' %}on{% endif %}" href="{% url 'hr:manage_crud' 'leave-types' %}"><i class="bi bi-list-check"></i> Leave types</a>
+    <a class="item {% if active == 'setup-leave-policies' %}on{% endif %}" href="{% url 'hr:manage_crud' 'leave-policies' %}"><i class="bi bi-diagram-2"></i> Leave policies</a>
+    <a class="item {% if active == 'setup-holidays' %}on{% endif %}" href="{% url 'hr:manage_crud' 'holidays' %}"><i class="bi bi-flag"></i> Public holidays</a>
+    <a class="item {% if active == 'setup-blackouts' %}on{% endif %}" href="{% url 'hr:manage_crud' 'blackouts' %}"><i class="bi bi-slash-circle"></i> Blackout periods</a>
+    <a class="item {% if active == 'setup-departments' %}on{% endif %}" href="{% url 'hr:manage_crud' 'departments' %}"><i class="bi bi-building"></i> Departments</a>
+    <a class="item {% if active == 'setup-positions' %}on{% endif %}" href="{% url 'hr:manage_crud' 'positions' %}"><i class="bi bi-briefcase"></i> Positions</a>
+    <a class="item {% if active == 'setup-sites' %}on{% endif %}" href="{% url 'hr:manage_crud' 'sites' %}"><i class="bi bi-geo-alt"></i> Sites</a>
+    <a class="item {% if active == 'setup-cost-centres' %}on{% endif %}" href="{% url 'hr:manage_crud' 'cost-centres' %}"><i class="bi bi-cash-stack"></i> Cost centres</a>
+    {% endif %}
+    {% if 'SUPER_ADMIN' in hr_roles %}
+    <div class="grp">System</div>
+    <a class="item {% if active == 'setup-companies' %}on{% endif %}" href="{% url 'hr:manage_crud' 'companies' %}"><i class="bi bi-buildings"></i> Companies</a>
+    <a class="item {% if active == 'setup-workflows' %}on{% endif %}" href="{% url 'hr:manage_crud' 'workflows' %}"><i class="bi bi-signpost-split"></i> Approval workflows</a>
+    <a class="item {% if active == 'roles' %}on{% endif %}" href="{% url 'hr:manage_roles' %}"><i class="bi bi-shield-lock"></i> Users &amp; roles</a>
+    <a class="item {% if active == 'audit' %}on{% endif %}" href="{% url 'hr:manage_audit' %}"><i class="bi bi-journal-text"></i> Audit log</a>
+    {% endif %}
+  </div>
+</nav>
+
+<main>
+  {% for m in messages %}<div class="alert alert-{{ m.tags|default:'info' }} {% if m.tags == 'error' %}alert-danger{% endif %} py-2">{{ m }}</div>{% endfor %}
+  {% block content %}{% endblock %}
+</main>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+{% block extra_js %}{% endblock %}
+</body>
+</html>

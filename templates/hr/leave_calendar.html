@@ -1,0 +1,34 @@
+{% extends "hr/base_portal.html" %}
+{% block title %}Team leave calendar{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h4 class="mb-0">Team leave &middot; {{ month_label }}</h4>
+  <div class="btn-group btn-group-sm">
+    <a class="btn btn-outline-secondary" href="?year={{ prev.year }}&month={{ prev.month }}">&larr;</a>
+    <a class="btn btn-outline-secondary" href="{% url 'hr:leave_calendar' %}">Today</a>
+    <a class="btn btn-outline-secondary" href="?year={{ next.year }}&month={{ next.month }}">&rarr;</a>
+  </div>
+</div>
+<div class="card">
+  <div class="table-responsive">
+    <table class="table table-sm table-bordered mb-0 text-center align-middle" style="font-size:.72rem">
+      <thead class="table-light">
+        <tr><th class="text-start" style="min-width:130px">Who</th>{% for d in days %}<th class="{% if d == today %}table-warning{% endif %} {% if d.weekday >= 5 %}text-muted{% endif %}">{{ d.day }}<br><span class="fw-normal">{{ d|date:"D"|slice:":2" }}</span></th>{% endfor %}</tr>
+      </thead>
+      <tbody>
+        {% for r in rows %}
+        <tr>
+          <td class="text-start fw-semibold">{{ r.label }}</td>
+          {% for cell, label in r.cells %}
+          <td title="{{ label }}" style="{% if cell %}background:{{ cell.leave_type.colour }}{% if cell.status != 'APPROVED' %}66{% endif %};{% endif %}"></td>
+          {% endfor %}
+        </tr>
+        {% empty %}
+        <tr><td colspan="{{ days|length|add:1 }}" class="text-muted py-3">Nobody in your team is on leave this month.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+<div class="small text-muted mt-2">Solid colour = approved, faded = waiting for approval. Hover a block for the leave type.</div>
+{% endblock %}

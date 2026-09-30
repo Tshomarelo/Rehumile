@@ -1,0 +1,37 @@
+{% extends "hr/base_manage.html" %}
+{% block title %}Shift{% endblock %}
+{% block content %}
+<h4 class="mb-1">{{ shift.date|date:"l j F Y" }} &middot; {{ shift.start_time|time:"H:i" }}-{{ shift.end_time|time:"H:i" }}</h4>
+<p class="text-muted">{{ shift.site|default:"" }} {% if shift.post %}&middot; {{ shift.post.name }}{% endif %} &middot; {{ shift.paid_hours|floatformat:"-2" }} paid hours{% if shift.pinned %} &middot; pinned{% endif %}
+  &middot; <strong>{% if shift.employee %}{{ shift.employee }}{% else %}OPEN{% endif %}</strong> <span class="badge bg-secondary">{{ shift.get_status_display }}</span>
+  {% if shift.roster %}<a class="ms-2" href="{% url 'hr:manage_roster_detail' shift.roster_id %}">Back to roster</a>{% endif %}</p>
+
+<div class="row g-3">
+  <div class="col-lg-6"><div class="card"><div class="card-header">Place someone</div><div class="card-body">
+    <form method="post" action="{% url 'hr:manage_shift_assign' shift.pk %}">{% csrf_token %}
+      <label class="small text-muted">Best eligible first (rules already checked)</label>
+      <select name="employee" class="form-select mb-2">{% for e in candidates %}<option value="{{ e.pk }}">{{ e }}{% if e.roster_profile.staff_group.is_casual %} (casual){% endif %}</option>{% endfor %}
+        {% if not candidates %}<option value="">No one is eligible without a rule breach</option>{% endif %}</select>
+      <input name="override_reason" class="form-control mb-2" placeholder="Reason (only needed to override a rule)">
+      <button class="btn btn-primary btn-sm">Place</button></form>
+    <hr>
+    <div class="small text-muted mb-1">Someone not on the list? Their reason is shown below. {% if can_override %}You can override rule breaches (not missing flags, group, approval or leave) with a reason.{% else %}Only a manager with override permission can override a rule.{% endif %}</div>
+    {% for b in blocked %}<div class="small border-top py-1"><strong>{{ b.employee }}</strong>: {{ b.reasons }} {% if b.overridable %}<span class="badge bg-warning text-dark">overridable</span>{% else %}<span class="badge bg-danger">blocked</span>{% endif %}</div>{% endfor %}
+  </div></div></div>
+
+  <div class="col-lg-6"><div class="card"><div class="card-header">Actions</div><div class="card-body">
+    <form method="post" action="{% url 'hr:manage_shift_action' shift.pk %}" class="d-flex flex-wrap gap-2 mb-3">{% csrf_token %}
+      {% if shift.employee %}<button name="action" value="unassign" class="btn btn-outline-secondary btn-sm">Remove person</button>{% endif %}
+      {% if shift.pinned %}<button name="action" value="unpin" class="btn btn-outline-secondary btn-sm">Unpin</button>{% else %}<button name="action" value="pin" class="btn btn-outline-secondary btn-sm">Pin</button>{% endif %}
+      {% if not shift.employee %}<button name="action" value="offer" class="btn btn-outline-primary btn-sm">Offer to casuals</button><button name="action" value="widen" class="btn btn-outline-primary btn-sm">Alert more people</button><button name="action" value="delete" class="btn btn-outline-danger btn-sm">Delete slot</button>{% endif %}
+    </form>
+    {% if shift.employee %}<form method="post" action="{% url 'hr:manage_shift_action' shift.pk %}" class="d-flex gap-1">{% csrf_token %}
+      <input name="reason" class="form-control form-control-sm" placeholder="Absent or called in sick: reason">
+      <button name="action" value="absent" class="btn btn-danger btn-sm text-nowrap">Mark absent</button></form>
+      <div class="small text-muted mt-1">Ranks replacements (flags, site approval, rest, hours), alerts the top candidates, and confirms the first eligible acceptance.</div>{% endif %}
+  </div></div>
+  <div class="card mt-3"><div class="card-header">Offers</div><ul class="list-group list-group-flush">{% for o in offers %}<li class="list-group-item small">{{ o.employee }} &middot; {{ o.get_kind_display }}{% if o.urgent %} (urgent){% endif %} &middot; <strong>{{ o.get_status_display }}</strong></li>{% empty %}<li class="list-group-item text-muted small">None.</li>{% endfor %}</ul></div>
+  {% if overrides %}<div class="card mt-3"><div class="card-header">Overrides on this shift</div><ul class="list-group list-group-flush">{% for o in overrides %}<li class="list-group-item small"><strong>{{ o.rule_code }}</strong> by {{ o.user }}: {{ o.reason }}</li>{% endfor %}</ul></div>{% endif %}
+  </div>
+</div>
+{% endblock %}

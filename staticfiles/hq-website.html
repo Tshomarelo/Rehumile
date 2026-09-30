@@ -209,7 +209,7 @@
         </div>
         <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:4px">
           <button class="btn btn-primary" id="seedBtn" onclick="seedDefaultContent()">
-            <i data-feather="database" style="width:15px;height:15px"></i> Seed Default Content
+            <i data-feather="database" style="width:15px;height:15px"></i> Restore Missing Defaults
           </button>
         </div>
       </div>
@@ -260,6 +260,22 @@
       <div class="form-group">
         <label class="form-label">Unit</label>
         <input type="text" class="form-control" id="pUnit" placeholder="per visit / per device / per month">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Shown in pricing card</label>
+        <select class="form-control" id="pGroup">
+          <option value="">— Live-rates strip only —</option>
+          <option value="hardware">Hardware &amp; Support Services</option>
+          <option value="software">Software Products</option>
+          <option value="pos">Point of Sale (POS) Solutions</option>
+          <option value="combo">Combos &amp; Value Packages</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Text before price</label>
+        <input type="text" class="form-control" id="pPrefix" placeholder='e.g. "From" (optional)' maxlength="20">
       </div>
     </div>
     <div class="form-row">
@@ -382,7 +398,7 @@ async function loadPrices() {
       <td><strong>${p.name}</strong>${p.description ? '<br><span style="font-size:.75rem;color:#9ca3af">' + p.description.substring(0,80) + '</span>' : ''}</td>
       <td><span class="badge ${CAT_COLORS[p.category] || 'badge-gray'}">${CAT_LABELS[p.category] || p.category}</span></td>
       <td style="font-weight:600;color:#111827">R ${parseFloat(p.price).toFixed(2)}</td>
-      <td style="color:#6b7280">${p.unit}</td>
+      <td style="color:#6b7280">${p.price_prefix ? p.price_prefix + ' ' : ''}${p.unit || ''}${p.group ? '<br><span class="badge badge-gray">' + ({hardware:'Card: Hardware',software:'Card: Software',pos:'Card: POS',combo:'Card: Combos'}[p.group]||p.group) + '</span>' : ''}</td>
       <td>${p.is_featured ? '<span class="badge badge-green">★ Featured</span>' : '<span style="color:#d1d5db">—</span>'}</td>
       <td>${p.is_active ? '<span class="badge badge-green">Active</span>' : '<span class="badge badge-gray">Hidden</span>'}</td>
       <td>
@@ -402,6 +418,8 @@ function openPriceModal(data = null) {
   document.getElementById('pPrice').value = data ? data.price : '';
   document.getElementById('pUnit').value = data ? data.unit : 'per visit';
   document.getElementById('pOrder').value = data ? data.display_order : 0;
+  document.getElementById('pGroup').value = data ? (data.group || '') : '';
+  document.getElementById('pPrefix').value = data ? (data.price_prefix || '') : '';
   document.getElementById('pFeatured').checked = data ? data.is_featured : false;
   document.getElementById('pActive').checked = data ? data.is_active : true;
   document.getElementById('priceModal').classList.add('open');
@@ -418,10 +436,12 @@ async function savePrice() {
     price: parseFloat(document.getElementById('pPrice').value) || 0,
     unit: document.getElementById('pUnit').value || 'per visit',
     display_order: parseInt(document.getElementById('pOrder').value) || 0,
+    group: document.getElementById('pGroup').value,
+    price_prefix: document.getElementById('pPrefix').value.trim(),
     is_featured: document.getElementById('pFeatured').checked,
     is_active: document.getElementById('pActive').checked,
   };
-  if (!payload.name || !payload.price) { toast('Service name and price are required.', '#dc2626'); return; }
+  if (!payload.name || !(payload.price >= 0) || document.getElementById('pPrice').value === '') { toast('Service name and price are required.', '#dc2626'); return; }
   const btn = document.getElementById('savePriceBtn');
   const orig = btn.innerHTML;
   btn.disabled = true;
@@ -435,7 +455,8 @@ async function savePrice() {
       toast(id ? 'Price updated.' : 'Service added.', '#16a34a');
       loadPrices(); loadKPIs();
     } else {
-      toast('Save failed — check all fields.', '#dc2626');
+      let m = 'Save failed — check all fields.'; try { const j = await res.json(); if (j.detail) m = j.detail; } catch(e) {}
+      toast(m, '#dc2626');
     }
   } catch(e) {
     toast('Save failed — network error.', '#dc2626');
@@ -459,7 +480,7 @@ async function loadContent() {
   let url = API + '/website/content/';
   if (sec) url += '?section=' + sec;
   const res = await fetch(url, { headers: authHeaders() });
-  const data = await res.json();
+  const data = (await res.json()).sort((a, b) => (b.is_live - a.is_live) || a.section.localeCompare(b.section));
   const editor = document.getElementById('contentEditor');
   if (!data.length) {
     editor.innerHTML = '<div class="empty-state">No content blocks found. Click "Seed Default Content" to create defaults.</div>';
@@ -474,11 +495,12 @@ async function loadContent() {
       <div class="content-label">
         ${c.label}
         <span class="content-section-badge">${SECTION_LABELS[c.section] || c.section}</span>
+        ${c.is_live ? '<span class="badge badge-green" style="margin-left:6px">On website</span>' : '<span class="badge badge-gray" style="margin-left:6px" title="The public page does not read this block yet">Not used on site</span>'}
       </div>
       <div class="content-value-wrap">
         ${c.value.length > 120 || c.value.includes('\n')
-          ? `<textarea class="inline-input" rows="3" data-id="${c.id}" data-key="${c.key}" onInput="scheduleContentSave(this)">${c.value}</textarea>`
-          : `<input type="text" class="inline-input" value="${c.value.replace(/"/g,'&quot;')}" data-id="${c.id}" data-key="${c.key}" onInput="scheduleContentSave(this)">`
+          ? `<textarea class="inline-input" rows="3" data-id="${c.id}" data-key="${c.key}" onInput="scheduleContentSave(this)">${c.value.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</textarea>`
+          : `<input type="text" class="inline-input" value="${c.value.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;')}" data-id="${c.id}" data-key="${c.key}" onInput="scheduleContentSave(this)">`
         }
         <span class="save-indicator" id="si-${c.id}">✓ Saved</span>
       </div>
@@ -502,50 +524,19 @@ async function saveContentBlock(id, value) {
   }
 }
 
-// ── Seed Default Content ──────────────────────────────────────────────────────
-const DEFAULT_CONTENT = [
-  { section:'hero', key:'hero_title', label:'Hero Title', value:'Expert IT Solutions for Your Business' },
-  { section:'hero', key:'hero_subtitle', label:'Hero Subtitle', value:'Rehumile TMW delivers fast, reliable IT support, networking, and CCTV solutions across South Africa.' },
-  { section:'hero', key:'hero_cta_primary', label:'Primary CTA Button Text', value:'Get a Free Quote' },
-  { section:'hero', key:'hero_cta_secondary', label:'Secondary CTA Button Text', value:'Sign In to Portal' },
-  { section:'hero', key:'hero_stat_devices', label:'Stat: Devices Managed', value:'500+' },
-  { section:'hero', key:'hero_stat_satisfaction', label:'Stat: Satisfaction Rate', value:'98%' },
-  { section:'hero', key:'hero_stat_turnaround', label:'Stat: Turnaround Time', value:'24h' },
-  { section:'hero', key:'hero_stat_years', label:'Stat: Years Experience', value:'5+' },
-  { section:'about', key:'about_headline', label:'About Headline', value:'Why Choose Rehumile TMW?' },
-  { section:'about', key:'about_body', label:'About Body Text', value:'We are a specialist IT services company committed to keeping your business running smoothly. From hardware repairs to full network setups, our certified technicians respond fast.' },
-  { section:'services', key:'services_headline', label:'Services Section Headline', value:'Our Services' },
-  { section:'services', key:'services_subheading', label:'Services Subheading', value:'Comprehensive IT support tailored to your business needs' },
-  { section:'process', key:'process_headline', label:'How It Works Headline', value:'How It Works' },
-  { section:'process', key:'process_step1', label:'Step 1', value:'Submit a Quote Request' },
-  { section:'process', key:'process_step2', label:'Step 2', value:'We Assess & Quote' },
-  { section:'process', key:'process_step3', label:'Step 3', value:'Technician On-Site or Remote' },
-  { section:'process', key:'process_step4', label:'Step 4', value:'Invoice & Follow-Up' },
-  { section:'cta', key:'cta_headline', label:'CTA Headline', value:'Ready to Get Started?' },
-  { section:'cta', key:'cta_body', label:'CTA Body', value:'Join 200+ businesses already using Rehumile TMW for their IT needs.' },
-  { section:'contact', key:'contact_email', label:'Contact Email', value:'info@rehumile.co.za' },
-  { section:'contact', key:'contact_phone', label:'Contact Phone', value:'+27 (0) 11 000 0000' },
-  { section:'contact', key:'contact_address', label:'Contact Address', value:'Johannesburg, Gauteng, South Africa' },
-  { section:'footer', key:'footer_tagline', label:'Footer Tagline', value:'Expert IT solutions for growing businesses.' },
-  { section:'footer', key:'footer_copyright', label:'Footer Copyright', value:'© 2026 Rehumile TMW. All rights reserved.' },
-];
-
+// ── Restore defaults (server-side, never overwrites an edited value) ─────────
 async function seedDefaultContent() {
-  if (!confirm('This will create missing default content blocks (existing blocks are not overwritten). Continue?')) return;
+  if (!confirm('Create any missing default content blocks and price-list items? Values you have already edited are NOT overwritten.')) return;
   const btn = document.getElementById('seedBtn');
   const orig = btn.innerHTML;
   btn.disabled = true;
-  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Seeding…';
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Working…';
   try {
-    let created = 0;
-    for (const item of DEFAULT_CONTENT) {
-      const res = await fetch(`${API}/website/content/`, {
-        method: 'POST', headers: authHeaders(), body: JSON.stringify(item),
-      });
-      if (res.ok) { const d = await res.json(); if (d.created) created++; }
-    }
-    toast(`Seeded ${created} new content blocks.`, '#16a34a');
-    loadContent(); loadKPIs();
+    const res = await fetch(`${API}/website/seed/`, { method: 'POST', headers: authHeaders() });
+    const d = await res.json();
+    if (res.ok) toast(`Added ${d.content_created} content block(s) and ${d.prices_created} price(s).`, '#16a34a');
+    else toast(d.detail || 'Seed failed.', '#dc2626');
+    loadContent(); loadPrices(); loadKPIs();
   } catch(e) {
     toast('Seed failed — network error.', '#dc2626');
   }

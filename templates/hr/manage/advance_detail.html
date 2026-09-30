@@ -1,0 +1,42 @@
+{% extends "hr/base_manage.html" %}
+{% block title %}Advance{% endblock %}
+{% block content %}
+<h4 class="mb-1">{{ adv.number }} &middot; {{ adv.employee }}</h4>
+<p class="text-muted">R{{ adv.amount }}{% if adv.fee %} + fee R{{ adv.fee }}{% endif %} &middot; {{ adv.reason }} &middot; <span class="badge bg-secondary">{{ adv.get_status_display }}</span>
+  {% if adv.emergency %}<span class="badge bg-danger">emergency: {{ adv.emergency_reason }}</span>{% endif %} &middot; balance <strong>R{{ bal }}</strong>
+  {% if adv.captured_by %}&middot; captured by {{ adv.captured_by }}{% endif %}{% if adv.approved_by %} &middot; approved by {{ adv.approved_by }}{% endif %}</p>
+<div class="row g-3">
+  <div class="col-lg-6">
+    {% if adv.status == 'REQUESTED' %}<div class="card mb-3"><div class="card-header">Employee confirmation</div><div class="card-body">
+      <form method="post" action="{% url 'hr:manage_advance_action' adv.pk %}" class="d-flex gap-1">{% csrf_token %}<input name="code" class="form-control" inputmode="numeric" maxlength="6" placeholder="Code from the employee's phone"><button name="action" value="confirm" class="btn btn-success">Confirm</button><button name="action" value="resend" class="btn btn-outline-secondary">New code</button></form>
+      <div class="small text-muted mt-1">The employee reads the code to you from their own phone. That confirmation is stored as their agreement.</div></div></div>{% endif %}
+    {% if adv.status == 'APPROVED' %}<div class="card mb-3"><div class="card-header">Pay out</div><div class="card-body">
+      {% if can_pay %}<form method="post" action="{% url 'hr:manage_advance_action' adv.pk %}">{% csrf_token %}
+        <select name="method" class="form-select mb-2" onchange="document.querySelectorAll('.pm').forEach(e=>e.classList.add('d-none'));var t=document.getElementById('pm-'+this.value);if(t)t.classList.remove('d-none')">
+          <option value="CASH_TILL">Cash from a till (open shift)</option><option value="PETTY_CASH">Petty cash</option><option value="TRANSFER">Electronic transfer</option><option value="WITH_PAYRUN">Paid with the next payrun</option></select>
+        <div class="pm mb-2" id="pm-CASH_TILL"><select name="shift" class="form-select"><option value="">Choose the till...</option>{% for s in tills %}<option value="{{ s.pk }}">{{ s.cashier }} &middot; {{ s.start_datetime|date:"j M H:i" }}</option>{% endfor %}</select></div>
+        <div class="pm mb-2 d-none" id="pm-PETTY_CASH"><select name="fund" class="form-select"><option value="">Choose the fund...</option>{% for f in funds %}<option value="{{ f.pk }}">{{ f.fund_name }} (R{{ f.current_balance }})</option>{% endfor %}</select></div>
+        <div class="pm mb-2 d-none" id="pm-TRANSFER"><input name="reference" class="form-control" placeholder="Bank reference"></div>
+        <button class="btn btn-primary">Mark as paid and print receipt</button></form>
+      {% else %}<div class="text-muted">Only an authorised advance payer can pay this out.</div>{% endif %}</div></div>{% endif %}
+    {% if adv.status == 'PAID' or adv.status == 'RECOVERING' %}<div class="card mb-3"><div class="card-header">Repayment</div><div class="card-body">
+      <form method="post" action="{% url 'hr:manage_advance_action' adv.pk %}" class="row g-2">{% csrf_token %}<input type="hidden" name="action" value="repay">
+        <div class="col-4"><input name="amount" class="form-control" placeholder="Amount"></div>
+        <div class="col-8"><select name="method" class="form-select"><option value="CASH_TILL">Cash into a till</option><option value="PETTY_CASH">Cash into petty cash</option><option value="TRANSFER">Transfer</option></select></div>
+        <div class="col-6"><select name="shift" class="form-select"><option value="">Till...</option>{% for s in tills %}<option value="{{ s.pk }}">{{ s.cashier }} {{ s.start_datetime|date:"j M" }}</option>{% endfor %}</select></div>
+        <div class="col-6"><select name="fund" class="form-select"><option value="">Fund...</option>{% for f in funds %}<option value="{{ f.pk }}">{{ f.fund_name }}</option>{% endfor %}</select></div>
+        <div class="col-12"><input name="reference" class="form-control" placeholder="Bank reference (transfer)"></div>
+        <div class="col-12"><button class="btn btn-primary btn-sm">Record repayment</button></div></form></div></div>
+    {% if is_admin %}<div class="card mb-3"><div class="card-header">Write off, or final pay</div><div class="card-body">
+      <form method="post" action="{% url 'hr:manage_advance_action' adv.pk %}" class="d-flex gap-1 mb-2">{% csrf_token %}<input name="reason" class="form-control form-control-sm" placeholder="Written reason (senior management approves)"><button name="action" value="writeoff" class="btn btn-sm btn-outline-danger text-nowrap">Request write-off</button></form>
+      {% if adv.employee.status == 'TERMINATED' and not adv.final_pay_agreed %}<form method="post" action="{% url 'hr:manage_advance_action' adv.pk %}" class="d-flex gap-1">{% csrf_token %}<input name="note" class="form-control form-control-sm" placeholder="How the employee agreed"><button name="action" value="final_pay" class="btn btn-sm btn-outline-primary text-nowrap">Record final pay agreement</button></form>{% endif %}</div></div>{% endif %}{% endif %}
+    {% if adv.status == 'REQUESTED' or adv.status == 'AWAITING_APPROVAL' or adv.status == 'APPROVED' %}<form method="post" action="{% url 'hr:manage_advance_action' adv.pk %}">{% csrf_token %}<button name="action" value="cancel" class="btn btn-outline-danger btn-sm">Cancel before payment</button></form>{% endif %}
+    {% if adv.payment %}<a class="btn btn-outline-secondary btn-sm mt-2" href="{% url 'hr:manage_advance_receipt' adv.pk %}" target="_blank">Receipt</a>{% endif %}
+  </div>
+  <div class="col-lg-6">
+    <div class="card mb-3"><div class="card-header">Recovery schedule</div><ul class="list-group list-group-flush">{% for s in schedule %}<li class="list-group-item small d-flex justify-content-between">#{{ s.sequence }} R{{ s.amount }} <span>{{ s.get_status_display }}{% if s.pay_period %} ({{ s.pay_period.label }}){% endif %}</span></li>{% empty %}<li class="list-group-item text-muted small">Created when approved.</li>{% endfor %}</ul></div>
+    <div class="card mb-3"><div class="card-header">Ledger</div><ul class="list-group list-group-flush">{% for l in ledger %}<li class="list-group-item small d-flex justify-content-between">{{ l.date|date:"j M Y" }} {{ l.get_type_display }} <span class="{% if l.amount < 0 %}text-success{% endif %}">R{{ l.amount }}</span></li>{% empty %}<li class="list-group-item text-muted small">No movements yet.</li>{% endfor %}</ul></div>
+    <div class="card"><div class="card-header">Confirmation and agreement</div><ul class="list-group list-group-flush">{% for c in confirmations %}<li class="list-group-item small">{{ c.get_method_display }}{% if c.confirmed_at %}: confirmed {{ c.confirmed_at|date:"j M H:i" }} from {{ c.ip|default:"?" }}{% else %}: waiting{% endif %}{% if c.agreement_copy %}<div class="text-muted" style="white-space:pre-line">{{ c.agreement_copy }}</div>{% endif %}</li>{% endfor %}</ul></div>
+  </div>
+</div>
+{% endblock %}

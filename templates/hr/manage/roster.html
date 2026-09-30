@@ -1,0 +1,29 @@
+{% extends "hr/base_manage.html" %}
+{% block title %}Roster{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+  <h4 class="mb-0">Roster: week of {{ start|date:"j M Y" }}</h4>
+  <div class="d-flex gap-2">
+    <a class="btn btn-outline-secondary btn-sm" href="?week={{ prev|date:'Y-m-d' }}">&laquo; Prev</a>
+    <a class="btn btn-outline-secondary btn-sm" href="?week={{ next|date:'Y-m-d' }}">Next &raquo;</a>
+    <form method="post" action="{% url 'hr:manage_roster_copy' %}">{% csrf_token %}<input type="hidden" name="week" value="{{ start|date:'Y-m-d' }}"><button class="btn btn-outline-primary btn-sm">Copy last week</button></form>
+    <form method="post" action="{% url 'hr:manage_roster_publish' %}">{% csrf_token %}<input type="hidden" name="week" value="{{ start|date:'Y-m-d' }}"><button class="btn btn-success btn-sm" {% if not drafts %}disabled{% endif %}>Publish {{ drafts }} draft(s)</button></form>
+  </div>
+</div>
+<form method="post" action="{% url 'hr:manage_shift_add' %}" class="row g-2 mb-3">{% csrf_token %}
+  <div class="col-md-3"><select name="employee" class="form-select form-select-sm">{% for p in people %}<option value="{{ p.pk }}">{{ p }}</option>{% endfor %}</select></div>
+  <div class="col-md-2"><input type="date" name="date" value="{{ start|date:'Y-m-d' }}" class="form-control form-control-sm"></div>
+  <div class="col-md-2"><input type="time" name="start" value="08:00" class="form-control form-control-sm"></div>
+  <div class="col-md-2"><input type="time" name="end" value="17:00" class="form-control form-control-sm"></div>
+  <div class="col-md-2"><input name="note" placeholder="Note" class="form-control form-control-sm"></div>
+  <div class="col-md-1"><button class="btn btn-primary btn-sm w-100">Add</button></div>
+</form>
+<div class="card"><div class="table-responsive"><table class="table table-sm align-middle mb-0">
+  <thead class="table-light"><tr><th>Employee</th>{% for d in days %}<th>{{ d|date:"D j" }}</th>{% endfor %}</tr></thead>
+  {% for r in rows %}<tr><td>{{ r.e }}</td>{% for cell in r.cells %}<td>{% for s in cell %}
+    <div class="small {% if s.status == 'DRAFT' %}text-muted fst-italic{% endif %}">{{ s.start_time|time:"H:i" }}-{{ s.end_time|time:"H:i" }}
+    <form method="post" action="{% url 'hr:manage_shift_delete' s.pk %}" class="d-inline">{% csrf_token %}<button class="btn btn-link btn-sm p-0 text-danger">&times;</button></form></div>{% endfor %}</td>{% endfor %}</tr>
+  {% empty %}<tr><td colspan="8" class="text-muted text-center py-3">No employees.</td></tr>{% endfor %}
+</table></div></div>
+<p class="small text-muted mt-2">Italic times are drafts, not yet visible to employees.</p>
+{% endblock %}

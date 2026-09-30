@@ -1,0 +1,42 @@
+{% extends "hr/base_manage.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+<h4 class="mb-3">Dashboard</h4>
+<div class="row g-3 mb-3">
+  <div class="col-6 col-lg-3"><div class="card kpi"><div class="card-body py-3"><div class="k">Waiting for me</div><div class="v">{{ pending_total }}</div><a href="{% url 'hr:manage_approvals' %}" class="small">Open approvals</a></div></div></div>
+  <div class="col-6 col-lg-3"><div class="card kpi"><div class="card-body py-3"><div class="k">Off today</div><div class="v">{{ on_leave_today|length }}</div><span class="small text-muted">{{ next_week }} starting in the next 7 days</span></div></div></div>
+  <div class="col-6 col-lg-3"><div class="card kpi"><div class="card-body py-3"><div class="k">Headcount</div><div class="v">{{ headcount }}</div><span class="small text-muted">{{ new_starters }} new in 30 days</span></div></div></div>
+</div>
+<div class="row g-3">
+  <div class="col-lg-7"><div class="card">
+    <div class="card-header bg-white fw-bold d-flex justify-content-between">Approvals waiting for me <a href="{% url 'hr:manage_approvals' %}" class="small fw-normal">See all</a></div>
+    <div class="list-group list-group-flush">
+      {% for s in pending %}
+      <a href="{% url 'hr:manage_approvals' %}" class="list-group-item list-group-item-action">
+        <div class="d-flex justify-content-between"><span class="fw-semibold">{{ s.instance.summary }}</span><span class="small {% if s.reminded_at %}text-danger{% else %}text-muted{% endif %}">{{ s.activated_at|timesince }} ago</span></div>
+        <div class="small text-muted">{{ s.instance.get_key_display_safe }} &middot; step {{ s.order }} &middot; {{ s.get_role_display }}</div>
+      </a>
+      {% empty %}<div class="list-group-item text-muted">Nothing is waiting for you.</div>{% endfor %}
+    </div>
+  </div></div>
+  <div class="col-lg-5"><div class="card">
+    <div class="card-header bg-white fw-bold">Who is off today</div>
+    <ul class="list-group list-group-flush">
+      {% for r in on_leave_today %}<li class="list-group-item d-flex justify-content-between"><span>{{ r.employee.display_name }}</span><span class="small text-muted">{{ r.leave_type.name }} until {{ r.end_date|date:"j M" }}</span></li>
+      {% empty %}<li class="list-group-item text-muted">Nobody in your team is on leave today.</li>{% endfor %}
+    </ul>
+  </div></div>
+</div>
+{% if setup %}
+<div class="card mt-3"><div class="card-header bg-white fw-bold">Setup checklist{% if company %} <span class="fw-normal text-muted">&middot; {{ company.name }}</span>{% endif %}</div>
+  <div class="card-body">
+    <div class="row g-3">
+      {% for label, count, url in setup %}
+      <div class="col-6 col-md-3"><span class="badge {% if count %}bg-success{% else %}bg-warning text-dark{% endif %}">{% if count %}{{ count }}{% else %}to do{% endif %}</span> {{ label }}</div>
+      {% endfor %}
+    </div>
+    <div class="small text-muted mt-2">Start with leave types and a default leave policy, then public holidays, then add employees and their job details.</div>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

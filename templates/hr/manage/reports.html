@@ -1,0 +1,31 @@
+{% extends "hr/base_manage.html" %}
+{% block title %}Reports{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3"><h4 class="mb-0">HR reports</h4>
+  <a class="btn btn-outline-primary btn-sm" href="{% url 'hr:manage_headcount_csv' %}">Export employees (CSV)</a></div>
+
+<div class="row g-3 mb-3">
+  <div class="col-md-3"><div class="card"><div class="card-body text-center"><div class="display-6">{{ headcount }}</div><div class="text-muted">Active employees</div></div></div></div>
+  <div class="col-md-3"><div class="card"><div class="card-body text-center"><div class="display-6">{{ starters|length }}</div><div class="text-muted">Started in 90 days</div></div></div></div>
+  <div class="col-md-3"><div class="card"><div class="card-body text-center"><div class="display-6">{{ leavers|length }}</div><div class="text-muted">Left in 12 months</div></div></div></div>
+  <div class="col-md-3"><div class="card"><div class="card-body text-center"><div class="display-6">{{ payslips.viewed }}/{{ payslips.published }}</div><div class="text-muted">Payslips opened</div></div></div></div>
+</div>
+
+<div class="row g-3 mb-3">
+  {% for title, rows in headcount_groups %}{% endfor %}
+  <div class="col-md-4"><div class="card"><div class="card-header">By department</div><ul class="list-group list-group-flush">{% for r in by_department %}<li class="list-group-item d-flex justify-content-between">{{ r.name }}<span>{{ r.n }}</span></li>{% empty %}<li class="list-group-item text-muted">-</li>{% endfor %}</ul></div></div>
+  <div class="col-md-4"><div class="card"><div class="card-header">By site</div><ul class="list-group list-group-flush">{% for r in by_site %}<li class="list-group-item d-flex justify-content-between">{{ r.name }}<span>{{ r.n }}</span></li>{% empty %}<li class="list-group-item text-muted">-</li>{% endfor %}</ul></div></div>
+  <div class="col-md-4"><div class="card"><div class="card-header">By contract</div><ul class="list-group list-group-flush">{% for r in by_contract %}<li class="list-group-item d-flex justify-content-between">{{ r.name }}<span>{{ r.n }}</span></li>{% empty %}<li class="list-group-item text-muted">-</li>{% endfor %}</ul></div></div>
+</div>
+
+<div class="card mb-3"><div class="card-header">Expiring in the next 60 days</div><ul class="list-group list-group-flush">
+  {% for e in expiring.licences %}<li class="list-group-item">Driver's licence: {{ e }} &middot; {{ e.driver_licence_expiry|date:"j M Y" }}{% if e.driver_licence_expiry < today %} <span class="badge bg-danger">expired</span>{% endif %}</li>{% endfor %}
+  {% for e in expiring.permits %}<li class="list-group-item">Work permit: {{ e }} &middot; {{ e.permit_expiry|date:"j M Y" }}{% if e.permit_expiry < today %} <span class="badge bg-danger">expired</span>{% endif %}</li>{% endfor %}
+  {% for w in expiring.warnings %}<li class="list-group-item">Warning expires: {{ w.employee }} &middot; {{ w.get_level_display }} &middot; {{ w.expiry_date|date:"j M Y" }}</li>{% endfor %}
+  {% if not expiring.licences and not expiring.permits and not expiring.warnings %}<li class="list-group-item text-muted">Nothing expiring.</li>{% endif %}
+</ul></div>
+
+<div class="card"><div class="card-header">Policy acknowledgement</div><ul class="list-group list-group-flush">
+  {% for x in policies %}<li class="list-group-item d-flex justify-content-between"><a href="{% url 'hr:manage_policy_acks' x.p.pk %}">{{ x.p.title }} v{{ x.v.version }}</a><span>{{ x.done }} of {{ x.total }}</span></li>{% empty %}<li class="list-group-item text-muted">No policies need acknowledgement.</li>{% endfor %}
+</ul></div>
+{% endblock %}

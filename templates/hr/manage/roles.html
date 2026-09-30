@@ -1,0 +1,22 @@
+{% extends "hr/base_manage.html" %}
+{% block title %}Users and roles{% endblock %}
+{% block content %}
+<h4 class="mb-3">Users &amp; roles</h4>
+<div class="row g-3">
+  <div class="col-lg-4"><div class="card"><div class="card-header bg-white fw-bold">Grant a role</div><div class="card-body">
+    <form method="post">{% csrf_token %}
+      {{ form.non_field_errors }}
+      {% for f in form %}<div class="mb-2">{{ f.label_tag }} {{ f }}{% for err in f.errors %}<div class="text-danger small">{{ err }}</div>{% endfor %}</div>{% endfor %}
+      <button class="btn btn-warning fw-bold">Grant</button>
+    </form>
+    <div class="small text-muted mt-3">Every employee is an Employee, and anyone with direct reports is a Line Manager, automatically. Grant HR Admin, Payroll Admin or Super Admin here. Every change is written to the audit log.</div>
+  </div></div></div>
+  <div class="col-lg-8"><div class="card"><div class="table-responsive"><table class="table t mb-0 align-middle">
+    <thead class="table-light"><tr><th>User</th><th>Role</th><th>Company</th><th></th></tr></thead>
+    <tbody>
+      {% for a in assignments %}<tr><td>{{ a.user.get_full_name|default:a.user.get_username }} <span class="text-muted small">{{ a.user.get_username }}</span></td><td><span class="badge bg-secondary">{{ a.get_role_display }}</span></td><td>{{ a.company|default:"All" }}</td>
+        <td class="text-end"><form method="post" action="{% url 'hr:manage_role_delete' a.pk %}" onsubmit="return confirm('Remove this role?')">{% csrf_token %}<button class="btn btn-sm btn-outline-danger">Remove</button></form></td></tr>
+      {% empty %}<tr><td colspan="4" class="text-center text-muted py-3">No roles granted yet. Superusers are always Super Admin.</td></tr>{% endfor %}
+    </tbody></table></div></div></div>
+</div>
+{% endblock %}

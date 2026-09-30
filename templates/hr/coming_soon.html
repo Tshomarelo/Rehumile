@@ -1,0 +1,10 @@
+{% extends "hr/base_portal.html" %}
+{% block title %}{{ title }}{% endblock %}
+{% block content %}
+<h4 class="mb-3">{{ title }}</h4>
+<div class="card" style="max-width:640px"><div class="card-body">
+  <span class="badge bg-secondary mb-2">Planned for {{ phase }}</span>
+  <p class="mb-2">{{ blurb }}</p>
+  <p class="text-muted small mb-0">This module is specified in the HR System Requirements and is being built in stages. It will appear here as soon as it is ready.</p>
+</div></div>
+{% endblock %}

@@ -1,0 +1,39 @@
+{% extends "hr/base_portal.html" %}
+{% block title %}Employee Relations{% endblock %}
+{% block content %}
+<h4 class="mb-3">Employee Relations</h4>
+
+{% if hearings %}<h6 class="text-muted">Hearing invitations</h6>
+<ul class="list-group mb-4">{% for h in hearings %}<li class="list-group-item">
+  <div class="d-flex justify-content-between"><strong>{{ h.purpose }}</strong><span class="badge bg-secondary">{{ h.get_status_display }}</span></div>
+  <div>{{ h.when|date:"l j F Y, H:i" }} at {{ h.venue }}</div>
+  {% if h.notes_for_employee %}<div class="small text-muted" style="white-space:pre-line">{{ h.notes_for_employee }}</div>{% endif %}
+  {% if h.status == 'INVITED' %}<form method="post" action="{% url 'hr:hearing_ack' h.pk %}" class="mt-2">{% csrf_token %}<button class="btn btn-sm btn-primary">I have received this invitation</button></form>{% endif %}
+</li>{% endfor %}</ul>{% endif %}
+
+<h6 class="text-muted">Warnings</h6>
+<ul class="list-group mb-4">
+  {% for w in warnings %}<li class="list-group-item">
+    <div class="d-flex justify-content-between"><strong>{{ w.get_level_display }}</strong><span class="small text-muted">issued {{ w.issued_on|date:"j M Y" }}{% if w.expiry_date %}, expires {{ w.expiry_date|date:"j M Y" }}{% endif %}</span></div>
+    <div style="white-space:pre-line">{{ w.reason }}</div>
+    {% if w.doc_url %}<a target="_blank" href="{{ w.doc_url }}">Open document</a>{% endif %}
+    {% if w.appeal_status != 'NONE' %}<div class="mt-1"><span class="badge bg-info text-dark">{{ w.get_appeal_status_display }}</span> {{ w.appeal_decision }}</div>{% endif %}
+    <div class="d-flex gap-2 mt-2 flex-wrap">
+      {% if not w.acknowledged_at %}<form method="post" action="{% url 'hr:warning_ack' w.pk %}" class="d-flex gap-1">{% csrf_token %}<input name="comment" class="form-control form-control-sm" placeholder="Comment (optional)"><button class="btn btn-sm btn-primary">Acknowledge</button></form>
+      {% else %}<span class="badge bg-success">acknowledged {{ w.acknowledged_at|date:"j M" }}</span>{% endif %}
+      {% if w.appeal_status == 'NONE' %}<form method="post" action="{% url 'hr:warning_appeal' w.pk %}" class="d-flex gap-1">{% csrf_token %}<input name="appeal" class="form-control form-control-sm" placeholder="Grounds for appeal"><button class="btn btn-sm btn-outline-danger">Appeal</button></form>{% endif %}
+    </div>
+  </li>{% empty %}<li class="list-group-item text-muted">No warnings.</li>{% endfor %}
+</ul>
+
+<h6 class="text-muted">Raise a grievance</h6>
+<form method="post" action="{% url 'hr:grievance_raise' %}" class="card card-body mb-3">{% csrf_token %}
+  <p class="small text-muted">Only HR can see this. Your manager is not told.</p>
+  <input name="subject" class="form-control mb-2" placeholder="Subject" required>
+  <textarea name="description" rows="4" class="form-control mb-2" placeholder="What happened?" required></textarea>
+  <button class="btn btn-primary" style="width:140px">Submit</button>
+</form>
+<ul class="list-group mb-4">{% for g in grievances %}<li class="list-group-item">
+  <div class="d-flex justify-content-between"><span>{{ g.subject }} <span class="text-muted small">{{ g.created_at|date:"j M Y" }}</span></span><span class="badge bg-secondary">{{ g.get_status_display }}</span></div>
+  {% if g.outcome %}<div class="small mt-1"><strong>Outcome:</strong> {{ g.outcome }}</div>{% endif %}</li>{% endfor %}</ul>
+{% endblock %}

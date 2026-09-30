@@ -1,0 +1,12 @@
+{% extends "hr/base_manage.html" %}
+{% block title %}Pay reports{% endblock %}
+{% block content %}
+<h4 class="mb-3">Salary and advance reports</h4>
+<div class="d-flex flex-wrap gap-1 mb-3">{% for k, label in kinds %}<a class="btn btn-sm {% if k == kind %}btn-primary{% else %}btn-outline-secondary{% endif %}" href="{% url 'hr:manage_pay_reports' k %}">{{ label }}</a>{% endfor %}
+  <a class="btn btn-sm btn-outline-secondary" href="{% url 'hr:manage_sync' %}">Sync status and differences</a></div>
+<form method="get" class="d-flex gap-2 mb-3 align-items-center"><input type="date" name="start" value="{{ start|date:'Y-m-d' }}" class="form-control w-auto"><span>to</span><input type="date" name="end" value="{{ end|date:'Y-m-d' }}" class="form-control w-auto"><button class="btn btn-outline-primary">Show</button>
+  <a class="btn btn-outline-secondary" href="?csv=1&start={{ start|date:'Y-m-d' }}&end={{ end|date:'Y-m-d' }}">CSV</a></form>
+<h6>{{ title }}</h6>
+<div class="card"><div class="table-responsive"><table class="table table-sm mb-0"><thead class="table-light"><tr>{% for c in cols %}<th>{{ c }}</th>{% endfor %}</tr></thead>
+{% for r in rows %}<tr>{% for c in r %}<td>{{ c }}</td>{% endfor %}</tr>{% empty %}<tr><td colspan="{{ cols|length }}" class="text-muted text-center py-3">Nothing to show.</td></tr>{% endfor %}</table></div></div>
+{% endblock %}

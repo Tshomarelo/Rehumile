@@ -1,0 +1,18 @@
+{% extends "hr/base_manage.html" %}
+{% block title %}Change salary{% endblock %}
+{% block content %}
+<h4 class="mb-3">Salary change: {{ emp }}</h4>
+<div class="card" style="max-width:560px"><div class="card-body">
+  {% if cur %}<p class="text-muted small">Current record: {{ cur.get_pay_type_display }} from {{ cur.start_date|date:"j M Y" }} (amount hidden here).</p>{% endif %}
+  <form method="post">{% csrf_token %}
+    <div class="row g-2">
+      <div class="col-6"><label class="form-label">Pay type</label><select name="pay_type" class="form-select">{% for k, v in types %}<option value="{{ k }}">{{ v }}</option>{% endfor %}</select></div>
+      <div class="col-6"><label class="form-label">Frequency</label><select name="frequency" class="form-select">{% for k, v in freqs %}<option value="{{ k }}">{{ v }}</option>{% endfor %}</select></div>
+      <div class="col-6"><label class="form-label">New amount (R)</label><input name="amount" class="form-control" inputmode="decimal" required></div>
+      <div class="col-6"><label class="form-label">Effective from</label><input type="date" name="start_date" class="form-control" required></div>
+      <div class="col-12"><label class="form-label">Reason</label><input name="reason" class="form-control"></div>
+    </div>
+    <p class="small text-muted mt-2">Payroll Admin approves it (a different person). An increase above the company threshold also needs senior management. It takes effect on the start date.</p>
+    <button class="btn btn-primary">Send for approval</button> <a class="btn btn-link" href="{% url 'hr:manage_salaries' %}">Cancel</a>
+  </form></div></div>
+{% endblock %}

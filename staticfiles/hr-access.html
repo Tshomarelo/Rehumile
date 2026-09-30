@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Opening HR… | Rehumile IMS</title>
+  <style>body{font-family:system-ui,sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;color:#50181E;background:#f9fafb}</style>
+</head>
+<body><p id="msg">Opening the HR system…</p>
+<script>
+(async function(){
+  const token = localStorage.getItem('ims_access');
+  if(!token){ location.replace('/portal/login/'); return; }
+  try{
+    const r = await fetch('/portal/api/auth/session/', {method:'POST', headers:{'Authorization':'Bearer '+token}, credentials:'same-origin'});
+    if(r.status===401){ localStorage.clear(); location.replace('/portal/login/'); return; }
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    location.replace('/hr/');
+  }catch(e){
+    document.getElementById('msg').textContent = 'Could not open the HR system ('+e.message+'). Please sign in again.';
+  }
+})();
+</script></body></html>

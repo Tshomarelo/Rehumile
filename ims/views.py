@@ -293,6 +293,14 @@ class LoginView(APIView):
                 status=status.HTTP_401_UNAUTHORIZED
             )
 
+        # Also open a Django session so the /hr/ pages (session based) work
+        # after a normal portal sign-in.
+        try:
+            from django.contrib.auth import login as django_login
+            django_login(request._request, user, backend='django.contrib.auth.backends.ModelBackend')
+        except Exception:
+            pass
+
         refresh = RefreshToken.for_user(user)
         return Response({
             'access': str(refresh.access_token),
@@ -307,6 +315,16 @@ class LoginView(APIView):
                 'company_name': user.company.name if user.company else None,
             }
         })
+
+
+class SessionFromTokenView(APIView):
+    """POST with a valid JWT -> opens a Django session (for people already signed in to the portal)."""
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        from django.contrib.auth import login as django_login
+        django_login(request._request, request.user, backend='django.contrib.auth.backends.ModelBackend')
+        return Response({'detail': 'Session started.'})
 
 
 class ImpersonateView(APIView):
@@ -1710,6 +1728,7 @@ class FinancialAnalyticsView(APIView):
 # ACCOUNTING ENGINE — Chart of Accounts, General Ledger, Expenses, Statements
 # ============================================================================
 
+from django.core.exceptions import ValidationError as DjangoValidationError
 from .models import Account, Expense, LedgerTransaction, LedgerEntry
 
 _ACCOUNTING_READ_ROLES = ("admin", "finance", "cashier", "technician", "agent")
@@ -1771,7 +1790,7 @@ class ExpenseListView(APIView):
     def get(self, request):
         if request.user.role not in _ACCOUNTING_READ_ROLES:
             return Response({"detail": "Permission denied."}, status=status.HTTP_403_FORBIDDEN)
-        qs = Expense.objects.select_related("account", "recorded_by")
+        qs = Expense.objects.select_related("account", "recorded_by", "expense_category", "quotation")
         params = request.query_params
         search = params.get("search")
         if search:
@@ -1782,6 +1801,12 @@ class ExpenseListView(APIView):
         account_id = params.get("account")
         if account_id:
             qs = qs.filter(account_id=account_id)
+        expense_category = params.get("expense_category")
+        if expense_category:
+            qs = qs.filter(expense_category_id=expense_category)
+        quotation = params.get("quotation")
+        if quotation:
+            qs = qs.filter(quotation_id=quotation)
         payment_status = params.get("payment_status")
         if payment_status:
             qs = qs.filter(payment_status=payment_status)
@@ -1800,6 +1825,10 @@ class ExpenseListView(APIView):
             "category": e.category,
             "account": str(e.account_id),
             "account_name": e.account.name,
+            "expense_category": str(e.expense_category_id) if e.expense_category_id else None,
+            "expense_category_name": e.expense_category.name if e.expense_category_id else None,
+            "quotation": str(e.quotation_id) if e.quotation_id else None,
+            "quotation_number": e.quotation.quote_number if e.quotation_id else None,
             "amount": str(e.amount),
             "vendor": e.vendor,
             "description": e.description,
@@ -1817,32 +1846,63 @@ class ExpenseListView(APIView):
     def post(self, request):
         if request.user.role not in _EXPENSE_RECORD_ROLES:
             return Response({"detail": "Permission denied."}, status=status.HTTP_403_FORBIDDEN)
+        from decimal import Decimal, InvalidOperation
+        from .models import ExpenseCategory, Quotation
+        from .ledger import ensure_seeded, post_expense
+        ensure_seeded()
         d = request.data
-        required = ("category", "account", "amount", "vendor", "expense_date")
-        for f in required:
+        for f in ("amount", "vendor", "expense_date"):
             if not d.get(f):
                 return Response({"detail": f"{f} is required."}, status=status.HTTP_400_BAD_REQUEST)
         try:
-            account = Account.objects.get(pk=d["account"])
-        except Account.DoesNotExist:
-            return Response({"detail": "Account not found."}, status=status.HTTP_400_BAD_REQUEST)
+            amount = Decimal(str(d["amount"]))
+        except InvalidOperation:
+            return Response({"detail": "amount must be a number."}, status=status.HTTP_400_BAD_REQUEST)
+        if amount <= 0:
+            return Response({"detail": "amount must be greater than zero."}, status=status.HTTP_400_BAD_REQUEST)
 
-        default_stream = "icf" if d["category"] == "capital" else "ocf"
+        # The category drives the ledger account, cost type and cash-flow stream.
+        # (`category` + `account` is still accepted for older clients.)
+        expense_category = None
+        if d.get("expense_category"):
+            try:
+                expense_category = ExpenseCategory.objects.select_related("account").get(pk=d["expense_category"], is_active=True)
+            except (ExpenseCategory.DoesNotExist, ValueError, DjangoValidationError):
+                return Response({"detail": "Expense category not found."}, status=status.HTTP_400_BAD_REQUEST)
+            account, kind = expense_category.account, expense_category.kind
+            default_stream = expense_category.default_cash_flow_stream
+        else:
+            if not d.get("category") or not d.get("account"):
+                return Response({"detail": "expense_category is required."}, status=status.HTTP_400_BAD_REQUEST)
+            try:
+                account = Account.objects.get(pk=d["account"])
+            except (Account.DoesNotExist, ValueError, DjangoValidationError):
+                return Response({"detail": "Account not found."}, status=status.HTTP_400_BAD_REQUEST)
+            kind = d["category"]
+            default_stream = "icf" if kind == "capital" else "ocf"
+
+        quotation = None
+        if d.get("quotation"):
+            quotation = Quotation.objects.filter(pk=d["quotation"]).first()
+            if quotation is None:
+                return Response({"detail": "Quotation not found."}, status=status.HTTP_400_BAD_REQUEST)
+
         expense = Expense.objects.create(
-            category=d["category"],
+            category=kind,
             account=account,
-            amount=d["amount"],
+            expense_category=expense_category,
+            quotation=quotation,
+            amount=amount,
             vendor=d["vendor"].strip(),
             description=d.get("description", "").strip(),
             expense_date=d["expense_date"],
-            cash_flow_stream=d.get("cash_flow_stream", default_stream),
+            cash_flow_stream=d.get("cash_flow_stream") or default_stream,
             is_recurring=bool(d.get("is_recurring", False)),
             recurring_frequency=d.get("recurring_frequency", ""),
             payment_status=d.get("payment_status", "paid"),
             receipt_image_path=d.get("receipt_image_path", ""),
             recorded_by=request.user,
         )
-        from .ledger import post_expense
         post_expense(expense)
         return Response({"id": str(expense.id)}, status=status.HTTP_201_CREATED)
 
@@ -1864,7 +1924,43 @@ class ExpenseDetailView(APIView):
             "cash_flow_stream": e.cash_flow_stream, "is_recurring": e.is_recurring,
             "recurring_frequency": e.recurring_frequency, "payment_status": e.payment_status,
             "receipt_image_path": e.receipt_image_path,
+            "expense_category": str(e.expense_category_id) if e.expense_category_id else None,
+            "quotation": str(e.quotation_id) if e.quotation_id else None,
         })
+
+    def patch(self, request, pk):
+        """Edit the non-financial details, link to a quotation, or mark an unpaid expense paid.
+        Amount / date / category feed the ledger, so to change those delete the expense and re-enter it."""
+        if request.user.role not in ("admin", "finance"):
+            return Response({"detail": "Permission denied."}, status=status.HTTP_403_FORBIDDEN)
+        from .models import Quotation
+        from .ledger import post_expense_payment
+        try:
+            e = Expense.objects.get(pk=pk)
+        except Expense.DoesNotExist:
+            return Response({"detail": "Not found."}, status=404)
+        d = request.data
+        blocked = [f for f in ("amount", "expense_date", "expense_category", "account", "category") if f in d]
+        if blocked:
+            return Response({"detail": "Amount, date and category are locked once booked. Delete this expense and enter it again to change them."}, status=400)
+        for f in ("vendor", "description", "receipt_image_path", "recurring_frequency"):
+            if f in d:
+                setattr(e, f, (d[f] or "").strip())
+        if "is_recurring" in d:
+            e.is_recurring = bool(d["is_recurring"])
+        if "quotation" in d:
+            if d["quotation"]:
+                q = Quotation.objects.filter(pk=d["quotation"]).first()
+                if q is None:
+                    return Response({"detail": "Quotation not found."}, status=400)
+                e.quotation = q
+            else:
+                e.quotation = None
+        if d.get("payment_status") == "paid" and e.payment_status == "unpaid":
+            e.payment_status = "paid"
+            post_expense_payment(e, d.get("paid_on") or None, request.user)
+        e.save()
+        return Response({"id": str(e.id), "payment_status": e.payment_status})
 
     def delete(self, request, pk):
         if request.user.role not in ("admin", "finance"):
@@ -1873,6 +1969,8 @@ class ExpenseDetailView(APIView):
             e = Expense.objects.get(pk=pk)
         except Expense.DoesNotExist:
             return Response({"detail": "Not found."}, status=404)
+        from .ledger import reverse_source
+        reverse_source("Expense", e.id, request.user)
         e.delete()
         return Response(status=204)
 
@@ -1993,34 +2091,34 @@ import zipfile
 import io
 
 
-def _paye_monthly(gross_monthly: float) -> float:
-    """2025/2026 SARS progressive PAYE — returns monthly PAYE amount."""
-    annual = gross_monthly * 12
-    threshold = 95_750
-    if annual <= threshold:
-        return 0.0
-    brackets = [
-        (237_100,  0,       0.18),
-        (370_500,  237_100, 0.26),
-        (512_800,  370_500, 0.31),
-        (673_000,  512_800, 0.36),
-        (857_900,  673_000, 0.39),
-        (1_817_000, 857_900, 0.41),
-        (float('inf'), 1_817_000, 0.45),
-    ]
-    base_taxes = [0, 42_678, 77_362, 121_475, 179_147, 251_258, 644_489]
-    annual_paye = 0.0
-    for i, (upper, lower, rate) in enumerate(brackets):
-        if annual <= upper:
-            annual_paye = base_taxes[i] + (annual - lower) * rate
-            break
-    annual_paye = max(annual_paye - 17_235, 0)  # primary rebate
-    return round(annual_paye / 12, 2)
+from . import payroll as payroll_calc
+
+_HR_ROLES = ('admin', 'finance')
 
 
-def _uif_monthly(gross_monthly: float) -> float:
-    """1% UIF — employee portion, capped at R1,476/month."""
-    return round(min(gross_monthly * 0.01, 1476.0), 2)
+def _hr_denied(request):
+    """Employee files, bank details and payroll are POPIA-sensitive — Admin/Finance only."""
+    if request.user.role not in _HR_ROLES:
+        return Response({'detail': 'HR data is restricted to Admin and Finance users.'}, status=403)
+    return None
+
+
+def _emp_dec(data, field, default='0', minimum=0):
+    from decimal import InvalidOperation
+    raw = data.get(field, default)
+    try:
+        value = Decimal(str(raw if raw not in (None, '') else default))
+    except InvalidOperation:
+        raise ValueError(f'{field} must be a number.')
+    if minimum is not None and value < minimum:
+        raise ValueError(f'{field} cannot be negative.')
+    return value
+
+
+def _check_employee_fields(data):
+    id_number = (data.get('id_number') or '').strip()
+    if id_number and not (id_number.isdigit() and len(id_number) == 13):
+        raise ValueError('SA ID number must be exactly 13 digits.')
 
 
 class CompliancePeriodListView(APIView):
@@ -2028,6 +2126,9 @@ class CompliancePeriodListView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
+        denied = _hr_denied(request)
+        if denied:
+            return denied
         qs = CompliancePeriod.objects.all()
         status_param = request.query_params.get('status')
         if status_param:
@@ -2042,6 +2143,9 @@ class CompliancePeriodListView(APIView):
         return Response(list(periods))
 
     def post(self, request):
+        denied = _hr_denied(request)
+        if denied:
+            return denied
         label = request.data.get('period_label')  # e.g. "2026-06"
         if not label:
             today = timezone.now().date()
@@ -2069,6 +2173,9 @@ class CompliancePeriodDetailView(APIView):
             return None
 
     def get(self, request, pk):
+        denied = _hr_denied(request)
+        if denied:
+            return denied
         p = self._get_period(pk)
         if not p:
             return Response({'error': 'Not found.'}, status=404)
@@ -2090,6 +2197,9 @@ class CompliancePeriodDetailView(APIView):
 
     def post(self, request, pk):
         """State transitions: action=stage|finalize|recalculate"""
+        denied = _hr_denied(request)
+        if denied:
+            return denied
         p = self._get_period(pk)
         if not p:
             return Response({'error': 'Not found.'}, status=404)
@@ -2267,11 +2377,26 @@ class SupplierSlipOCRView(APIView):
 # HR & PAYROLL VIEWS
 # ============================================================================
 
+def _employee_estimate(emp, sdl_enabled=False):
+    c = payroll_calc.calculate(emp, sdl_enabled=sdl_enabled)
+    return {
+        'est_gross': float(c['gross']), 'est_paye': float(c['paye']), 'est_uif': float(c['uif_employee']),
+        'est_net': float(c['net']), 'employer_cost': float(c['employer_cost']),
+    }
+
+
+def _sdl_enabled():
+    return bool(_company_settings().payroll_sdl_enabled)
+
+
 class EmployeeListView(APIView):
-    """POPIA-restricted employee list — admin/owner only."""
+    """POPIA-restricted employee list — admin/finance only."""
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
+        denied = _hr_denied(request)
+        if denied:
+            return denied
         is_active = request.query_params.get('is_active', 'true')
         qs = Employee.objects.all()
         if is_active in ('1', 'true', 'True'):
@@ -2287,19 +2412,57 @@ class EmployeeListView(APIView):
                 Q(employee_number__icontains=search) |
                 Q(job_title__icontains=search)
             )
-        qs = qs.values(
-            'id', 'employee_number', 'first_name', 'last_name',
-            'job_title', 'employment_type', 'gross_monthly_salary',
-            'start_date', 'is_active',
-        )
-        return Response(list(qs))
+        employment_type = request.query_params.get('employment_type')
+        if employment_type:
+            qs = qs.filter(employment_type=employment_type)
+        sdl = _sdl_enabled()
+        rows = []
+        for e in qs:
+            rows.append({
+                'id': str(e.id), 'employee_number': e.employee_number,
+                'first_name': e.first_name, 'last_name': e.last_name,
+                'job_title': e.job_title, 'employment_type': e.employment_type,
+                'gross_monthly_salary': float(e.gross_monthly_salary), 'hourly_rate': float(e.hourly_rate),
+                'monthly_allowance': float(e.monthly_allowance), 'monthly_other_deduction': float(e.monthly_other_deduction),
+                'start_date': e.start_date, 'is_active': e.is_active,
+                **_employee_estimate(e, sdl),
+            })
+        return Response(rows)
 
     def post(self, request):
+        denied = _hr_denied(request)
+        if denied:
+            return denied
         data = request.data
+        try:
+            _check_employee_fields(data)
+            if not (data.get('first_name') or '').strip() or not (data.get('last_name') or '').strip():
+                raise ValueError('First name and last name are required.')
+            salary = _emp_dec(data, 'gross_monthly_salary')
+            hourly = _emp_dec(data, 'hourly_rate')
+            hours = _emp_dec(data, 'scheduled_hours_per_week', '40')
+            allowance = _emp_dec(data, 'monthly_allowance')
+            deduction = _emp_dec(data, 'monthly_other_deduction')
+            if data.get('employment_type', 'full_time') == 'hourly' and hourly <= 0:
+                raise ValueError('An hourly employee needs an hourly rate.')
+            if data.get('employment_type', 'full_time') != 'hourly' and salary <= 0:
+                raise ValueError('A monthly salary is required.')
+        except ValueError as exc:
+            return Response({'error': str(exc), 'detail': str(exc)}, status=400)
+
+        number = data.get('employee_number')
+        if not number:
+            n = Employee.objects.count() + 1
+            while Employee.objects.filter(employee_number=f"EMP{n:04d}").exists():
+                n += 1
+            number = f"EMP{n:04d}"
+        elif Employee.objects.filter(employee_number=number).exists():
+            return Response({'error': 'That employee number is already in use.', 'detail': 'That employee number is already in use.'}, status=400)
+
         emp = Employee.objects.create(
-            employee_number=data.get('employee_number', f"EMP{Employee.objects.count()+1:04d}"),
-            first_name=data.get('first_name', ''),
-            last_name=data.get('last_name', ''),
+            employee_number=number,
+            first_name=data.get('first_name', '').strip(),
+            last_name=data.get('last_name', '').strip(),
             id_number=data.get('id_number', ''),
             tax_reference_number=data.get('tax_reference_number', ''),
             bank_name=data.get('bank_name', ''),
@@ -2311,9 +2474,9 @@ class EmployeeListView(APIView):
             next_of_kin_contact=data.get('next_of_kin_contact', ''),
             employment_type=data.get('employment_type', 'full_time'),
             job_title=data.get('job_title', ''),
-            gross_monthly_salary=Decimal(str(data.get('gross_monthly_salary', 0))),
-            hourly_rate=Decimal(str(data.get('hourly_rate', 0))),
-            scheduled_hours_per_week=Decimal(str(data.get('scheduled_hours_per_week', 40))),
+            gross_monthly_salary=salary, hourly_rate=hourly,
+            scheduled_hours_per_week=hours,
+            monthly_allowance=allowance, monthly_other_deduction=deduction,
             start_date=data.get('start_date') or None,
         )
         # Seed BCEA leave balances
@@ -2331,6 +2494,9 @@ class EmployeeDetailView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, pk):
+        denied = _hr_denied(request)
+        if denied:
+            return denied
         try:
             emp = Employee.objects.get(pk=pk)
         except Employee.DoesNotExist:
@@ -2338,6 +2504,7 @@ class EmployeeDetailView(APIView):
         balances = list(emp.leave_balances.values('leave_type', 'total_days', 'used_days', 'cycle_start'))
         for b in balances:
             b['available_days'] = float(b['total_days']) - float(b['used_days'])
+        calc = payroll_calc.calculate(emp, sdl_enabled=_sdl_enabled())
         return Response({
             'id': str(emp.id), 'employee_number': emp.employee_number,
             'first_name': emp.first_name, 'last_name': emp.last_name,
@@ -2350,11 +2517,18 @@ class EmployeeDetailView(APIView):
             'gross_monthly_salary': float(emp.gross_monthly_salary),
             'hourly_rate': float(emp.hourly_rate),
             'scheduled_hours_per_week': float(emp.scheduled_hours_per_week),
-            'start_date': emp.start_date, 'is_active': emp.is_active,
+            'monthly_allowance': float(emp.monthly_allowance),
+            'monthly_other_deduction': float(emp.monthly_other_deduction),
+            'start_date': emp.start_date, 'end_date': emp.end_date, 'is_active': emp.is_active,
             'leave_balances': balances,
+            'estimate': {k: (float(v) if hasattr(v, 'quantize') else v) for k, v in calc.items() if k != 'warnings'},
+            'warnings': calc['warnings'],
         })
 
     def patch(self, request, pk):
+        denied = _hr_denied(request)
+        if denied:
+            return denied
         try:
             emp = Employee.objects.get(pk=pk)
         except Employee.DoesNotExist:
@@ -2364,81 +2538,210 @@ class EmployeeDetailView(APIView):
             'bank_name', 'bank_account_number', 'bank_branch_code',
             'physical_address', 'contact_number', 'next_of_kin_name',
             'next_of_kin_contact', 'employment_type', 'job_title',
-            'gross_monthly_salary', 'hourly_rate', 'scheduled_hours_per_week',
             'start_date', 'end_date', 'is_active',
         ]
+        money_fields = ['gross_monthly_salary', 'hourly_rate', 'scheduled_hours_per_week',
+                        'monthly_allowance', 'monthly_other_deduction']
+        try:
+            _check_employee_fields(request.data)
+            for field in money_fields:
+                if field in request.data:
+                    setattr(emp, field, _emp_dec(request.data, field))
+        except ValueError as exc:
+            return Response({'error': str(exc), 'detail': str(exc)}, status=400)
         for field in allowed:
             if field in request.data:
-                setattr(emp, field, request.data[field])
+                value = request.data[field]
+                if field in ('start_date', 'end_date') and not value:
+                    value = None
+                setattr(emp, field, value)
+        if emp.end_date and emp.is_active and emp.end_date < timezone.now().date():
+            emp.is_active = False   # past end date => no longer on payroll
         emp.save()
         return Response({'id': str(emp.id)})
 
 
+def _payroll_row(e):
+    return {
+        'id': str(e.id), 'employee_id': str(e.employee_id),
+        'employee_number': e.employee.employee_number,
+        'name': f"{e.employee.first_name} {e.employee.last_name}",
+        'job_title': e.employee.job_title,
+        'basic': float(e.gross_salary), 'overtime_hours': float(e.overtime_hours),
+        'overtime_amount': float(e.overtime_amount), 'allowances': float(e.allowances),
+        'gross': float(e.total_gross), 'paye': float(e.paye_amount),
+        'uif_employee': float(e.uif_employee), 'uif_employer': float(e.uif_employer), 'sdl': float(e.sdl_employer),
+        'other_deductions': float(e.other_deductions), 'net_pay': float(e.net_pay),
+        'employer_cost': float(e.employer_cost),
+        'is_frozen': e.is_frozen, 'paid_on': e.paid_on,
+        'status': 'paid' if e.paid_on else ('approved' if e.is_frozen else 'draft'),
+        'notes': e.notes,
+    }
+
+
+def _period_for_month(month):
+    """Get-or-create the compliance period for 'YYYY-MM'."""
+    import calendar
+    try:
+        year, mon = int(month[:4]), int(month[5:7])
+        start = _dt.date(year, mon, 1)
+    except (ValueError, TypeError):
+        raise ValueError('month must look like 2026-06.')
+    end = _dt.date(year, mon, calendar.monthrange(year, mon)[1])
+    period, _ = CompliancePeriod.objects.get_or_create(
+        period_label=f"{year}-{mon:02d}", defaults={'period_start': start, 'period_end': end})
+    return period
+
+
 class PayrollView(APIView):
-    """Calculate and freeze payroll for a compliance period."""
+    """Calculate, approve and pay payroll for a month (compliance period)."""
     permission_classes = [IsAuthenticated]
 
-    def get(self, request):
-        period_id = request.query_params.get('period_id')
-        qs = PayrollEntry.objects.select_related('employee', 'compliance_period')
+    def _period(self, request, create=False):
+        period_id = request.query_params.get('period_id') or request.data.get('period_id')
+        month = request.query_params.get('month') or request.data.get('month')
         if period_id:
-            qs = qs.filter(compliance_period_id=period_id)
-        data = list(qs.values(
-            'id', 'employee__first_name', 'employee__last_name', 'employee__employee_number',
-            'compliance_period__period_label',
-            'gross_salary', 'overtime_amount', 'total_gross',
-            'paye_amount', 'uif_employee', 'uif_employer', 'net_pay',
-            'is_frozen', 'payslip_emailed',
-        ))
-        return Response(data)
+            return CompliancePeriod.objects.filter(pk=period_id).first()
+        if month:
+            return _period_for_month(month) if create else CompliancePeriod.objects.filter(period_label=month).first()
+        return None
+
+    def get(self, request, pk=None):
+        denied = _hr_denied(request)
+        if denied:
+            return denied
+        if pk is not None:  # single payslip
+            try:
+                e = PayrollEntry.objects.select_related('employee', 'compliance_period').get(pk=pk)
+            except PayrollEntry.DoesNotExist:
+                return Response({'error': 'Not found.'}, status=404)
+            row = _payroll_row(e)
+            row.update({
+                'period': e.compliance_period.period_label,
+                'period_start': e.compliance_period.period_start, 'period_end': e.compliance_period.period_end,
+                'employee': {
+                    'id_number': e.employee.id_number, 'tax_reference_number': e.employee.tax_reference_number,
+                    'bank_name': e.employee.bank_name, 'bank_account_number': e.employee.bank_account_number,
+                    'bank_branch_code': e.employee.bank_branch_code, 'start_date': e.employee.start_date,
+                },
+                'company': {'name': _company_settings().company_name, 'address': _company_settings().address},
+            })
+            return Response(row)
+        try:
+            period = self._period(request)
+        except ValueError as exc:
+            return Response({'error': str(exc), 'detail': str(exc)}, status=400)
+        qs = PayrollEntry.objects.select_related('employee', 'compliance_period')
+        if period is not None:
+            qs = qs.filter(compliance_period=period)
+        elif request.query_params.get('month') or request.query_params.get('period_id'):
+            qs = qs.none()
+        search = request.query_params.get('search')
+        if search:
+            qs = qs.filter(Q(employee__first_name__icontains=search) | Q(employee__last_name__icontains=search)
+                           | Q(employee__employee_number__icontains=search))
+        rows = [_payroll_row(e) for e in qs]
+        keys = ('gross', 'paye', 'uif_employee', 'uif_employer', 'sdl', 'other_deductions', 'net_pay', 'employer_cost')
+        return Response({
+            'period': {'id': str(period.id), 'label': period.period_label, 'status': period.status} if period else None,
+            'rows': rows,
+            'totals': {k: round(sum(r[k] for r in rows), 2) for k in keys},
+            'counts': {s: sum(1 for r in rows if r['status'] == s) for s in ('draft', 'approved', 'paid')},
+            'sdl_enabled': _sdl_enabled(), 'tax_year': payroll_calc.TAX_YEAR,
+        })
 
     def post(self, request):
-        """Calculate payroll for all active employees in a period."""
-        period_id = request.data.get('period_id')
+        """
+        {month|period_id, adjustments?: {employee_id: {overtime_hours, hours_worked, allowance, deduction}}}
+        Calculates a draft payslip for every active employee. Approved payslips are never overwritten.
+        {action:'approve_all', month|period_id} approves every draft.
+        """
+        denied = _hr_denied(request)
+        if denied:
+            return denied
         try:
-            period = CompliancePeriod.objects.get(pk=period_id)
-        except CompliancePeriod.DoesNotExist:
-            return Response({'error': 'Period not found.'}, status=404)
+            period = self._period(request, create=True)
+        except ValueError as exc:
+            return Response({'error': str(exc), 'detail': str(exc)}, status=400)
+        if period is None:
+            return Response({'error': 'month or period_id is required.', 'detail': 'month or period_id is required.'}, status=400)
         if period.status == 'finalized':
-            return Response({'error': 'Period is finalized — cannot recalculate.'}, status=400)
+            return Response({'error': 'Period is finalized — cannot recalculate.', 'detail': 'Period is finalized — cannot recalculate.'}, status=400)
 
-        employees = Employee.objects.filter(is_active=True)
-        created, updated = 0, 0
+        if request.data.get('action') == 'approve_all':
+            from .ledger import post_payroll_entry
+            n = 0
+            for entry in PayrollEntry.objects.filter(compliance_period=period, is_frozen=False).select_related('employee', 'compliance_period'):
+                entry.is_frozen = True
+                entry.save()
+                post_payroll_entry(entry)
+                n += 1
+            return Response({'approved': n})
+
+        sdl = _sdl_enabled()
+        adjustments = request.data.get('adjustments') or {}
+        created = updated = skipped = 0
+        warnings = []
+        employees = Employee.objects.filter(is_active=True).exclude(start_date__gt=period.period_end)
+        employees = employees.filter(Q(end_date__isnull=True) | Q(end_date__gte=period.period_start))
         for emp in employees:
-            gross = float(emp.gross_monthly_salary)
-            paye = _paye_monthly(gross)
-            uif_e = _uif_monthly(gross)
-            uif_er = uif_e  # employer matches
-            net = round(gross - paye - uif_e, 2)
-            entry, is_new = PayrollEntry.objects.update_or_create(
+            existing = PayrollEntry.objects.filter(employee=emp, compliance_period=period).first()
+            if existing and existing.is_frozen:
+                skipped += 1
+                continue
+            adj = adjustments.get(str(emp.id)) or {}
+            try:
+                c = payroll_calc.calculate(
+                    emp, overtime_hours=adj.get('overtime_hours', 0), hours_worked=adj.get('hours_worked'),
+                    extra_allowance=adj.get('allowance', 0), extra_deduction=adj.get('deduction', 0),
+                    sdl_enabled=sdl, on=period.period_end)
+            except Exception:
+                return Response({'error': f'Check the adjustment values for {emp.first_name} {emp.last_name}.',
+                                 'detail': f'Check the adjustment values for {emp.first_name} {emp.last_name}.'}, status=400)
+            for w in c['warnings']:
+                warnings.append(f"{emp.first_name} {emp.last_name}: {w}")
+            _, is_new = PayrollEntry.objects.update_or_create(
                 employee=emp, compliance_period=period,
                 defaults={
-                    'gross_salary': Decimal(str(gross)),
-                    'total_gross': Decimal(str(gross)),
-                    'paye_amount': Decimal(str(paye)),
-                    'uif_employee': Decimal(str(uif_e)),
-                    'uif_employer': Decimal(str(uif_er)),
-                    'net_pay': Decimal(str(net)),
-                    'is_frozen': False,
+                    'gross_salary': c['basic'], 'overtime_hours': c['overtime_hours'], 'overtime_amount': c['overtime'],
+                    'allowances': c['allowances'], 'total_gross': c['gross'],
+                    'paye_amount': c['paye'], 'uif_employee': c['uif_employee'], 'uif_employer': c['uif_employer'],
+                    'sdl_employer': c['sdl'], 'other_deductions': c['other_deductions'], 'net_pay': c['net'],
+                    'is_frozen': False, 'paid_on': None,
                 },
             )
-            if is_new:
-                created += 1
-            else:
-                updated += 1
-        return Response({'calculated': created + updated, 'created': created, 'updated': updated})
+            created += int(is_new)
+            updated += int(not is_new)
+        return Response({'calculated': created + updated, 'created': created, 'updated': updated,
+                         'skipped_approved': skipped, 'warnings': warnings, 'period_id': str(period.id)})
 
     def patch(self, request, pk=None):
-        """Freeze a payroll entry."""
+        """{action: 'approve' | 'paid' (+ paid_on)}. Approving books the payroll in the ledger."""
+        denied = _hr_denied(request)
+        if denied:
+            return denied
         try:
-            entry = PayrollEntry.objects.get(pk=pk)
+            entry = PayrollEntry.objects.select_related('employee', 'compliance_period').get(pk=pk)
         except PayrollEntry.DoesNotExist:
             return Response({'error': 'Not found.'}, status=404)
-        entry.is_frozen = True
-        entry.save()
-        from .ledger import post_payroll_entry
-        post_payroll_entry(entry)
-        return Response({'is_frozen': True})
+        action_name = request.data.get('action', 'approve')
+        if action_name == 'approve':
+            if not entry.is_frozen:
+                entry.is_frozen = True
+                entry.save()
+                from .ledger import post_payroll_entry
+                post_payroll_entry(entry)
+        elif action_name == 'paid':
+            if not entry.is_frozen:
+                return Response({'error': 'Approve the payslip before marking it paid.', 'detail': 'Approve the payslip before marking it paid.'}, status=400)
+            try:
+                entry.paid_on = _dt.date.fromisoformat(str(request.data.get('paid_on') or timezone.now().date())[:10])
+            except ValueError:
+                return Response({'error': 'paid_on must be a date.', 'detail': 'paid_on must be a date.'}, status=400)
+            entry.save()
+        else:
+            return Response({'error': 'action must be approve or paid.', 'detail': 'action must be approve or paid.'}, status=400)
+        return Response({'is_frozen': entry.is_frozen, 'paid_on': entry.paid_on})
 
 
 class EMP201View(APIView):
@@ -2446,6 +2749,11 @@ class EMP201View(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, pk):
+        denied = _hr_denied(request)
+        if denied:
+            return denied
+        if request.path.rstrip('/').endswith('/csv'):
+            return self.get_csv(request, pk)
         try:
             period = CompliancePeriod.objects.get(pk=pk)
         except CompliancePeriod.DoesNotExist:
@@ -2472,6 +2780,7 @@ class EMP201View(APIView):
                 'paye': float(e.paye_amount),
                 'uif_employee': float(e.uif_employee),
                 'uif_employer': float(e.uif_employer),
+                'sdl': float(e.sdl_employer),
                 'net_pay': float(e.net_pay),
                 'is_frozen': e.is_frozen,
             })
@@ -2482,6 +2791,7 @@ class EMP201View(APIView):
                 'total_uif_employee': float(period.total_uif_employee),
                 'total_uif_employer': float(period.total_uif_employer),
                 'total_uif_combined': float(period.total_uif_employee) + float(period.total_uif_employer),
+                'total_sdl': round(sum(r['sdl'] for r in rows), 2),
             },
             'payroll_rows': rows,
         })
@@ -2511,6 +2821,9 @@ class LeaveRequestView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
+        denied = _hr_denied(request)
+        if denied:
+            return denied
         qs = LeaveRequest.objects.select_related('employee').order_by('-created_at')
         emp_id = request.query_params.get('employee_id')
         if emp_id:
@@ -2526,6 +2839,9 @@ class LeaveRequestView(APIView):
         return Response(data)
 
     def post(self, request):
+        denied = _hr_denied(request)
+        if denied:
+            return denied
         data = request.data
         try:
             emp = Employee.objects.get(pk=data.get('employee_id'))
@@ -2543,11 +2859,16 @@ class LeaveRequestView(APIView):
 
     def patch(self, request, pk=None):
         """Approve or reject a leave request."""
+        denied = _hr_denied(request)
+        if denied:
+            return denied
         try:
             req = LeaveRequest.objects.get(pk=pk)
         except LeaveRequest.DoesNotExist:
             return Response({'error': 'Not found.'}, status=404)
         action_name = request.data.get('action')  # 'approve' or 'reject'
+        if req.status != 'pending':
+            return Response({'error': f'This request is already {req.status}.'}, status=400)
         if action_name == 'approve':
             req.status = 'approved'
             req.reviewed_by = request.user
@@ -2656,8 +2977,52 @@ class TaskCompletionView(APIView):
 from .models import ServicePrice, WebsiteContent
 
 
+_WEBSITE_ROLES = ('admin', 'finance')
+_PRICE_GROUPS = ('', 'hardware', 'software', 'pos', 'combo')
+
+
+def _website_denied(request):
+    if request.user.role not in _WEBSITE_ROLES:
+        return Response({'detail': 'Only Admin and Finance users can change the website.'}, status=403)
+    return None
+
+
+def _price_row(sp):
+    return {
+        'id': str(sp.id), 'name': sp.name, 'category': sp.category, 'description': sp.description,
+        'price': sp.price, 'unit': sp.unit, 'price_prefix': sp.price_prefix, 'group': sp.group,
+        'is_featured': sp.is_featured, 'is_active': sp.is_active, 'display_order': sp.display_order,
+    }
+
+
+def _apply_price_fields(sp, d):
+    from decimal import InvalidOperation
+    for f in ('name', 'category', 'description', 'unit', 'price_prefix', 'group'):
+        if f in d:
+            setattr(sp, f, (d[f] or '').strip() if isinstance(d[f], str) else d[f])
+    if 'price' in d:
+        try:
+            sp.price = Decimal(str(d['price']))
+        except InvalidOperation:
+            raise ValueError('price must be a number.')
+        if sp.price < 0:
+            raise ValueError('price cannot be negative.')
+    for f in ('is_featured', 'is_active'):
+        if f in d:
+            setattr(sp, f, bool(d[f]))
+    if 'display_order' in d:
+        try:
+            sp.display_order = max(0, int(d['display_order'] or 0))
+        except (TypeError, ValueError):
+            raise ValueError('display_order must be a whole number.')
+    if not sp.name:
+        raise ValueError('name is required.')
+    if sp.group not in _PRICE_GROUPS:
+        raise ValueError('Unknown price group.')
+
+
 class ServicePriceView(APIView):
-    """CRUD for service prices displayed on the public website."""
+    """Service prices shown on the public website. Anyone can read; only Admin/Finance can change."""
 
     def get_permissions(self):
         if self.request.method == 'GET':
@@ -2678,40 +3043,47 @@ class ServicePriceView(APIView):
         category = request.query_params.get('category')
         if category:
             qs = qs.filter(category=category)
-        data = list(qs.values(
-            'id', 'name', 'category', 'description', 'price', 'unit',
-            'is_featured', 'is_active', 'display_order',
-        ))
-        return Response(data)
+        group = request.query_params.get('group')
+        if group:
+            qs = qs.filter(group=group)
+        ungrouped = request.query_params.get('ungrouped')
+        if ungrouped:
+            qs = qs.filter(group='')
+        return Response([_price_row(sp) for sp in qs])
 
     def post(self, request):
-        d = request.data
-        sp = ServicePrice.objects.create(
-            name=d.get('name', ''),
-            category=d.get('category', 'it_support'),
-            description=d.get('description', ''),
-            price=d.get('price', 0),
-            unit=d.get('unit', 'per visit'),
-            is_featured=d.get('is_featured', False),
-            is_active=d.get('is_active', True),
-            display_order=d.get('display_order', 0),
-        )
+        denied = _website_denied(request)
+        if denied:
+            return denied
+        sp = ServicePrice(category='it_support', unit='per visit')
+        try:
+            _apply_price_fields(sp, request.data)
+            if 'price' not in request.data:
+                raise ValueError('price is required.')
+        except ValueError as exc:
+            return Response({'detail': str(exc)}, status=400)
+        sp.save()
         return Response({'id': str(sp.id), 'name': sp.name}, status=201)
 
     def patch(self, request, pk=None):
+        denied = _website_denied(request)
+        if denied:
+            return denied
         try:
             sp = ServicePrice.objects.get(pk=pk)
         except ServicePrice.DoesNotExist:
             return Response({'error': 'Not found.'}, status=404)
-        allowed = ['name', 'category', 'description', 'price', 'unit',
-                   'is_featured', 'is_active', 'display_order']
-        for field in allowed:
-            if field in request.data:
-                setattr(sp, field, request.data[field])
+        try:
+            _apply_price_fields(sp, request.data)
+        except ValueError as exc:
+            return Response({'detail': str(exc)}, status=400)
         sp.save()
         return Response({'id': str(sp.id)})
 
     def delete(self, request, pk=None):
+        denied = _website_denied(request)
+        if denied:
+            return denied
         try:
             sp = ServicePrice.objects.get(pk=pk)
         except ServicePrice.DoesNotExist:
@@ -2721,7 +3093,7 @@ class ServicePriceView(APIView):
 
 
 class WebsiteContentView(APIView):
-    """Manage editable text blocks for public website pages."""
+    """Editable text / numbers on the public website. Anyone can read; only Admin/Finance can change."""
 
     def get_permissions(self):
         if self.request.method == 'GET':
@@ -2729,16 +3101,24 @@ class WebsiteContentView(APIView):
         return [IsAuthenticated()]
 
     def get(self, request):
+        from .website_defaults import LIVE_KEYS
         section = request.query_params.get('section')
         qs = WebsiteContent.objects.all()
         if section:
             qs = qs.filter(section=section)
-        data = list(qs.values('id', 'section', 'key', 'label', 'value', 'updated_at'))
-        return Response(data)
+        rows = list(qs.values('id', 'section', 'key', 'label', 'value', 'updated_at'))
+        for r in rows:
+            r['is_live'] = r['key'] in LIVE_KEYS   # False = the public page does not read this block (yet)
+        return Response(rows)
 
     def post(self, request):
         """Upsert a content block by key."""
-        key = request.data.get('key', '')
+        denied = _website_denied(request)
+        if denied:
+            return denied
+        key = (request.data.get('key') or '').strip()
+        if not key:
+            return Response({'detail': 'key is required.'}, status=400)
         obj, created = WebsiteContent.objects.update_or_create(
             key=key,
             defaults={
@@ -2751,6 +3131,9 @@ class WebsiteContentView(APIView):
         return Response({'id': str(obj.id), 'key': obj.key, 'created': created}, status=201 if created else 200)
 
     def patch(self, request, pk=None):
+        denied = _website_denied(request)
+        if denied:
+            return denied
         try:
             obj = WebsiteContent.objects.get(pk=pk)
         except WebsiteContent.DoesNotExist:
@@ -2760,6 +3143,28 @@ class WebsiteContentView(APIView):
         obj.updated_by = request.user
         obj.save()
         return Response({'id': str(obj.id)})
+
+
+class WebsiteSeedView(APIView):
+    """Create any missing default content blocks / grouped prices. Never overwrites an edited value."""
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        denied = _website_denied(request)
+        if denied:
+            return denied
+        from .website_defaults import CONTENT_DEFAULTS, PRICE_DEFAULTS
+        content = prices = 0
+        for section, key, label, value in CONTENT_DEFAULTS:
+            _, created = WebsiteContent.objects.get_or_create(key=key, defaults={'section': section, 'label': label, 'value': value})
+            content += int(created)
+        for order, (group, category, name, price, unit, desc, prefix) in enumerate(PRICE_DEFAULTS):
+            _, created = ServicePrice.objects.get_or_create(
+                group=group, name=name,
+                defaults={'category': category, 'price': price, 'unit': unit, 'description': desc,
+                          'price_prefix': prefix, 'display_order': order})
+            prices += int(created)
+        return Response({'content_created': content, 'prices_created': prices})
 
 
 
@@ -3471,8 +3876,14 @@ class RevenueIntelligenceView(APIView):
         o_pct = float(alloc.opex_pct)
         w_pct = float(alloc.owner_pct)
 
+        from . import finance as _finance
+        fin = _finance.summary(m_start, m_end)
+
+        # Paid = money received this month (payment date), excluding VAT — same rule as the dashboard.
+        paid_window = dict(payment_date__gte=m_start, payment_date__lte=m_end)
+
         def paid_sum(qfilter):
-            return float(Invoice.objects.filter(**qfilter, status='paid').aggregate(t=Sum('total_amount'))['t'] or 0)
+            return float(Invoice.objects.filter(**paid_window, status='paid', **qfilter).aggregate(t=Sum('subtotal'))['t'] or 0)
 
         def outstanding_sum(qfilter):
             return float(Invoice.objects.filter(**qfilter, status__in=['sent', 'overdue']).aggregate(t=Sum('total_amount'))['t'] or 0)
@@ -3480,22 +3891,22 @@ class RevenueIntelligenceView(APIView):
         base = dict(billing_period_start__gte=m_start, billing_period_start__lte=m_end)
 
         # ── Current month streams ──────────────────────────────────────────────
-        wifi_paid = paid_sum({**base, 'invoice_type': 'wifi'})
+        wifi_paid = paid_sum({'invoice_type': 'wifi'})
         wifi_outstanding = outstanding_sum({**base, 'invoice_type': 'wifi'})
         wifi_expected = float(WifiSubscriber.objects.filter(status='active').aggregate(t=Sum('retail_price'))['t'] or 0)
 
-        sla_paid = paid_sum({**base, 'invoice_type__in': ['sla', 'callout']})
+        sla_paid = paid_sum({'invoice_type__in': ['sla', 'callout']})
         sla_outstanding = outstanding_sum({**base, 'invoice_type__in': ['sla', 'callout']})
         sla_expected = float(SLAContract.objects.filter(status='active').aggregate(t=Sum('monthly_retainer'))['t'] or 0)
 
-        adhoc_paid = paid_sum({**base, 'invoice_type': 'adhoc'})
+        adhoc_paid = paid_sum({'invoice_type': 'adhoc'})
+        direct_sales = fin['revenue']['direct_sales']
+        axxess_costs = fin['expenses']['axxess']
 
-        axxess_costs = float(Invoice.objects.filter(
-            **base, invoice_type='wifi', wholesale_cost__isnull=False, status='paid',
-        ).aggregate(t=Sum('wholesale_cost'))['t'] or 0)
-
-        total_revenue = wifi_paid + sla_paid + adhoc_paid
-        net_profit = total_revenue - axxess_costs
+        # Totals come from the shared finance engine so they always match the dashboard.
+        total_revenue = fin['revenue']['total']
+        net_profit = fin['profit']['net']
+        alloc_base = max(net_profit, 0)   # nothing to allocate in a loss-making month
 
         # ── Intelligence flags ─────────────────────────────────────────────────
         flags = []
@@ -3597,14 +4008,16 @@ class RevenueIntelligenceView(APIView):
                 'wifi': {'paid': wifi_paid, 'outstanding': wifi_outstanding, 'expected': wifi_expected},
                 'sla': {'paid': sla_paid, 'outstanding': sla_outstanding, 'expected': sla_expected},
                 'adhoc': {'paid': adhoc_paid},
+                'direct': {'paid': direct_sales},
             },
-            'costs': {'axxess': axxess_costs},
+            'costs': {'axxess': axxess_costs, 'total_expenses': fin['expenses']['total']},
             'totals': {
                 'revenue': total_revenue,
+                'expenses': fin['expenses']['total'],
                 'net_profit': net_profit,
-                'reinvestment': round(net_profit * r_pct, 2),
-                'opex': round(net_profit * o_pct, 2),
-                'owner_draw': round(net_profit * w_pct, 2),
+                'reinvestment': round(alloc_base * r_pct, 2),
+                'opex': round(alloc_base * o_pct, 2),
+                'owner_draw': round(alloc_base * w_pct, 2),
             },
             'allocation': {
                 'reinvestment_pct': r_pct,
@@ -3617,65 +4030,28 @@ class RevenueIntelligenceView(APIView):
 
 
 class RevenueMonthlyView(APIView):
-    """12-month historical breakdown by revenue stream."""
+    """12-month history by revenue stream — built from the shared finance engine (same rules as the dashboard)."""
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
         if request.user.role not in ('admin', 'finance', 'agent'):
             return Response({'detail': 'HQ access required.'}, status=403)
-
+        from . import finance as _finance
         alloc = _revenue_alloc()
-        r_pct = float(alloc.reinvestment_pct)
-        o_pct = float(alloc.opex_pct)
-        w_pct = float(alloc.owner_pct)
-
-        today = date.today()
+        r_pct, o_pct, w_pct = float(alloc.reinvestment_pct), float(alloc.opex_pct), float(alloc.owner_pct)
         months = []
-
-        for i in range(11, -1, -1):
-            # Walk back i months from this month
-            y = today.year
-            m = today.month - i
-            while m <= 0:
-                m += 12
-                y -= 1
-            m_start, m_end = _month_bounds(y, m)
-
-            def _s(flt):
-                return float(Invoice.objects.filter(**flt).aggregate(t=Sum('total_amount'))['t'] or 0)
-
-            base = dict(billing_period_start__gte=m_start, billing_period_start__lte=m_end, status='paid')
-            wifi_rev = _s({**base, 'invoice_type': 'wifi'})
-            sla_rev = _s({**base, 'invoice_type__in': ['sla', 'callout']})
-            adhoc_rev = _s({**base, 'invoice_type': 'adhoc'})
-            ax_costs = float(Invoice.objects.filter(
-                billing_period_start__gte=m_start,
-                billing_period_start__lte=m_end,
-                invoice_type='wifi',
-                wholesale_cost__isnull=False,
-                status='paid',
-            ).aggregate(t=Sum('wholesale_cost'))['t'] or 0)
-
-            total = wifi_rev + sla_rev + adhoc_rev
-            net = total - ax_costs
-
+        for b in _finance.trend('monthly', 12)['buckets']:
+            base = max(b['profit'], 0)
+            total = b['revenue']
             months.append({
-                'label': m_start.strftime('%b %Y'),
-                'month_short': m_start.strftime('%b'),
-                'year': y,
-                'wifi_revenue': wifi_rev,
-                'sla_revenue': sla_rev,
-                'adhoc_revenue': adhoc_rev,
-                'total_revenue': total,
-                'axxess_costs': ax_costs,
-                'net_profit': net,
-                'reinvestment': round(net * r_pct, 2),
-                'opex': round(net * o_pct, 2),
-                'owner_draw': round(net * w_pct, 2),
-                'floor_pct': round((wifi_rev + sla_rev) / total * 100, 1) if total > 0 else 0,
-                'growth_pct': round(adhoc_rev / total * 100, 1) if total > 0 else 0,
+                'label': b['label'], 'month_short': b['label'][:3], 'year': int(b['start'][:4]),
+                'wifi_revenue': b['rev_wifi'], 'sla_revenue': b['rev_sla'], 'adhoc_revenue': b['rev_adhoc'],
+                'direct_revenue': b['rev_direct'], 'total_revenue': total,
+                'axxess_costs': b['cost_axxess'], 'total_expenses': b['expenses'], 'net_profit': b['profit'],
+                'reinvestment': round(base * r_pct, 2), 'opex': round(base * o_pct, 2), 'owner_draw': round(base * w_pct, 2),
+                'floor_pct': round((b['rev_wifi'] + b['rev_sla']) / total * 100, 1) if total > 0 else 0,
+                'growth_pct': round(b['rev_adhoc'] / total * 100, 1) if total > 0 else 0,
             })
-
         return Response({'months': months, 'allocation': {'reinvestment_pct': r_pct, 'opex_pct': o_pct, 'owner_pct': w_pct}})
 
 

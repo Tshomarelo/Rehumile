@@ -1,0 +1,23 @@
+{% extends "hr/base_portal.html" %}
+{% block title %}Delegate approvals{% endblock %}
+{% block content %}
+<h4 class="mb-3">Delegate my approvals</h4>
+<p class="text-muted">While you are away, someone else can approve the requests that would come to you. It applies only between the dates you choose.</p>
+<div class="row g-3">
+  <div class="col-md-5"><div class="card"><div class="card-body">
+    <form method="post">{% csrf_token %}
+      <div class="mb-2">{{ form.delegate.label_tag }} {{ form.delegate }}{{ form.delegate.errors }}</div>
+      <div class="row g-2 mb-3"><div class="col">{{ form.start_date.label_tag }} {{ form.start_date }}</div><div class="col">{{ form.end_date.label_tag }} {{ form.end_date }}{{ form.end_date.errors }}</div></div>
+      <button class="btn btn-warning fw-bold">Save delegation</button>
+    </form>
+  </div></div></div>
+  <div class="col-md-7"><div class="card"><div class="list-group list-group-flush">
+    {% for d in mine %}
+    <div class="list-group-item d-flex justify-content-between align-items-center">
+      <span>{{ d.delegate.get_full_name|default:d.delegate.get_username }} &middot; {{ d.start_date|date:"j M" }} to {{ d.end_date|date:"j M Y" }}</span>
+      <form method="post">{% csrf_token %}<input type="hidden" name="delete" value="{{ d.pk }}"><button class="btn btn-sm btn-outline-danger">Remove</button></form>
+    </div>
+    {% empty %}<div class="list-group-item text-muted">No delegations.</div>{% endfor %}
+  </div></div></div>
+</div>
+{% endblock %}

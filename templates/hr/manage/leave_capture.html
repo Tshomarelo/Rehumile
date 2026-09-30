@@ -1,0 +1,23 @@
+{% extends "hr/base_manage.html" %}
+{% block title %}Capture leave{% endblock %}
+{% block content %}
+<h4 class="mb-1">Capture leave for an employee</h4>
+<div class="text-muted mb-3">For example sick leave phoned in. Notice and document rules are waived; balance and overlap rules still apply.</div>
+<div class="card" style="max-width:640px"><div class="card-body">
+  <form method="post" enctype="multipart/form-data">{% csrf_token %}
+    {% if form.non_field_errors %}<div class="alert alert-danger">{% for e in form.non_field_errors %}<div>{{ e }}</div>{% endfor %}</div>{% endif %}
+    <div class="row g-3">
+      <div class="col-md-6">{{ form.employee.label_tag }} {{ form.employee }}{{ form.employee.errors }}</div>
+      <div class="col-md-6">{{ form.leave_type.label_tag }} {{ form.leave_type }}{{ form.leave_type.errors }}</div>
+      <div class="col-md-6">{{ form.start_date.label_tag }} {{ form.start_date }}{{ form.start_date.errors }}</div>
+      <div class="col-md-6">{{ form.end_date.label_tag }} {{ form.end_date }}{{ form.end_date.errors }}</div>
+      <div class="col-12"><div class="form-check">{{ form.half_day_start }} <label class="form-check-label" for="{{ form.half_day_start.id_for_label }}">{{ form.half_day_start.label }}</label></div>
+        <div class="form-check">{{ form.half_day_end }} <label class="form-check-label" for="{{ form.half_day_end.id_for_label }}">{{ form.half_day_end.label }}</label></div></div>
+      <div class="col-12">{{ form.reason.label_tag }} {{ form.reason }}</div>
+      <div class="col-12">{{ form.attachment.label_tag }} {{ form.attachment }}{{ form.attachment.errors }}</div>
+      <div class="col-12"><div class="form-check">{{ form.approve_now }} <label class="form-check-label" for="{{ form.approve_now.id_for_label }}">{{ form.approve_now.label }}</label></div></div>
+    </div>
+    <button class="btn btn-warning fw-bold mt-3">Capture</button>
+  </form>
+</div></div>
+{% endblock %}

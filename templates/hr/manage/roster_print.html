@@ -1,0 +1,9 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Roster {{ roster.start_date }}</title>
+<style>body{font-family:Arial,sans-serif;font-size:11px;margin:16px} table{border-collapse:collapse;width:100%} th,td{border:1px solid #999;padding:3px 5px;vertical-align:top} th{background:#eee} .open{color:#b00;font-weight:bold}
+@media print{ .noprint{display:none} @page{size:landscape} }</style></head>
+<body><div class="noprint"><button onclick="window.print()">Print</button></div>
+<h2>{{ site.name|default:"Roster" }}: {{ roster.start_date|date:"j M" }} to {{ roster.end_date|date:"j M Y" }}{% if roster.status != 'PUBLISHED' %} (DRAFT){% endif %}</h2>
+<table><thead><tr><th>Post / shift</th>{% for d in grid.days %}<th>{{ d|date:"D j" }}</th>{% endfor %}</tr></thead>
+{% for r in grid.rows %}<tr><td><strong>{{ r.post }}</strong><br>{{ r.shift }}</td>{% for c in r.cells %}<td>{% for s in c.shifts %}<div class="{% if not s.employee %}open{% endif %}">{% if s.employee %}{{ s.employee.known_as }} {{ s.employee.surname }}{% else %}OPEN{% endif %}</div>{% endfor %}</td>{% endfor %}</tr>{% endfor %}
+</table></body></html>

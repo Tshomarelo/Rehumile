@@ -1,0 +1,8 @@
+{% extends "hr/base_manage.html" %}
+{% block title %}Payruns{% endblock %}
+{% block content %}
+<h4 class="mb-3">Payruns</h4>
+<form method="post" class="d-flex gap-2 mb-3" style="max-width:520px">{% csrf_token %}<select name="period" class="form-select">{% for p in periods %}<option value="{{ p.pk }}">{{ p.label }}</option>{% endfor %}</select><button class="btn btn-primary text-nowrap">Open payrun</button></form>
+<div class="card"><table class="table mb-0"><thead class="table-light"><tr><th>Period</th><th>Status</th><th>Locked</th><th></th></tr></thead>
+{% for r in runs %}<tr><td>{{ r.pay_period.label }}</td><td>{{ r.get_status_display }}</td><td>{{ r.locked_at|date:"j M H:i"|default:"-" }}</td><td><a href="{% url 'hr:manage_run' r.pk %}">Open</a></td></tr>{% empty %}<tr><td colspan="4" class="text-muted text-center py-3">No payruns yet. Add pay periods under Payslips and tax certs first.</td></tr>{% endfor %}</table></div>
+{% endblock %}

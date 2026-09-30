@@ -1,0 +1,35 @@
+{% extends "hr/base_manage.html" %}
+{% block title %}Salary sync{% endblock %}
+{% block content %}
+<h4 class="mb-1">Salary sync to the reconciliation system</h4>
+<p class="text-muted small">One way, HR to reconciliation. The HR figure always wins, people are matched by employee number only, and closed periods are never rewritten.</p>
+<div class="row g-3 mb-3">
+  <div class="col-lg-6"><div class="card"><div class="card-header">Settings</div><div class="card-body">
+    <form method="post">{% csrf_token %}<input type="hidden" name="action" value="settings">
+      <div class="form-check"><input class="form-check-input" type="checkbox" name="salary_sync_enabled" id="a1" {% if ps.salary_sync_enabled %}checked{% endif %}><label class="form-check-label" for="a1"><strong>Sync is on (go-live)</strong>. Until it is on, nothing in the reconciliation system changes and salary entries there stay editable.</label></div>
+      <div class="form-check"><input class="form-check-input" type="checkbox" name="post_advances_to_reconciliation" id="a2" {% if ps.post_advances_to_reconciliation %}checked{% endif %}><label class="form-check-label" for="a2">Record advances paid and repaid in the reconciliation cash records</label></div>
+      <div class="form-check mb-2"><input class="form-check-input" type="checkbox" name="allow_role_overlap" id="a3" {% if ps.allow_role_overlap %}checked{% endif %}><label class="form-check-label" for="a3">Small business: allow one person to capture, approve or pay an advance (every overlap is recorded)</label></div>
+      <label class="small text-muted">The Salaries figure is</label><select name="sync_amount_basis" class="form-select form-select-sm mb-2"><option value="GROSS" {% if ps.sync_amount_basis == 'GROSS' %}selected{% endif %}>Gross pay</option><option value="NET" {% if ps.sync_amount_basis == 'NET' %}selected{% endif %}>Net pay paid out</option><option value="COST" {% if ps.sync_amount_basis == 'COST' %}selected{% endif %}>Cost to company</option></select>
+      <label class="small text-muted">Books closed through (finance sets this)</label><input type="date" name="books_closed_through" value="{{ ps.books_closed_through|date:'Y-m-d' }}" class="form-control form-control-sm mb-2">
+      <button class="btn btn-primary btn-sm">Save</button></form></div></div>
+    <form method="post" class="mt-2">{% csrf_token %}<input type="hidden" name="action" value="run"><button class="btn btn-outline-secondary btn-sm">Run the sync now (due salary changes and retries)</button></form></div>
+  <div class="col-lg-6"><div class="card"><div class="card-header">First-load report: reconciliation Salaries against HR (nothing is overwritten by this)</div>
+    <table class="table table-sm mb-0"><thead class="table-light"><tr><th>Period</th><th>Reconciliation</th><th>HR</th><th>Difference</th></tr></thead>
+    {% for r in first_load %}<tr><td>{{ r.period.label }}</td><td>R{{ r.recon_total|floatformat:2 }}</td><td>{% if r.has_payrun %}R{{ r.hr_total|floatformat:2 }}{% else %}<span class="text-muted">no payrun</span>{% endif %}</td><td class="{% if r.difference != 0 and r.has_payrun %}text-danger{% endif %}">{% if r.has_payrun %}R{{ r.difference|floatformat:2 }}{% endif %}</td></tr>{% empty %}<tr><td colspan="4" class="text-muted text-center">No pay periods.</td></tr>{% endfor %}</table></div></div>
+</div>
+
+{% if adjustments %}<div class="card mb-3"><div class="card-header">Adjustments for a closed period: finance approves</div><ul class="list-group list-group-flush">
+  {% for a in adjustments %}<li class="list-group-item d-flex justify-content-between align-items-center">{{ a.employee }} &middot; {{ a.period_label }} &middot; difference R{{ a.difference }}
+    <form method="post" class="d-flex gap-1">{% csrf_token %}<input type="hidden" name="adj" value="{{ a.pk }}"><button name="action" value="approve" class="btn btn-sm btn-success">Approve</button><button name="action" value="decline" class="btn btn-sm btn-outline-danger">Decline</button></form></li>{% endfor %}</ul></div>{% endif %}
+
+<div class="card mb-3"><div class="card-header">People who could not be matched ({{ unmatched|length }}). Nothing is overwritten for them.</div><ul class="list-group list-group-flush">
+  {% for e in unmatched %}<li class="list-group-item d-flex justify-content-between align-items-center flex-wrap gap-2">{{ e }} <span class="text-muted small">{{ e.employee_number }}</span>
+    <form method="post" class="d-flex gap-1">{% csrf_token %}<input type="hidden" name="employee" value="{{ e.pk }}"><input name="ref" class="form-control form-control-sm" placeholder="Reconciliation employee number"><button name="action" value="link" class="btn btn-sm btn-outline-primary">Link</button><button name="action" value="nocounterpart" class="btn btn-sm btn-outline-secondary text-nowrap">No counterpart</button></form></li>
+  {% empty %}<li class="list-group-item text-muted">Everyone is matched.</li>{% endfor %}</ul></div>
+
+<div class="card mb-3"><div class="card-header">Differences today (HR against reconciliation)</div><table class="table table-sm mb-0"><thead class="table-light"><tr><th>Person</th><th>Period</th><th>HR</th><th>Reconciliation</th><th>Difference</th></tr></thead>
+  {% for d in diffs %}<tr><td>{{ d.employee }}</td><td>{{ d.period.label }}</td><td>R{{ d.hr|floatformat:2 }}</td><td>{% if d.recon is None %}not synced{% else %}R{{ d.recon|floatformat:2 }}{% endif %}</td><td class="text-danger">R{{ d.difference|floatformat:2 }}</td></tr>{% empty %}<tr><td colspan="5" class="text-muted text-center">No differences.</td></tr>{% endfor %}</table></div>
+
+<div class="card"><div class="card-header">Sync log (permanent)</div><table class="table table-sm mb-0"><thead class="table-light"><tr><th>When</th><th>Kind</th><th>Person</th><th>Old</th><th>New</th><th>Status</th><th>Note</th></tr></thead>
+  {% for l in log %}<tr><td>{{ l.created_at|date:"j M H:i" }}</td><td>{{ l.kind }}</td><td>{{ l.employee|default:"" }}</td><td>{{ l.old_value }}</td><td>{{ l.new_value }}</td><td>{{ l.get_status_display }}</td><td class="small">{{ l.message }}</td></tr>{% empty %}<tr><td colspan="7" class="text-muted text-center">Nothing yet.</td></tr>{% endfor %}</table></div>
+{% endblock %}

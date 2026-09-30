@@ -121,6 +121,11 @@
                       <span class="input-group-text">decimal (0.15 = 15%)</span>
                     </div>
                   </div>
+                  <div class="form-check mt-3">
+                    <input class="form-check-input" type="checkbox" id="s_sdl">
+                    <label class="form-check-label" for="s_sdl"><b>Charge 1% Skills Development Levy (SDL) on payroll</b>
+                      <div class="text-muted small">Only needed if your total annual payroll is above R500,000 — smaller employers are exempt.</div></label>
+                  </div>
                 </div>
               </div>
             </div>
@@ -215,6 +220,7 @@
     document.getElementById('s_branch_code').value = d.branch_code||'';
     document.getElementById('s_swift_code').value = d.swift_code||'';
     document.getElementById('s_vat_rate').value = d.vat_rate||'0.00';
+    document.getElementById('s_sdl').checked = !!d.payroll_sdl_enabled;
     document.getElementById('s_payment_terms').value = d.payment_terms||'';
     updatePreview(d);
     if(d.updated_at){
@@ -264,6 +270,7 @@
       branch_code: document.getElementById('s_branch_code').value.trim(),
       swift_code: document.getElementById('s_swift_code').value.trim(),
       vat_rate: parseFloat(document.getElementById('s_vat_rate').value)||0,
+      payroll_sdl_enabled: document.getElementById('s_sdl').checked,
       payment_terms: document.getElementById('s_payment_terms').value.trim(),
     };
     const btn = document.getElementById('saveBtn');

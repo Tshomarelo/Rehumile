@@ -1,0 +1,68 @@
+{% extends "hr/base_manage.html" %}
+{% block title %}Roster{% endblock %}
+{% block extra_head %}<style>
+.rg td, .rg th { font-size: .72rem; vertical-align: top; min-width: 96px; }
+.rg .chip { display: block; padding: 1px 4px; margin: 1px 0; border-radius: 4px; background: #e9f0f8; color: #123; text-decoration: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rg .chip.open { background: #fde2e2; color: #a01919; font-weight: 600; }
+.rg .chip.draft { background: #fff3cd; }
+.rg .chip.absent { text-decoration: line-through; opacity: .6; }
+.rg .below { background: #fff5f5; }
+.rg .ok { color: #198754; }
+.rg { max-height: 70vh; overflow: auto; }
+.rg thead th { position: sticky; top: 0; background: #f8f9fa; z-index: 2; }
+</style>{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
+  <div><h4 class="mb-0">Roster {{ roster.start_date|date:"j M" }} to {{ roster.end_date|date:"j M Y" }}</h4>
+    <span class="badge {% if roster.status == 'PUBLISHED' %}bg-success{% elif roster.status == 'DRAFT' %}bg-warning text-dark{% else %}bg-secondary{% endif %}">{{ roster.get_status_display }}</span>
+    <span class="text-muted small">version {{ roster.version }} &middot; score {{ roster.quality_score|default:"-" }} &middot; {{ open_n }} required slot{{ open_n|pluralize }} open</span></div>
+  <div class="d-flex gap-1 flex-wrap">
+    <a class="btn btn-outline-secondary btn-sm" href="{% url 'hr:manage_roster_export' roster.pk %}">Excel</a>
+    <a class="btn btn-outline-secondary btn-sm" target="_blank" href="{% url 'hr:manage_roster_print' roster.pk %}">Print</a>
+    {% if roster.status == 'DRAFT' and is_admin %}<form method="post" action="{% url 'hr:manage_roster_publish' roster.pk %}" onsubmit="return confirm('Publish this roster? Everyone affected is notified and it is locked.')">{% csrf_token %}<button class="btn btn-success btn-sm">Publish</button></form>{% endif %}
+  </div>
+</div>
+{% if roster.summary.feasibility and not roster.summary.feasible %}<div class="alert alert-danger py-2 small"><strong>Staffing check:</strong> {{ roster.summary.feasibility }}</div>{% endif %}
+
+<ul class="nav nav-pills mb-2">
+  <li class="nav-item"><a class="nav-link {% if view == 'site' %}active{% endif %}" href="?view=site">By site</a></li>
+  <li class="nav-item"><a class="nav-link {% if view == 'person' %}active{% endif %}" href="?view=person">By person</a></li>
+  <li class="nav-item"><a class="nav-link {% if view == 'group' %}active{% endif %}" href="?view=group{% if group_id %}&group={{ group_id }}{% endif %}">By staff group</a></li>
+</ul>
+{% if view == 'group' %}<form method="get" class="mb-2"><input type="hidden" name="view" value="group"><select name="group" class="form-select form-select-sm w-auto d-inline" onchange="this.form.submit()"><option value="">Choose a group...</option>{% for g in groups %}<option value="{{ g.pk }}" {% if g.pk|stringformat:'s' == group_id %}selected{% endif %}>{{ g.name }}</option>{% endfor %}</select></form>{% endif %}
+
+<div class="card mb-3"><div class="rg"><table class="table table-bordered table-sm mb-0">
+  <thead><tr><th>{% if view == 'site' %}Site / post / shift{% else %}Person{% endif %}</th>{% for d in grid.days %}<th class="text-center">{{ d|date:"D" }}<br>{{ d|date:"j M" }}</th>{% endfor %}{% if view != 'site' %}<th>Hours</th>{% endif %}</tr></thead>
+  <tbody>
+  {% if view == 'site' %}
+    {% for r in grid.rows %}<tr><td class="text-nowrap"><strong>{{ r.site }}</strong><br>{{ r.post }}<br><span class="text-muted">{{ r.shift }}</span></td>
+      {% for c in r.cells %}<td class="{% if c.below %}below{% endif %}">
+        {% for s in c.shifts %}<a class="chip {% if not s.employee %}open{% endif %}{% if s.status == 'DRAFT' %} draft{% endif %}{% if s.status == 'ABSENT' %} absent{% endif %}" href="{% url 'hr:manage_shift_edit' s.pk %}">{% if s.employee %}{{ s.employee.known_as }} {{ s.employee.surname|slice:":1" }}{% else %}OPEN{% endif %}{% if s.pinned %} &#128204;{% endif %}</a>{% endfor %}
+        {% if c.shifts %}<span class="{% if c.below %}text-danger{% else %}ok{% endif %}">{{ c.filled }}/{{ c.req }}</span>{% endif %}</td>{% endfor %}</tr>
+    {% empty %}<tr><td colspan="30" class="text-muted text-center py-3">No shifts in your sites.</td></tr>{% endfor %}
+  {% else %}
+    {% for r in grid.rows %}<tr><td class="text-nowrap">{{ r.employee }}<br><span class="text-muted">{{ r.days_worked }} days</span></td>
+      {% for cell in r.cells %}<td>{% for s in cell %}<a class="chip {% if s.status == 'DRAFT' %}draft{% endif %}" href="{% url 'hr:manage_shift_edit' s.pk %}">{{ s.start_time|time:"H:i" }}-{{ s.end_time|time:"H:i" }}<br>{{ s.site|default:"" }}</a>{% endfor %}</td>{% endfor %}
+      <td><strong>{{ r.hours|floatformat:"-1" }}</strong></td></tr>
+    {% empty %}<tr><td colspan="30" class="text-muted text-center py-3">Nothing to show.</td></tr>{% endfor %}
+  {% endif %}
+  </tbody></table></div></div>
+
+{% if roster.status == 'DRAFT' %}
+<div class="card mb-3"><div class="card-header">Regenerate part of the roster</div><div class="card-body">
+  <form method="post" action="{% url 'hr:manage_roster_regenerate' roster.pk %}" class="row g-2 align-items-end">{% csrf_token %}
+    <div class="col-md-5"><label class="small text-muted">Sites</label><div>{% for s in sites %}<label class="me-2 small"><input type="checkbox" name="sites" value="{{ s.pk }}"> {{ s.name }}</label>{% endfor %}</div></div>
+    <div class="col-md-4"><label class="small text-muted">Staff group</label><select name="group" class="form-select form-select-sm"><option value="">All</option>{% for g in groups %}<option value="{{ g.pk }}">{{ g.name }}</option>{% endfor %}</select></div>
+    <div class="col-md-3"><button class="btn btn-outline-primary btn-sm w-100">Regenerate (keeps pinned)</button></div>
+  </form></div></div>
+{% endif %}
+
+<div class="row g-3">
+  <div class="col-lg-6"><div class="card"><div class="card-header">Warnings and unfilled slots ({{ warnings|length }})</div>
+    <ul class="list-group list-group-flush" style="max-height:320px;overflow:auto">{% for w in warnings|slice:":80" %}<li class="list-group-item small"><span class="badge bg-secondary">{{ w.code }}</span> {{ w.message }}</li>{% empty %}<li class="list-group-item text-muted">None.</li>{% endfor %}</ul></div></div>
+  <div class="col-lg-6"><div class="card"><div class="card-header">Hours against required</div>
+    <ul class="list-group list-group-flush" style="max-height:320px;overflow:auto">{% for h in hours %}<li class="list-group-item small d-flex justify-content-between"><span>{{ h.employee }} <span class="text-muted">{{ h.month }}</span></span><span class="{% if h.state == 'under' %}text-danger{% elif h.state == 'over' %}text-warning{% else %}text-success{% endif %}">{{ h.scheduled|floatformat:"-1" }} of {{ h.required|floatformat:"-1" }}</span></li>{% empty %}<li class="list-group-item text-muted">No targets set.</li>{% endfor %}</ul></div></div>
+  <div class="col-lg-6"><div class="card"><div class="card-header">Versions</div><ul class="list-group list-group-flush">{% for v in versions %}<li class="list-group-item small">v{{ v.version }} &middot; {{ v.created_at|date:"j M H:i" }} &middot; {{ v.reason }}</li>{% empty %}<li class="list-group-item text-muted">Not published yet.</li>{% endfor %}</ul></div></div>
+  <div class="col-lg-6"><div class="card"><div class="card-header">Rule overrides</div><ul class="list-group list-group-flush">{% for o in overrides %}<li class="list-group-item small">{{ o.created_at|date:"j M" }} {{ o.employee }}: <strong>{{ o.rule_code }}</strong> by {{ o.user }} - {{ o.reason }}</li>{% empty %}<li class="list-group-item text-muted">None.</li>{% endfor %}</ul></div></div>
+</div>
+{% endblock %}

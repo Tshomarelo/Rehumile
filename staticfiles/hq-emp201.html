@@ -227,7 +227,9 @@ document.getElementById('btnCalc').addEventListener('click', async () => {
 
 document.getElementById('btnExportCSV').addEventListener('click', async () => {
   if (!currentPeriodId) { alert('Select a period first.'); return; }
-  window.open(API+'/compliance/'+currentPeriodId+'/emp201/csv/?token='+tok(), '_blank');
+  const r = await fetch(API+'/compliance/'+currentPeriodId+'/emp201/csv/', {headers:{'Authorization':'Bearer '+tok()}});
+  if (!r.ok) { alert('Could not download the UIF file.'); return; }
+  const a = document.createElement('a'); a.href = URL.createObjectURL(await r.blob()); a.download = 'UIF_export.csv'; a.click();
 });
 
 document.getElementById('logoutBtn').addEventListener('click', e => {

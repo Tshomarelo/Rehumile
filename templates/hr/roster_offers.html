@@ -1,0 +1,15 @@
+{% extends "hr/base_portal.html" %}
+{% block title %}Shift offers{% endblock %}
+{% block content %}
+<h4 class="mb-3">Shift offers</h4>
+<p class="text-muted small">The first eligible person to accept gets the shift (or a manager chooses, depending on the site).</p>
+<ul class="list-group mb-4">
+  {% for o in offers %}<li class="list-group-item">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+      <span>{% if o.urgent %}<span class="badge bg-danger">URGENT</span> {% endif %}<strong>{{ o.shift.date|date:"l j F" }}</strong> {{ o.shift.start_time|time:"H:i" }}-{{ o.shift.end_time|time:"H:i" }}
+        <div class="small text-muted">{{ o.shift.site|default:"" }} {% if o.shift.post %}&middot; {{ o.shift.post.name }}{% endif %} &middot; {{ o.shift.paid_hours|floatformat:"-2" }} paid hours{% if profile.casual_rate %} &middot; R{{ profile.casual_rate }} {{ profile.get_casual_pay_basis_display|lower }}{% endif %}</div></span>
+      <form method="post" action="{% url 'hr:offer_respond' o.pk %}" class="d-flex gap-1">{% csrf_token %}<button name="action" value="accept" class="btn btn-success btn-sm">Accept</button><button name="action" value="decline" class="btn btn-outline-secondary btn-sm">Decline</button></form>
+    </div></li>{% empty %}<li class="list-group-item text-muted">No shifts are being offered to you right now.</li>{% endfor %}
+</ul>
+<a href="{% url 'hr:roster' %}">Back to my roster</a>
+{% endblock %}

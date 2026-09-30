@@ -1,0 +1,58 @@
+{% extends "hr/base_portal.html" %}
+{% block title %}Biographical Details{% endblock %}
+{% block content %}
+<h4 class="mb-1">Biographical Details</h4>
+<p class="text-muted small">Changes are sent for approval and applied once approved. Address and banking changes need proof.</p>
+{% if pending %}
+<div class="alert alert-warning py-2">
+  {% for c in pending %}<div class="d-flex justify-content-between align-items-center">
+    <span>Waiting for approval: <strong>{{ c.section }}</strong> ({{ c.get_action_display }})</span>
+    <form method="post" action="{% url 'hr:change_withdraw' c.pk %}">{% csrf_token %}<button class="btn btn-sm btn-outline-secondary">Withdraw</button></form>
+  </div>{% endfor %}
+</div>
+{% endif %}
+
+<div class="card mb-3"><div class="card-body">
+  <div class="d-flex justify-content-between"><h6>Contact</h6><a class="btn btn-sm btn-outline-primary" href="{% url 'hr:change_edit' 'contact' %}">Change</a></div>
+  <div>Phone: {{ emp.phone|default:"-" }}</div><div>Personal email: {{ emp.personal_email|default:"-" }}</div>
+</div></div>
+
+<div class="card mb-3"><div class="card-body">
+  <div class="d-flex justify-content-between"><h6>Home address</h6><a class="btn btn-sm btn-outline-primary" href="{% url 'hr:change_edit' 'address' %}">Change</a></div>
+  {{ address|default:"No address on file." }}
+</div></div>
+
+<div class="card mb-3"><div class="card-body">
+  <div class="d-flex justify-content-between"><h6>Banking</h6><a class="btn btn-sm btn-outline-primary" href="{% url 'hr:change_edit' 'bank' %}">Change</a></div>
+  {% if bank %}{{ bank.bank_name }} &middot; {{ bank.masked_number }} &middot; {{ bank.get_account_type_display }}{% else %}No banking details on file.{% endif %}
+  <div class="small text-muted">Banking changes are approved by HR and then by Payroll.</div>
+</div></div>
+
+{% for title, items, sec in lists %}{% endfor %}
+<div class="card mb-3"><div class="card-body">
+  <div class="d-flex justify-content-between"><h6>Emergency contacts</h6><a class="btn btn-sm btn-outline-primary" href="{% url 'hr:change_edit' 'emergency' %}">Add</a></div>
+  {% for x in emergency %}<div class="d-flex justify-content-between border-top py-1"><span>{{ x.name }} ({{ x.relationship }}) {{ x.phone }}</span>
+    <form method="post" action="{% url 'hr:change_remove' 'emergency' x.pk %}">{% csrf_token %}<a class="btn btn-sm btn-link" href="{% url 'hr:change_edit_item' 'emergency' x.pk %}">Edit</a><button class="btn btn-sm btn-link text-danger">Remove</button></form></div>
+  {% empty %}<span class="text-muted">None on file.</span>{% endfor %}
+</div></div>
+
+<div class="card mb-3"><div class="card-body">
+  <div class="d-flex justify-content-between"><h6>Dependants</h6><a class="btn btn-sm btn-outline-primary" href="{% url 'hr:change_edit' 'dependant' %}">Add</a></div>
+  {% for x in dependants %}<div class="d-flex justify-content-between border-top py-1"><span>{{ x.name }} ({{ x.relationship }})</span>
+    <form method="post" action="{% url 'hr:change_remove' 'dependant' x.pk %}">{% csrf_token %}<a class="btn btn-sm btn-link" href="{% url 'hr:change_edit_item' 'dependant' x.pk %}">Edit</a><button class="btn btn-sm btn-link text-danger">Remove</button></form></div>
+  {% empty %}<span class="text-muted">None on file.</span>{% endfor %}
+</div></div>
+
+<div class="card mb-3"><div class="card-body">
+  <div class="d-flex justify-content-between"><h6>Qualifications</h6><a class="btn btn-sm btn-outline-primary" href="{% url 'hr:change_edit' 'qualification' %}">Add</a></div>
+  {% for x in qualifications %}<div class="d-flex justify-content-between border-top py-1"><span>{{ x.title }} {{ x.institution }} {{ x.year_obtained|default:"" }}</span>
+    <form method="post" action="{% url 'hr:change_remove' 'qualification' x.pk %}">{% csrf_token %}<a class="btn btn-sm btn-link" href="{% url 'hr:change_edit_item' 'qualification' x.pk %}">Edit</a><button class="btn btn-sm btn-link text-danger">Remove</button></form></div>
+  {% empty %}<span class="text-muted">None on file.</span>{% endfor %}
+</div></div>
+
+<h6 class="text-muted">My recent requests</h6>
+<ul class="list-group mb-4">
+  {% for h in history %}<li class="list-group-item d-flex justify-content-between"><span>{{ h.section }} &middot; {{ h.get_action_display }}{% if h.decision_note %} <span class="text-muted small">({{ h.decision_note }})</span>{% endif %}</span><span class="badge bg-secondary">{{ h.get_status_display }}</span></li>
+  {% empty %}<li class="list-group-item text-muted">None yet.</li>{% endfor %}
+</ul>
+{% endblock %}

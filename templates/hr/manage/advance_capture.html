@@ -1,0 +1,24 @@
+{% extends "hr/base_manage.html" %}
+{% block title %}Capture an advance{% endblock %}
+{% block content %}
+<h4 class="mb-3">Capture an advance at the counter</h4>
+<form method="get" class="d-flex gap-2 mb-3" style="max-width:520px"><input name="q" value="{{ q }}" class="form-control" placeholder="Employee number or name" autofocus><button class="btn btn-outline-primary">Find</button></form>
+{% if q and not emp %}<div class="alert alert-warning">No active employee found.</div>{% endif %}
+{% if emp %}
+<div class="card mb-3" style="max-width:640px"><div class="card-body">
+  <h6>{{ emp.display_name }} <span class="text-muted">{{ emp.employee_number }}</span></h6>
+  {% if st.eligible %}<div class="alert alert-success py-2">Available: R{{ st.max|floatformat:2 }} (earned so far R{{ st.earned|floatformat:2 }}).</div>
+  {% else %}<div class="alert alert-warning py-2"><strong>Not eligible:</strong><ul class="mb-0">{% for r in st.reasons %}<li>{{ r }}</li>{% endfor %}</ul></div>{% endif %}
+  <form method="post">{% csrf_token %}<input type="hidden" name="do" value="capture"><input type="hidden" name="q" value="{{ q }}">
+    <div class="row g-2">
+      <div class="col-6"><label class="form-label">Amount (R)</label><input name="amount" class="form-control" inputmode="decimal" required></div>
+      <div class="col-6"><label class="form-label">Recover over (payruns)</label><input name="payruns" type="number" min="1" value="1" class="form-control"></div>
+      <div class="col-12"><label class="form-label">Reason</label><input name="reason" class="form-control" required></div>
+      <div class="col-12"><div class="form-check"><input type="checkbox" name="emergency" id="em" class="form-check-input"><label class="form-check-label" for="em">Emergency advance outside the limits (needs a written reason and a second approver)</label></div></div>
+      <div class="col-12"><input name="emergency_reason" class="form-control" placeholder="Emergency reason"></div>
+    </div>
+    <p class="small text-muted mt-2">A one-time code is sent to the employee's phone. They must confirm it themselves: that is their written agreement to the deduction.</p>
+    <button class="btn btn-primary">Capture and send code</button>
+  </form></div></div>
+{% endif %}
+{% endblock %}

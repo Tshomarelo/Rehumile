@@ -1,0 +1,13 @@
+{% extends "hr/base_manage.html" %}
+{% block title %}Roster flags{% endblock %}
+{% block content %}
+<h4 class="mb-3">Flags: who holds what</h4>
+<div class="row g-3">
+{% for h in holders %}<div class="col-md-6"><div class="card"><div class="card-header d-flex justify-content-between">{{ h.flag.name }}<span class="badge bg-primary">{{ h.count }}</span></div>
+  <ul class="list-group list-group-flush">{% for ef in h.holders %}<li class="list-group-item small d-flex justify-content-between">{{ ef.employee }}<span class="text-muted">{% if ef.expires_on %}expires {{ ef.expires_on|date:"j M Y" }}{% else %}no expiry{% endif %}</span></li>{% empty %}<li class="list-group-item text-muted small">Nobody holds this flag.</li>{% endfor %}</ul></div></div>
+{% empty %}<div class="text-muted">No flags set up yet.</div>{% endfor %}
+</div>
+<h6 class="text-muted mt-4">Expiring within 60 days</h6>
+<ul class="list-group mb-3">{% for f in expiring %}<li class="list-group-item small">{{ f.employee }}: {{ f.flag }} - {{ f.expires_on|date:"j M Y" }}</li>{% empty %}<li class="list-group-item text-muted">Nothing expiring.</li>{% endfor %}</ul>
+<a href="{% url 'hr:manage_crud' 'employee-flags' %}">Add or change staff flags</a>
+{% endblock %}

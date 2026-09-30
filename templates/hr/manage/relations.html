@@ -1,0 +1,41 @@
+{% extends "hr/base_manage.html" %}
+{% block title %}Employee relations{% endblock %}
+{% block content %}
+<h4 class="mb-3">Employee relations</h4>
+<div class="alert alert-secondary py-2 small">Confidential. Every view and action here is recorded in the audit log.</div>
+
+<h6 class="text-muted">Grievances</h6>
+<div class="card mb-4"><table class="table mb-0"><thead class="table-light"><tr><th>Employee</th><th>Subject</th><th>Received</th><th>Status</th><th></th></tr></thead>
+{% for g in grievances %}<tr><td>{{ g.employee }}</td><td>{{ g.subject }}</td><td>{{ g.created_at|date:"j M" }}</td><td>{{ g.get_status_display }}</td><td><a href="{% url 'hr:manage_grievance' g.pk %}">Open</a></td></tr>
+{% empty %}<tr><td colspan="5" class="text-muted text-center py-3">None.</td></tr>{% endfor %}</table></div>
+
+<div class="row g-3 mb-4">
+  <div class="col-lg-6"><div class="card"><div class="card-header">Issue a warning</div><div class="card-body">
+    <form method="post" enctype="multipart/form-data" action="{% url 'hr:manage_warning_issue' %}">{% csrf_token %}
+      <select name="employee" class="form-select mb-2">{% for p in people %}<option value="{{ p.pk }}">{{ p }}</option>{% endfor %}</select>
+      <select name="level" class="form-select mb-2">{% for k, v in levels %}<option value="{{ k }}">{{ v }}</option>{% endfor %}</select>
+      <textarea name="reason" rows="3" class="form-control mb-2" placeholder="Reason" required></textarea>
+      <div class="row g-2 mb-2"><div class="col"><label class="small">Issued</label><input type="date" name="issued_on" class="form-control" required></div><div class="col"><label class="small">Expires</label><input type="date" name="expiry_date" class="form-control"></div></div>
+      <input type="file" name="document" class="form-control mb-2">
+      <button class="btn btn-danger">Issue warning</button></form></div></div></div>
+  <div class="col-lg-6"><div class="card"><div class="card-header">Invite to a hearing</div><div class="card-body">
+    <form method="post" action="{% url 'hr:manage_hearing_invite' %}">{% csrf_token %}
+      <select name="employee" class="form-select mb-2">{% for p in people %}<option value="{{ p.pk }}">{{ p }}</option>{% endfor %}</select>
+      <input name="purpose" class="form-control mb-2" value="Disciplinary hearing">
+      <input type="datetime-local" name="when" class="form-control mb-2" required>
+      <input name="venue" class="form-control mb-2" placeholder="Venue" required>
+      <textarea name="notes" rows="3" class="form-control mb-2" placeholder="Charges, right to representation, documents to bring"></textarea>
+      <button class="btn btn-primary">Send invitation</button></form></div></div></div>
+</div>
+
+<h6 class="text-muted">Warnings</h6>
+<div class="card mb-4"><table class="table mb-0 align-middle"><thead class="table-light"><tr><th>Employee</th><th>Level</th><th>Issued</th><th>Acknowledged</th><th>Appeal</th><th></th></tr></thead>
+{% for w in warnings %}<tr><td>{{ w.employee }}</td><td>{{ w.get_level_display }}{% if w.withdrawn %} (withdrawn){% endif %}</td><td>{{ w.issued_on|date:"j M Y" }}</td><td>{{ w.acknowledged_at|date:"j M"|default:"-" }}</td>
+<td>{{ w.get_appeal_status_display }}{% if w.appeal_status == 'PENDING' %}<div class="small">{{ w.appeal_text }}</div>
+<form method="post" action="{% url 'hr:manage_warning_decide' w.pk %}" class="d-flex gap-1 mt-1">{% csrf_token %}<input name="decision" class="form-control form-control-sm" placeholder="Decision"><button name="action" value="UPHELD" class="btn btn-sm btn-outline-secondary">Uphold</button><button name="action" value="OVERTURNED" class="btn btn-sm btn-outline-success">Overturn</button></form>{% endif %}</td>
+<td>{% if not w.withdrawn %}<form method="post" action="{% url 'hr:manage_warning_decide' w.pk %}">{% csrf_token %}<button name="action" value="withdraw" class="btn btn-sm btn-outline-danger">Withdraw</button></form>{% endif %}</td></tr>
+{% empty %}<tr><td colspan="6" class="text-muted text-center py-3">None.</td></tr>{% endfor %}</table></div>
+
+<h6 class="text-muted">Upcoming hearings</h6>
+<ul class="list-group mb-4">{% for h in hearings %}<li class="list-group-item">{{ h.employee }} &middot; {{ h.purpose }} &middot; {{ h.when|date:"j M H:i" }} &middot; {{ h.get_status_display }}</li>{% empty %}<li class="list-group-item text-muted">None.</li>{% endfor %}</ul>
+{% endblock %}

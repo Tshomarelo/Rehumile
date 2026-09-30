@@ -1,0 +1,17 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Receipt {{ adv.number }}</title>
+<style>body{font-family:Arial,sans-serif;max-width:420px;margin:24px auto;font-size:14px} td{padding:3px 0} @media print{.np{display:none}}</style></head>
+<body><div class="np"><button onclick="window.print()">Print</button></div>
+<h3>Salary advance receipt</h3>
+<table width="100%">
+<tr><td>Receipt</td><td align="right">{{ payment.receipt_number }}</td></tr>
+<tr><td>Advance</td><td align="right">{{ adv.number }}</td></tr>
+<tr><td>Employee</td><td align="right">{{ adv.employee.display_name }} ({{ adv.employee.employee_number }})</td></tr>
+<tr><td>Amount paid</td><td align="right"><strong>R{{ payment.amount }}</strong></td></tr>
+<tr><td>Method</td><td align="right">{{ payment.get_method_display }}{% if payment.reference %} ({{ payment.reference }}){% endif %}</td></tr>
+<tr><td>Paid</td><td align="right">{{ payment.paid_at|date:"j M Y H:i" }}</td></tr>
+<tr><td>Paid by</td><td align="right">{{ payment.paid_by }}</td></tr>
+</table>
+<p style="margin-top:24px">I received the amount above and I agree that it is deducted from my pay as scheduled.</p>
+<p style="margin-top:36px">Signature: ______________________________</p>
+</body></html>

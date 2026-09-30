@@ -1,0 +1,16 @@
+{% extends "hr/base_manage.html" %}
+{% block title %}My team{% endblock %}
+{% block content %}
+<h4 class="mb-3">My team</h4>
+<div class="card"><div class="table-responsive">
+  <table class="table t table-hover mb-0 align-middle">
+    <thead class="table-light"><tr><th>Name</th><th>Number</th><th>Job title</th><th>Department</th><th>Reports to</th><th>Today</th></tr></thead>
+    <tbody>
+      {% for p in people %}<tr><td class="fw-semibold">{{ p.display_name }}</td><td>{{ p.employee_number }}</td><td>{{ p.job_title|default:"-" }}</td><td>{{ p.department.name|default:"-" }}</td><td>{{ p.manager.display_name|default:"-" }}</td>
+        <td>{% if p.pk in off %}<span class="badge bg-warning text-dark">On leave</span>{% else %}<span class="text-muted">Working</span>{% endif %}</td></tr>
+      {% empty %}<tr><td colspan="6" class="text-center text-muted py-4">Nobody reports to you yet.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</div></div>
+<div class="small text-muted mt-2">Managers see limited fields. ID numbers, salary and banking are only visible to HR and Payroll.</div>
+{% endblock %}

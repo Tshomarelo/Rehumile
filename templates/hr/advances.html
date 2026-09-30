@@ -1,0 +1,44 @@
+{% extends "hr/base_portal.html" %}
+{% block title %}Salary advances{% endblock %}
+{% block content %}
+<h4 class="mb-3">Salary advances</h4>
+<div class="card mb-4" style="max-width:640px"><div class="card-body">
+  {% if st.eligible %}
+    <div class="alert alert-success py-2">You can ask for up to <strong>R{{ st.max|floatformat:2 }}</strong>.
+      <div class="small text-muted">Pay earned so far: R{{ st.earned|floatformat:2 }} ({{ st.note }}){% if st.outstanding %}; you still owe R{{ st.outstanding|floatformat:2 }}{% endif %}.</div></div>
+    <form method="post">{% csrf_token %}
+      <div class="row g-2">
+        <div class="col-6"><label class="form-label">Amount (R)</label><input name="amount" class="form-control" inputmode="decimal" required></div>
+        <div class="col-6"><label class="form-label">Recover over (payruns)</label><select name="payruns" class="form-select">{% for i in "123456"|make_list %}{% if forloop.counter <= st.recovery_max %}<option>{{ i }}</option>{% endif %}{% endfor %}</select></div>
+        <div class="col-12"><label class="form-label">Reason</label><input name="reason" class="form-control" required></div>
+        <div class="col-6"><label class="form-label">Date needed</label><input type="date" name="needed_by" class="form-control"></div>
+      </div>
+      {% if st.fee_percent %}<p class="small text-danger mt-2">A fee of {{ st.fee_percent }}% applies and is recovered with the advance.</p>{% endif %}
+      <p class="small text-muted mt-2">{{ agreement }}</p>
+      <button class="btn btn-primary">Request advance</button>
+    </form>
+  {% else %}
+    <div class="alert alert-warning mb-0"><strong>You cannot request an advance right now.</strong><ul class="mb-0">{% for r in st.reasons %}<li>{{ r }}</li>{% endfor %}</ul></div>
+  {% endif %}
+</div></div>
+
+<h6 class="text-muted">My advances</h6>
+<ul class="list-group mb-4">
+  {% for a in advances %}<li class="list-group-item">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+      <span><strong>{{ a.number }}</strong> R{{ a.amount }} <span class="text-muted small">{{ a.reason }}</span>{% if a.status == 'PAID' or a.status == 'RECOVERING' %} &middot; balance R{{ a.bal }}{% endif %}</span>
+      <span class="badge bg-secondary">{{ a.get_status_display }}</span></div>
+    {% if a.status == 'REQUESTED' %}
+    <form method="post" action="{% url 'hr:advance_confirm' a.pk %}" class="row g-2 mt-1">{% csrf_token %}
+      <div class="col-md-4"><input name="code" class="form-control form-control-sm" inputmode="numeric" maxlength="6" placeholder="6-digit code we sent you"></div>
+      <div class="col-md-4"><input name="signed_name" class="form-control form-control-sm" placeholder="or type your full name to sign"></div>
+      <div class="col-md-4 d-flex gap-1"><button class="btn btn-sm btn-success">Confirm</button>
+        <button class="btn btn-sm btn-outline-secondary" formaction="{% url 'hr:advance_resend' a.pk %}">New code</button>
+        <button class="btn btn-sm btn-outline-danger" formaction="{% url 'hr:advance_cancel' a.pk %}">Cancel</button></div>
+      <div class="col-12 small text-muted">Confirming is your written agreement that the amount is deducted from your pay.</div>
+    </form>{% elif a.status == 'AWAITING_APPROVAL' or a.status == 'APPROVED' %}
+    <form method="post" action="{% url 'hr:advance_cancel' a.pk %}" class="mt-1">{% csrf_token %}<button class="btn btn-sm btn-outline-danger">Cancel request</button></form>{% endif %}
+    {% if a.schedule.all %}<div class="small text-muted mt-1">Deductions: {% for s in a.schedule.all %}#{{ s.sequence }} R{{ s.amount }} ({{ s.get_status_display }}){% if not forloop.last %}, {% endif %}{% endfor %}</div>{% endif %}
+  </li>{% empty %}<li class="list-group-item text-muted">No advances yet.</li>{% endfor %}
+</ul>
+{% endblock %}

@@ -1,0 +1,13 @@
+{% extends "hr/base_manage.html" %}
+{% block title %}Adjust leave balance{% endblock %}
+{% block content %}
+<h4 class="mb-1">Adjust a leave balance</h4>
+<div class="text-muted mb-3">Adds or removes days on the employee's ledger. A reason is required; the entry appears on their statement and in the audit log.</div>
+<div class="card" style="max-width:560px"><div class="card-body">
+  <form method="post">{% csrf_token %}
+    {% if form.non_field_errors %}<div class="alert alert-danger">{% for e in form.non_field_errors %}<div>{{ e }}</div>{% endfor %}</div>{% endif %}
+    {% for f in form %}<div class="mb-3">{{ f.label_tag }} {{ f }}{% if f.help_text %}<div class="form-text">{{ f.help_text }}</div>{% endif %}{% for err in f.errors %}<div class="text-danger small">{{ err }}</div>{% endfor %}</div>{% endfor %}
+    <button class="btn btn-warning fw-bold">Apply adjustment</button>
+  </form>
+</div></div>
+{% endblock %}

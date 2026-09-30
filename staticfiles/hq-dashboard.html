@@ -84,6 +84,36 @@
     .pipeline-bar{height:6px;border-radius:3px;background:#e5e7eb;overflow:hidden;margin-top:4px}
     .pipeline-fill{height:100%;border-radius:3px;transition:width .6s}
     .empty-state{text-align:center;padding:40px;color:#9ca3af}
+    /* Money overview */
+    .fin-card{background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:20px;margin-bottom:24px}
+    .fin-head{display:flex;flex-wrap:wrap;gap:12px;justify-content:space-between;align-items:flex-start;margin-bottom:16px}
+    .fin-controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+    .seg{display:inline-flex;border:1px solid #d1d5db;border-radius:8px;overflow:hidden}
+    .seg button{border:0;background:#fff;padding:6px 12px;font-size:.8125rem;color:#374151;cursor:pointer}
+    .seg button.on{background:#50181E;color:#fff}
+    .fin-nav{border:1px solid #d1d5db;background:#fff;border-radius:8px;padding:5px 10px;cursor:pointer}
+    .fin-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px}
+    .fin-tile{border:1px solid #e5e7eb;border-radius:10px;padding:14px 16px;border-left-width:4px}
+    .fin-tile .lbl{font-size:.75rem;color:#6b7280;text-transform:uppercase;letter-spacing:.04em}
+    .fin-tile .val{font-size:1.5rem;font-weight:700;color:#111827;margin:2px 0}
+    .fin-tile .sub{font-size:.75rem;color:#6b7280;line-height:1.4}
+    .fin-tile.paid{border-left-color:#16a34a}.fin-tile.unpaid{border-left-color:#d97706}.fin-tile.exp{border-left-color:#dc2626}
+    .fin-tile.rev{border-left-color:#2563eb}.fin-tile.profit{border-left-color:#7c3aed}
+    .neg{color:#b91c1c!important}.pos{color:#15803d!important}
+    .fin-eq{margin:14px 0 4px;font-size:.9rem;color:#374151;display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center}
+    .fin-eq b{font-weight:700}
+    .how-btn{background:none;border:1px solid #50181E;color:#50181E;border-radius:8px;padding:6px 14px;font-size:.8125rem;cursor:pointer}
+    .how-btn:hover{background:#50181E;color:#fff}
+    table.wk{width:100%;border-collapse:collapse;margin-top:12px}
+    table.wk td{padding:9px 10px;border-bottom:1px solid #f3f4f6;font-size:.875rem;vertical-align:top}
+    table.wk tr.tot td{background:#f9fafb;font-weight:700}
+    table.wk td.sg{width:28px;font-weight:700;color:#6b7280}
+    table.wk td.am{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+    table.wk .ex{font-size:.75rem;color:#6b7280;font-weight:400;margin-top:2px}
+    table.wk .more{font-size:.75rem;color:#2563eb;cursor:pointer;background:none;border:0;padding:0}
+    table.sub{width:100%;font-size:.8125rem;margin:6px 0 2px;background:#fafafa}
+    table.sub td{padding:4px 8px;border-bottom:1px solid #f0f0f0}
+    .note-box{background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:10px 14px;font-size:.8125rem;color:#92400e;margin-top:12px}
   </style>
 </head>
 <body>
@@ -132,12 +162,53 @@
         </div>
       </div>
 
+      <!-- Money overview: one calculation, shown with workings -->
+      <div class="fin-card" id="finCard" style="display:none">
+        <div class="fin-head">
+          <div>
+            <div class="chart-title">Money overview</div>
+            <div class="chart-subtitle" id="finPeriodLabel">Loading…</div>
+          </div>
+          <div class="fin-controls">
+            <div class="seg" id="finSeg">
+              <button data-p="week">Week</button><button data-p="month" class="on">Month</button>
+              <button data-p="quarter">Quarter</button><button data-p="year">Year</button><button data-p="custom">Custom</button>
+            </div>
+            <button class="fin-nav" id="finPrev" title="Previous">‹</button>
+            <button class="fin-nav" id="finNext" title="Next">›</button>
+            <span id="finCustom" style="display:none;gap:6px;align-items:center">
+              <input type="date" id="finFrom" class="form-control form-control-sm" style="width:auto">
+              <input type="date" id="finTo" class="form-control form-control-sm" style="width:auto">
+              <button class="how-btn" id="finApply">Apply</button>
+            </span>
+          </div>
+        </div>
+        <div class="fin-grid">
+          <div class="fin-tile paid"><div class="lbl">Paid invoices</div><div class="val" id="tPaid">—</div><div class="sub" id="tPaidSub"></div></div>
+          <div class="fin-tile unpaid"><div class="lbl">Unpaid invoices</div><div class="val" id="tUnpaid">—</div><div class="sub" id="tUnpaidSub"></div></div>
+          <div class="fin-tile exp"><div class="lbl">Expenses</div><div class="val" id="tExp">—</div><div class="sub" id="tExpSub"></div></div>
+          <div class="fin-tile rev"><div class="lbl">Revenue</div><div class="val" id="tRev">—</div><div class="sub" id="tRevSub"></div></div>
+          <div class="fin-tile profit"><div class="lbl">Net profit</div><div class="val" id="tProfit">—</div><div class="sub" id="tProfitSub"></div></div>
+        </div>
+        <div class="fin-eq" id="finEq"></div>
+        <button class="how-btn" id="howBtn">How was this calculated? ▾</button>
+        <div id="howPanel" style="display:none">
+          <div class="note-box" style="background:#eff6ff;border-color:#bfdbfe;color:#1e3a8a">
+            <b>Plain-English rules.</b> Revenue is money that has actually been <b>paid</b> (invoice totals <b>without VAT</b>, because VAT belongs to SARS) plus till/voucher sales.
+            <b>Unpaid</b> is what clients still owe us. <b>Expenses</b> are what the business spent or owes suppliers for, plus wages. <b>Profit = Revenue − Expenses.</b>
+            Tap any line to see the exact invoices / expenses behind it.
+          </div>
+          <table class="wk" id="wkTable"></table>
+          <div id="unpaidBlock"></div>
+          <div id="finNotes"></div>
+        </div>
+      </div>
+
       <!-- KPI cards -->
       <div class="kpi-grid" id="kpiGrid">
         <div class="kpi-card"><div class="kpi-icon blue"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div><div class="kpi-value" id="kpiTotalIncidents"><div class="skeleton" style="width:60px"></div></div><div class="kpi-label">Total Incidents</div></div>
         <div class="kpi-card"><div class="kpi-icon red"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></div><div class="kpi-value" id="kpiOpenIncidents"><div class="skeleton" style="width:40px"></div></div><div class="kpi-label">Open / In Progress</div></div>
-        <div class="kpi-card"><div class="kpi-icon green"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg></div><div class="kpi-value" id="kpiRevenue"><div class="skeleton" style="width:80px"></div></div><div class="kpi-label">Revenue (This Month)</div></div>
-        <div class="kpi-card"><div class="kpi-icon amber"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg></div><div class="kpi-value" id="kpiJobCards"><div class="skeleton" style="width:40px"></div></div><div class="kpi-label">Active Job Cards</div></div>
+                <div class="kpi-card"><div class="kpi-icon amber"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg></div><div class="kpi-value" id="kpiJobCards"><div class="skeleton" style="width:40px"></div></div><div class="kpi-label">Active Job Cards</div></div>
         <div class="kpi-card"><div class="kpi-icon teal"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div><div class="kpi-value" id="kpiSla"><div class="skeleton" style="width:50px"></div></div><div class="kpi-label">SLA Compliance</div></div>
         <div class="kpi-card"><div class="kpi-icon purple"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg></div><div class="kpi-value" id="kpiClients"><div class="skeleton" style="width:40px"></div></div><div class="kpi-label">Active Companies</div></div>
       </div>
@@ -147,8 +218,8 @@
         <div class="chart-card wide">
           <div class="chart-header">
             <div>
-              <div class="chart-title">Revenue Trend</div>
-              <div class="chart-subtitle">Monthly invoice revenue (last 6 months)</div>
+              <div class="chart-title">Revenue, Expenses &amp; Profit</div>
+              <div class="chart-subtitle" id="trendSub">Same numbers as above, by period</div>
             </div>
           </div>
           <div class="chart-wrap"><canvas id="revenueChart"></canvas></div>
@@ -266,8 +337,9 @@
       data:{
         labels:months,
         datasets:[
-          {label:'Invoiced',data:[0,0,0,0,0,0],borderColor:'#3b82f6',backgroundColor:'rgba(59,130,246,.08)',fill:true,tension:.4,pointBackgroundColor:'#3b82f6',pointRadius:4},
-          {label:'Paid',data:[0,0,0,0,0,0],borderColor:'#10b981',backgroundColor:'rgba(16,185,129,.06)',fill:true,tension:.4,pointBackgroundColor:'#10b981',pointRadius:4}
+          {label:'Revenue',data:[],borderColor:'#2563eb',backgroundColor:'rgba(37,99,235,.08)',fill:true,tension:.3,pointRadius:3},
+          {label:'Expenses',data:[],borderColor:'#dc2626',backgroundColor:'rgba(220,38,38,.05)',fill:true,tension:.3,pointRadius:3},
+          {label:'Profit',data:[],borderColor:'#7c3aed',borderDash:[5,4],fill:false,tension:.3,pointRadius:3}
         ]
       },
       options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{usePointStyle:true,padding:16}}},scales:{x:{grid:{display:false}},y:{grid:{color:gridColor},ticks:{callback:v=>'R'+v.toLocaleString()}}}}
@@ -329,6 +401,95 @@
     return `<span class="badge ${map[s]||'badge-gray'}">${(s||'').replace('_',' ')}</span>`;
   };
 
+  /* ── Money overview ────────────────────────── */
+  const esc = s => String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  const iso = d => d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  const fin = {period:'month', anchor:new Date(), from:'', to:''};
+  const signedR = n => (n<0?'−':'')+fmtR(Math.abs(n));
+  function shiftAnchor(dir){
+    const d = new Date(fin.anchor);
+    if(fin.period==='week') d.setDate(d.getDate()+7*dir);
+    else if(fin.period==='month'){ d.setDate(1); d.setMonth(d.getMonth()+dir); }
+    else if(fin.period==='quarter'){ d.setDate(1); d.setMonth(d.getMonth()+3*dir); }
+    else if(fin.period==='year') d.setFullYear(d.getFullYear()+dir);
+    fin.anchor = d;
+  }
+  async function loadFinance(){
+    let qs = 'period='+fin.period+'&date='+iso(fin.anchor);
+    if(fin.period==='custom'){
+      if(!fin.from||!fin.to) return;
+      qs = 'period=custom&date_from='+fin.from+'&date_to='+fin.to;
+    }
+    let s;
+    try{
+      const r = await fetch('/portal/api/finance/summary/?'+qs,{headers:{'Authorization':'Bearer '+token}});
+      if(r.status===401){ localStorage.clear(); window.location.href='/portal/login/'; return; }
+      if(!r.ok) return;                       // not a finance/admin user: keep the card hidden
+      s = await r.json();
+    }catch(e){ return; }
+    document.getElementById('finCard').style.display='block';
+    document.getElementById('finPeriodLabel').textContent = s.period.label+'  ('+s.period.start+' → '+s.period.end+')';
+    const inv=s.invoices, ex=s.expenses, rev=s.revenue, pr=s.profit;
+    document.getElementById('tPaid').textContent = fmtR(inv.paid.subtotal);
+    document.getElementById('tPaidSub').innerHTML = inv.paid.count+' invoice(s) paid<br>Client paid '+fmtR(inv.paid.total)+' incl. VAT '+fmtR(inv.paid.vat);
+    document.getElementById('tUnpaid').textContent = fmtR(inv.unpaid.total);
+    document.getElementById('tUnpaidSub').innerHTML = inv.unpaid.count+' invoice(s) still owed'+(inv.unpaid.overdue_count?'<br><b class="neg">'+inv.unpaid.overdue_count+' overdue: '+fmtR(inv.unpaid.overdue_total)+'</b>':'');
+    document.getElementById('tExp').textContent = fmtR(ex.total);
+    document.getElementById('tExpSub').innerHTML = 'Cost of sales '+fmtR(ex.cost_of_sales)+'<br>Running costs '+fmtR(ex.operating)+'<br>Payroll '+fmtR(ex.payroll);
+    document.getElementById('tRev').textContent = fmtR(rev.total);
+    document.getElementById('tRevSub').innerHTML = 'Paid invoices '+fmtR(rev.invoices)+'<br>Till / voucher sales '+fmtR(rev.direct_sales);
+    const pv = document.getElementById('tProfit');
+    pv.textContent = signedR(pr.net); pv.className = 'val '+(pr.net<0?'neg':'pos');
+    document.getElementById('tProfitSub').innerHTML = 'Margin '+pr.margin_pct+'%<br>Gross profit '+signedR(pr.gross);
+    document.getElementById('finEq').innerHTML = '<span>Revenue <b>'+fmtR(rev.total)+'</b></span><span>−</span><span>Expenses <b>'+fmtR(ex.total)+'</b></span><span>=</span><span>Net profit <b class="'+(pr.net<0?'neg':'pos')+'">'+signedR(pr.net)+'</b></span>';
+    renderWorkings(s);
+    loadTrend();
+  }
+  function renderWorkings(s){
+    const rows = s.workings.map((w,i)=>{
+      const has = w.rows && w.rows.length;
+      const detail = has ? '<tr id="wd'+i+'" style="display:none"><td></td><td colspan="2"><table class="sub">'+w.rows.map(r=>'<tr><td>'+esc(r.date||'')+'</td><td>'+(r.url?'<a href="'+r.url+'">'+esc(r.ref)+'</a>':esc(r.ref))+'</td><td>'+esc(r.label)+'</td><td style="text-align:right">'+fmtR(r.amount)+'</td></tr>').join('')+'</table></td></tr>' : '';
+      return '<tr class="'+(w.total?'tot':'')+'"><td class="sg">'+esc(w.sign)+'</td><td>'+esc(w.label)+(w.explain?'<div class="ex">'+esc(w.explain)+'</div>':'')+(has?'<button class="more" data-i="'+i+'">Show '+w.rows.length+(w.rows.length>=100?'+':'')+' record(s)</button>':'')+'</td><td class="am '+(w.total&&w.amount<0?'neg':'')+'">'+signedR(w.amount)+'</td></tr>'+detail;
+    }).join('');
+    document.getElementById('wkTable').innerHTML = rows;
+    document.querySelectorAll('#wkTable .more').forEach(b=>b.onclick=()=>{
+      const d=document.getElementById('wd'+b.dataset.i); const open=d.style.display==='none'; d.style.display=open?'table-row':'none'; b.textContent=(open?'Hide':'Show')+b.textContent.replace(/^(Show|Hide)/,'');
+    });
+    const u = s.invoices.unpaid;
+    document.getElementById('unpaidBlock').innerHTML = '<h6 style="margin:18px 0 6px;font-weight:700">Who still owes us ('+fmtR(u.total)+' incl. VAT)</h6>'+(u.rows.length?'<table class="sub">'+u.rows.map(r=>'<tr><td>'+(r.url?'<a href="'+r.url+'">'+esc(r.ref)+'</a>':esc(r.ref))+'</td><td>'+esc(r.label)+'</td><td>due '+esc(r.date||'—')+'</td><td>'+(r.overdue?'<b class="neg">overdue</b>':'')+'</td><td style="text-align:right">'+fmtR(r.amount)+'</td></tr>').join('')+'</table>':'<div class="text-muted small">Nothing outstanding.</div>');
+    const cats = s.expenses.by_category;
+    document.getElementById('finNotes').innerHTML = (cats.length?'<h6 style="margin:18px 0 6px;font-weight:700">Expenses by category</h6><table class="sub">'+cats.map(c=>'<tr><td>'+esc(c.name)+'</td><td>'+c.count+' item(s)</td><td>'+(c.unpaid?'unpaid '+fmtR(c.unpaid):'')+'</td><td style="text-align:right">'+fmtR(c.amount)+'</td></tr>').join('')+'</table>':'')
+      + '<div class="note-box">'+s.notes.map(esc).join('<br>')+'</div>';
+  }
+  async function loadTrend(){
+    const gran = {week:'weekly',month:'monthly',quarter:'monthly',year:'yearly',custom:'monthly'}[fin.period];
+    try{
+      const r = await fetch('/portal/api/finance/trend/?granularity='+gran+'&date='+iso(fin.anchor),{headers:{'Authorization':'Bearer '+token}});
+      if(!r.ok) return; const t = await r.json();
+      document.getElementById('trendSub').textContent = {weekly:'Last 12 weeks',monthly:'Last 12 months',yearly:'Last 5 years'}[gran]+' — same definitions as the cards above';
+      if(revenueChart){
+        revenueChart.data.labels = t.buckets.map(b=>b.label);
+        revenueChart.data.datasets[0].data = t.buckets.map(b=>b.revenue);
+        revenueChart.data.datasets[1].data = t.buckets.map(b=>b.expenses);
+        revenueChart.data.datasets[2].data = t.buckets.map(b=>b.profit);
+        revenueChart.update();
+      }
+    }catch(e){}
+  }
+  document.getElementById('finSeg').addEventListener('click',e=>{
+    const b=e.target.closest('button'); if(!b) return;
+    fin.period=b.dataset.p;
+    document.querySelectorAll('#finSeg button').forEach(x=>x.classList.toggle('on',x===b));
+    const custom = fin.period==='custom';
+    document.getElementById('finCustom').style.display = custom?'inline-flex':'none';
+    document.getElementById('finPrev').style.display = document.getElementById('finNext').style.display = custom?'none':'';
+    if(!custom) loadFinance();
+  });
+  document.getElementById('finPrev').onclick=()=>{ shiftAnchor(-1); loadFinance(); };
+  document.getElementById('finNext').onclick=()=>{ shiftAnchor(1); loadFinance(); };
+  document.getElementById('finApply').onclick=()=>{ fin.from=document.getElementById('finFrom').value; fin.to=document.getElementById('finTo').value; if(!fin.from||!fin.to){ alert('Choose both dates.'); return; } loadFinance(); };
+  document.getElementById('howBtn').onclick=()=>{ const p=document.getElementById('howPanel'); const open=p.style.display==='none'; p.style.display=open?'block':'none'; document.getElementById('howBtn').textContent='How was this calculated? '+(open?'▴':'▾'); };
+
   /* ── Load all data ─────────────────────────── */
   async function loadAll(){
     try{
@@ -371,38 +532,7 @@
       }
     }catch(e){ if(e.message!=='401') console.error('incidents',e); }
 
-    try{
-      /* Invoices / Revenue */
-      const inv = await api('/portal/api/invoices/?page_size=200');
-      const invoices = inv.results || [];
-      const thisMonth = new Date().getMonth();
-      const thisYear = new Date().getFullYear();
-      const monthRev = invoices.filter(i=>{ const d=new Date(i.created_at||i.issued_date||0); return d.getMonth()===thisMonth&&d.getFullYear()===thisYear&&i.status==='paid'; })
-        .reduce((s,i)=>s+parseFloat(i.total_amount||i.amount||0),0);
-      document.getElementById('kpiRevenue').textContent = fmtR(monthRev);
-
-      /* Revenue chart — last 6 months */
-      const revByMonth = {};
-      const paidByMonth = {};
-      for(let i=5;i>=0;i--){
-        const d=new Date(); d.setDate(1); d.setMonth(d.getMonth()-i);
-        const key=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
-        revByMonth[key]=0; paidByMonth[key]=0;
-      }
-      invoices.forEach(inv=>{
-        const d=new Date(inv.created_at||inv.issued_date||0);
-        const key=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
-        if(revByMonth[key]!==undefined){
-          revByMonth[key]+=(parseFloat(inv.total_amount||inv.amount||0));
-          if(inv.status==='paid') paidByMonth[key]+=(parseFloat(inv.total_amount||inv.amount||0));
-        }
-      });
-      if(revenueChart){
-        revenueChart.data.datasets[0].data=Object.values(revByMonth);
-        revenueChart.data.datasets[1].data=Object.values(paidByMonth);
-        revenueChart.update();
-      }
-    }catch(e){ if(e.message!=='401') console.error('invoices',e); }
+    loadFinance();
 
     try{
       /* Job cards */
@@ -435,6 +565,7 @@
     }catch(e){ document.getElementById('kpiClients').textContent='—'; }
   }
 
+  window.loadAll = loadAll;
   loadAll();
 
   /* ── Feather icons ─────────────────────────── */

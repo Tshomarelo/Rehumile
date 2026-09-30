@@ -1,0 +1,14 @@
+{% extends "hr/base_portal.html" %}
+{% block title %}{{ label }}{% endblock %}
+{% block content %}
+<h4 class="mb-3">{{ label }}</h4>
+<div class="card" style="max-width:560px"><div class="card-body">
+  {% if bank %}<div class="alert alert-info py-2 small">Banking changes are checked by HR and then approved by Payroll before they apply.</div>{% endif %}
+  <form method="post" enctype="multipart/form-data">{% csrf_token %}
+    {% for f in form %}<div class="mb-3"><label class="form-label">{{ f.label }}</label>{{ f }}{% for e in f.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}</div>{% endfor %}
+    {% if proof_needed %}<p class="small text-muted">Proof is required (for example a utility bill or a bank letter).</p>{% endif %}
+    <button class="btn btn-primary">Send for approval</button>
+    <a class="btn btn-link" href="{% url 'hr:biographical' %}">Cancel</a>
+  </form>
+</div></div>
+{% endblock %}

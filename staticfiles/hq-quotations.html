@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <link rel="shortcut icon" href="/portal/static/img/icons/icon-48x48.png"/>
+  <title>Quotations | Rehumile IMS</title>
+  <link href="/portal/static/css/app.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+  <style>
+    .q-line td{padding:4px 4px;vertical-align:middle}
+    .q-line input,.q-line select{font-size:.8125rem}
+    .tot-box{background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:12px 16px}
+    .tot-box .r{display:flex;justify-content:space-between;padding:2px 0;font-size:.875rem}
+    .tot-box .r.big{font-weight:700;font-size:1rem;border-top:1px solid #d1d5db;margin-top:4px;padding-top:6px}
+    .internal{background:#fffbeb;border:1px dashed #f59e0b;border-radius:8px;padding:10px 14px;font-size:.8125rem}
+    .neg{color:#b91c1c}.pos{color:#15803d}
+  </style>
+</head>
+<body>
+<div class="wrapper">
+  <nav id="sidebar" class="sidebar js-sidebar">
+    <div class="sidebar-content js-simplebar">
+      <a class="sidebar-brand d-flex align-items-center p-2" href="/portal/dashboard/">
+        <img src="/portal/static/img/rehumile-logo.jpeg" style="height:36px;object-fit:contain" alt="Rehumile TMW">
+      </a>
+      <ul class="sidebar-nav"></ul>
+    </div>
+  </nav>
+  <div class="main">
+    <nav class="navbar navbar-expand navbar-light navbar-bg">
+      <a class="sidebar-toggle js-sidebar-toggle"><i class="hamburger align-self-center"></i></a>
+      <div class="navbar-collapse collapse">
+        <ul class="navbar-nav navbar-align">
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle d-none d-sm-inline-block" href="#" data-bs-toggle="dropdown">
+              <i class="align-middle me-1" data-feather="user"></i><span class="text-dark" id="navUserName">…</span>
+            </a>
+            <div class="dropdown-menu dropdown-menu-end">
+              <span class="dropdown-item-text small text-muted" id="navUserRole"></span>
+              <div class="dropdown-divider"></div>
+              <a class="dropdown-item" href="#" id="logoutBtn"><i class="align-middle me-1" data-feather="log-out"></i> Sign out</a>
+            </div>
+          </li>
+        </ul>
+      </div>
+    </nav>
+    <main class="content">
+      <div class="container-fluid p-0">
+        <div class="d-flex align-items-center justify-content-between mb-3">
+          <div>
+            <h1 class="h3 mb-0"><strong>Quotations</strong></h1>
+            <div class="text-muted small">Quote → accept → invoice. Expected costs and real expenses are tracked on every quote, so you see the true margin.</div>
+          </div>
+          <button class="btn btn-primary" id="newQuoteBtn"><i class="align-middle me-1" data-feather="plus"></i> New Quotation</button>
+        </div>
+        <div id="pageAlert"></div>
+
+        <div class="row g-2 mb-3" id="kpis"></div>
+
+        <div class="row g-2 mb-3">
+          <div class="col-md-4"><input type="text" class="form-control form-control-sm" id="fSearch" placeholder="Search number, client or title…"></div>
+          <div class="col-md-2">
+            <select class="form-select form-select-sm" id="fStatus">
+              <option value="">All statuses</option><option value="draft">Draft</option><option value="sent">Sent</option>
+              <option value="accepted">Accepted</option><option value="invoiced">Invoiced</option><option value="declined">Declined</option><option value="expired">Expired</option>
+            </select>
+          </div>
+          <div class="col-md-2"><input type="date" class="form-control form-control-sm" id="fFrom" title="Issued from"></div>
+          <div class="col-md-2"><input type="date" class="form-control form-control-sm" id="fTo" title="Issued to"></div>
+          <div class="col-md-2"><button class="btn btn-sm btn-outline-secondary w-100" id="fClear">Clear</button></div>
+        </div>
+
+        <div class="card">
+          <div class="card-body p-0">
+            <div class="table-responsive">
+              <table class="table table-hover my-0">
+                <thead><tr><th>Quote #</th><th>Client</th><th class="d-none d-md-table-cell">Issued</th><th class="d-none d-md-table-cell">Valid until</th>
+                  <th>Total</th><th class="d-none d-lg-table-cell">Expected margin</th><th>Status</th><th>Actions</th></tr></thead>
+                <tbody id="qTbody"><tr><td colspan="8" class="text-center text-muted py-4">Loading…</td></tr></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+    <footer class="footer"><div class="container-fluid"><p class="mb-0 text-muted">Rehumile TMW IMS &copy; 2026</p></div></footer>
+  </div>
+</div>
+
+<!-- Quote editor -->
+<div class="hq-drawer hq-wide" id="quoteModal" style="width:920px">
+  <div class="hq-drawer-header"><h5 class="hq-drawer-title" id="qModalTitle">New Quotation</h5>
+    <button type="button" class="btn-close btn-close-white" onclick="HQ.hideDrawer('quoteModal')"></button></div>
+  <div class="hq-drawer-body">
+    <div id="qModalAlert"></div>
+    <input type="hidden" id="q_id">
+    <div class="row">
+      <div class="col-md-6 mb-3"><label class="form-label">Client company <span class="text-muted">(optional)</span></label>
+        <select class="form-select" id="q_company"><option value="">— Not a registered client —</option></select></div>
+      <div class="col-md-6 mb-3"><label class="form-label">Client name <span class="text-danger">*</span></label><input type="text" class="form-control" id="q_client"></div>
+      <div class="col-md-4 mb-3"><label class="form-label">Email</label><input type="email" class="form-control" id="q_email"></div>
+      <div class="col-md-4 mb-3"><label class="form-label">Phone</label><input type="text" class="form-control" id="q_phone"></div>
+      <div class="col-md-4 mb-3"><label class="form-label">Job title / subject</label><input type="text" class="form-control" id="q_title" placeholder="e.g. Office network upgrade"></div>
+      <div class="col-md-4 mb-3"><label class="form-label">Issue date</label><input type="date" class="form-control" id="q_issue"></div>
+      <div class="col-md-4 mb-3"><label class="form-label">Valid until</label><input type="date" class="form-control" id="q_valid"></div>
+      <div class="col-md-4 mb-3"><label class="form-label">VAT % <span class="text-muted">(0 if not VAT-registered)</span></label><input type="number" class="form-control" id="q_vat" min="0" max="100" step="0.01" oninput="recalc()"></div>
+    </div>
+
+    <div class="d-flex justify-content-between align-items-center mb-2">
+      <h6 class="mb-0">Line items</h6>
+      <div class="d-flex gap-2">
+        <select class="form-select form-select-sm" id="catalogueSel" style="width:260px"><option value="">+ Add from service catalogue…</option></select>
+        <button class="btn btn-sm btn-outline-primary" id="addLineBtn" type="button">+ Custom line</button>
+      </div>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-sm align-middle">
+        <thead><tr><th style="min-width:200px">Description</th><th style="width:80px">Qty</th><th style="width:110px">Price each (R)</th>
+          <th style="width:110px" title="What it will cost us — internal, never shown to the client">Our cost each (R)</th>
+          <th style="width:150px" title="Which expense category this cost will be booked to">Cost category</th><th style="width:100px" class="text-end">Line total</th><th></th></tr></thead>
+        <tbody id="lines"></tbody>
+      </table>
+    </div>
+
+    <div class="row mt-2">
+      <div class="col-md-7">
+        <div class="mb-3"><label class="form-label">Notes to client</label><textarea class="form-control" id="q_notes" rows="2"></textarea></div>
+        <div class="mb-3"><label class="form-label">Terms</label><textarea class="form-control" id="q_terms" rows="3"></textarea></div>
+      </div>
+      <div class="col-md-5">
+        <div class="tot-box mb-2" id="totBox"></div>
+        <div class="internal" id="marginBox"></div>
+      </div>
+    </div>
+  </div>
+  <div class="hq-drawer-footer">
+    <button type="button" class="btn btn-secondary" onclick="HQ.hideDrawer('quoteModal')">Cancel</button>
+    <button type="button" class="btn btn-primary" id="saveQuoteBtn">Save Quotation</button>
+  </div>
+</div>
+<div class="hq-backdrop" id="quoteModal-bd" onclick="HQ.hideDrawer('quoteModal')"></div>
+
+<!-- Quote detail -->
+<div class="hq-drawer hq-wide" id="detailModal">
+  <div class="hq-drawer-header"><h5 class="hq-drawer-title" id="dTitle">Quotation</h5>
+    <button type="button" class="btn-close btn-close-white" onclick="HQ.hideDrawer('detailModal')"></button></div>
+  <div class="hq-drawer-body" id="dBody"></div>
+  <div class="hq-drawer-footer" id="dFooter"></div>
+</div>
+<div class="hq-backdrop" id="detailModal-bd" onclick="HQ.hideDrawer('detailModal')"></div>
+
+<script src="/portal/static/js/app.js"></script>
+<script src="/portal/static/js/hq-sidebar-menu.js"></script>
+<script src="/portal/static/js/hq-filters.js"></script>
+<script>
+(function(){
+  const token = localStorage.getItem('ims_access');
+  if(!token){ location.href='/portal/login/'; return; }
+  const user = JSON.parse(localStorage.getItem('ims_user')||'{}');
+  if(!['admin','finance','agent'].includes(user.role)){ location.href='/portal/dashboard/'; return; }
+  const canEdit = ['admin','finance'].includes(user.role);
+  document.getElementById('navUserName').textContent=((user.first_name||'')+' '+(user.last_name||'')).trim()||user.email||'User';
+  document.getElementById('navUserRole').textContent=(user.role||'').toUpperCase();
+  document.getElementById('logoutBtn').onclick=e=>{ e.preventDefault(); localStorage.clear(); location.href='/portal/login/'; };
+  if(!canEdit) document.getElementById('newQuoteBtn').style.display='none';
+
+  const esc = s => String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  const fmtR = n => 'R '+(parseFloat(n)||0).toLocaleString('en-ZA',{minimumFractionDigits:2,maximumFractionDigits:2});
+  const fmtD = d => d ? new Date(d).toLocaleDateString('en-ZA',{year:'numeric',month:'short',day:'numeric'}) : '—';
+  async function api(url, opts={}){
+    const r=await fetch(url,{...opts,headers:{'Content-Type':'application/json','Authorization':'Bearer '+token,...(opts.headers||{})}});
+    if(r.status===401){ localStorage.clear(); location.href='/portal/login/'; throw new Error('Unauth'); }
+    return r;
+  }
+  function alertBox(id,msg,type='danger'){ document.getElementById(id).innerHTML=`<div class="alert alert-${type} alert-dismissible"><button type="button" class="btn-close" data-bs-dismiss="alert"></button>${esc(msg)}</div>`; }
+  const STATUS = {draft:'secondary',sent:'info',accepted:'success',invoiced:'primary',declined:'danger',expired:'warning text-dark'};
+  const badge = s => `<span class="badge bg-${STATUS[s]||'secondary'}">${s}</span>`;
+
+  let categories=[], catalogue=[], companies=[], quotes=[];
+
+  async function loadRefs(){
+    try{ categories = (await (await api('/portal/api/expense-categories/?is_active=1')).json()).filter(c=>c.kind!=='capital'); }catch{}
+    try{ catalogue = await (await fetch('/portal/api/website/prices/')).json(); }catch{}
+    try{ const c = await (await api('/portal/api/companies/?page_size=200')).json(); companies = c.results||c; }catch{}
+    document.getElementById('catalogueSel').innerHTML = '<option value="">+ Add from service catalogue…</option>'+catalogue.map(p=>`<option value="${p.id}">${esc(p.name)} — ${fmtR(p.price)}</option>`).join('');
+    document.getElementById('q_company').innerHTML = '<option value="">— Not a registered client —</option>'+companies.map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join('');
+  }
+
+  // ── list ──
+  function filters(){ return {search:fSearch.value.trim(),status:fStatus.value,date_from:fFrom.value,date_to:fTo.value}; }
+  const fSearch=document.getElementById('fSearch'),fStatus=document.getElementById('fStatus'),fFrom=document.getElementById('fFrom'),fTo=document.getElementById('fTo');
+  async function loadQuotes(){
+    try{
+      const qs = HQFilters.qs(filters());
+      const d = await (await api('/portal/api/quotations/'+(qs?'?'+qs:''))).json();
+      quotes = d.results||[];
+      const tile=(l,v,s)=>`<div class="col-md-3"><div class="card mb-0"><div class="card-body py-2"><div class="text-muted small">${l}</div><div class="h5 mb-0">${v}</div><div class="text-muted small">${s}</div></div></div></div>`;
+      document.getElementById('kpis').innerHTML = tile('Waiting for a client answer',fmtR(d.open_value),quotes.filter(q=>q.status==='sent').length+' sent quote(s)')
+        +tile('Won (accepted / invoiced)',fmtR(d.won_value),quotes.filter(q=>['accepted','invoiced'].includes(q.status)).length+' quote(s)')
+        +tile('Drafts',String(quotes.filter(q=>q.status==='draft').length),'not sent yet')
+        +tile('Expired / declined',String(quotes.filter(q=>['expired','declined'].includes(q.status)).length),'follow up or close');
+      document.getElementById('qTbody').innerHTML = quotes.length ? quotes.map(q=>`
+        <tr>
+          <td><a href="#" onclick="openDetail('${q.id}');return false"><strong>${esc(q.quote_number)}</strong></a></td>
+          <td>${esc(q.client_name)}${q.title?`<div class="text-muted small">${esc(q.title)}</div>`:''}</td>
+          <td class="d-none d-md-table-cell">${fmtD(q.issue_date)}</td><td class="d-none d-md-table-cell">${fmtD(q.valid_until)}</td>
+          <td>${fmtR(q.total_amount)}</td>
+          <td class="d-none d-lg-table-cell ${q.expected_margin<0?'neg':''}">${fmtR(q.expected_margin)}</td>
+          <td>${badge(q.status)}</td>
+          <td class="text-nowrap"><button class="btn btn-sm btn-outline-primary" onclick="openDetail('${q.id}')">Open</button></td>
+        </tr>`).join('') : '<tr><td colspan="8" class="text-center text-muted py-4">No quotations found.</td></tr>';
+    }catch(e){ if(e.message!=='Unauth') alertBox('pageAlert','Failed to load quotations.'); }
+  }
+
+  // ── editor ──
+  function lineRow(it={}){
+    const tr=document.createElement('tr'); tr.className='q-line';
+    tr.dataset.sp = it.service_price||'';
+    tr.innerHTML=`<td><input class="form-control form-control-sm l-desc" value="${esc(it.description||'')}"></td>
+      <td><input type="number" class="form-control form-control-sm l-qty" min="0.01" step="0.01" value="${it.quantity!=null?it.quantity:1}"></td>
+      <td><input type="number" class="form-control form-control-sm l-price" min="0" step="0.01" value="${it.unit_price!=null?it.unit_price:''}"></td>
+      <td><input type="number" class="form-control form-control-sm l-cost" min="0" step="0.01" value="${it.unit_cost!=null?it.unit_cost:0}"></td>
+      <td><select class="form-select form-select-sm l-cat"><option value="">—</option>${categories.map(c=>`<option value="${c.id}" ${c.id===it.cost_category?'selected':''}>${esc(c.name)}</option>`).join('')}</select></td>
+      <td class="text-end l-total">R 0.00</td>
+      <td><button type="button" class="btn btn-sm btn-outline-danger" title="Remove">×</button></td>`;
+    tr.querySelector('button').onclick=()=>{ tr.remove(); recalc(); };
+    tr.querySelectorAll('input').forEach(i=>i.oninput=recalc);
+    document.getElementById('lines').appendChild(tr);
+    return tr;
+  }
+  window.recalc=function(){
+    let sub=0,cost=0;
+    document.querySelectorAll('#lines tr').forEach(tr=>{
+      const q=parseFloat(tr.querySelector('.l-qty').value)||0,p=parseFloat(tr.querySelector('.l-price').value)||0,c=parseFloat(tr.querySelector('.l-cost').value)||0;
+      tr.querySelector('.l-total').textContent=fmtR(q*p); sub+=q*p; cost+=q*c;
+    });
+    const vat=(parseFloat(document.getElementById('q_vat').value)||0), tax=Math.round(sub*vat)/100;
+    document.getElementById('totBox').innerHTML=`<div class="r"><span>Subtotal</span><span>${fmtR(sub)}</span></div><div class="r"><span>VAT (${vat}%)</span><span>${fmtR(tax)}</span></div><div class="r big"><span>Total</span><span>${fmtR(sub+tax)}</span></div>`;
+    const m=sub-cost;
+    document.getElementById('marginBox').innerHTML=`<b>Internal only</b> — never shown to the client<br>Expected cost: ${fmtR(cost)}<br>Expected margin: <b class="${m<0?'neg':'pos'}">${fmtR(m)}</b> ${sub?`(${Math.round(m/sub*100)}%)`:''}`;
+  };
+  document.getElementById('addLineBtn').onclick=()=>{ lineRow(); };
+  document.getElementById('catalogueSel').onchange=function(){
+    const p=catalogue.find(x=>x.id===this.value); this.value=''; if(!p) return;
+    lineRow({service_price:p.id,description:p.name+(p.unit?' ('+p.unit+')':''),quantity:1,unit_price:p.price,unit_cost:0}); recalc();
+  };
+
+  async function openEditor(id){
+    document.getElementById('qModalAlert').innerHTML=''; document.getElementById('lines').innerHTML='';
+    const q = id ? await (await api('/portal/api/quotations/'+id+'/')).json() : {};
+    let vat = q.vat_rate, terms = q.terms;
+    if(!id){ try{ const cs=await (await api('/portal/api/company-settings/')).json(); vat=(parseFloat(cs.vat_rate)||0)*100; terms=cs.payment_terms; }catch{ vat=0; } }
+    document.getElementById('qModalTitle').textContent = id ? 'Edit '+q.quote_number : 'New Quotation';
+    document.getElementById('q_id').value=id||'';
+    document.getElementById('q_company').value=q.company||'';
+    document.getElementById('q_client').value=q.client_name||''; document.getElementById('q_email').value=q.client_email||''; document.getElementById('q_phone').value=q.client_phone||'';
+    document.getElementById('q_title').value=q.title||'';
+    document.getElementById('q_issue').value=q.issue_date||new Date().toISOString().slice(0,10);
+    document.getElementById('q_valid').value=q.valid_until||new Date(Date.now()+30*864e5).toISOString().slice(0,10);
+    document.getElementById('q_vat').value=vat||0; document.getElementById('q_notes').value=q.notes||''; document.getElementById('q_terms').value=terms||'';
+    (q.items&&q.items.length?q.items:[{}]).forEach(lineRow); recalc();
+    HQ.showDrawer('quoteModal');
+  }
+  document.getElementById('q_company').onchange=function(){ const c=companies.find(x=>x.id===this.value); if(c){ document.getElementById('q_client').value=c.name; if(c.contact_email) document.getElementById('q_email').value=c.contact_email; if(c.contact_phone) document.getElementById('q_phone').value=c.contact_phone; } };
+  document.getElementById('newQuoteBtn').onclick=()=>openEditor('');
+
+  document.getElementById('saveQuoteBtn').onclick=async()=>{
+    const items=[...document.querySelectorAll('#lines tr')].map(tr=>({
+      service_price: tr.dataset.sp||null, description: tr.querySelector('.l-desc').value.trim(), quantity: tr.querySelector('.l-qty').value,
+      unit_price: tr.querySelector('.l-price').value||0, unit_cost: tr.querySelector('.l-cost').value||0, cost_category: tr.querySelector('.l-cat').value||null,
+    })).filter(i=>i.description||parseFloat(i.unit_price));
+    const id=document.getElementById('q_id').value;
+    const body={company:document.getElementById('q_company').value||null,client_name:document.getElementById('q_client').value.trim(),client_email:document.getElementById('q_email').value.trim(),
+      client_phone:document.getElementById('q_phone').value.trim(),title:document.getElementById('q_title').value.trim(),issue_date:document.getElementById('q_issue').value,
+      valid_until:document.getElementById('q_valid').value||null,vat_rate:document.getElementById('q_vat').value||0,notes:document.getElementById('q_notes').value,terms:document.getElementById('q_terms').value,items};
+    if(!body.client_name){ alertBox('qModalAlert','Client name is required.'); return; }
+    if(!items.length){ alertBox('qModalAlert','Add at least one line item.'); return; }
+    const btn=document.getElementById('saveQuoteBtn'); btn.disabled=true;
+    try{
+      const r=await api('/portal/api/quotations/'+(id?id+'/':''),{method:id?'PATCH':'POST',body:JSON.stringify(body)});
+      const d=await r.json();
+      if(r.ok){ HQ.hideDrawer('quoteModal'); alertBox('pageAlert','Saved '+d.quote_number+'.','success'); loadQuotes(); }
+      else alertBox('qModalAlert',d.detail||JSON.stringify(d));
+    }catch(e){ if(e.message!=='Unauth') alertBox('qModalAlert','Failed to save.'); }
+    btn.disabled=false;
+  };
+
+  // ── detail ──
+  window.openDetail=async function(id){
+    const q=await (await api('/portal/api/quotations/'+id+'/')).json();
+    document.getElementById('dTitle').textContent=q.quote_number+' — '+q.client_name;
+    const over=q.cost_variance>0;
+    document.getElementById('dBody').innerHTML=`
+      <div class="d-flex justify-content-between align-items-start mb-3"><div>${badge(q.status)} <span class="text-muted small ms-2">Issued ${fmtD(q.issue_date)} · valid until ${fmtD(q.valid_until)}</span>
+        ${q.title?`<div class="fw-bold mt-1">${esc(q.title)}</div>`:''}<div class="text-muted small">${esc(q.client_email||'')} ${esc(q.client_phone||'')}</div></div>
+        <div class="text-end"><div class="h4 mb-0">${fmtR(q.total_amount)}</div><div class="text-muted small">incl. VAT ${fmtR(q.tax_amount)}</div></div></div>
+      <table class="table table-sm"><thead><tr><th>Item</th><th class="text-end">Qty</th><th class="text-end">Price</th><th class="text-end">Total</th></tr></thead><tbody>
+        ${q.items.map(i=>`<tr><td>${esc(i.description)}</td><td class="text-end">${i.quantity}</td><td class="text-end">${fmtR(i.unit_price)}</td><td class="text-end">${fmtR(i.line_total)}</td></tr>`).join('')}
+        <tr><td colspan="3" class="text-end">Subtotal</td><td class="text-end">${fmtR(q.subtotal)}</td></tr></tbody></table>
+      <div class="internal mb-3"><b>Profitability (internal)</b>
+        <div class="row mt-2 text-center">
+          <div class="col"><div class="small text-muted">Quoted price</div><b>${fmtR(q.subtotal)}</b></div>
+          <div class="col"><div class="small text-muted">Estimated cost</div><b>${fmtR(q.estimated_cost)}</b></div>
+          <div class="col"><div class="small text-muted">Actual cost so far</div><b class="${over?'neg':''}">${fmtR(q.actual_cost)}</b></div>
+          <div class="col"><div class="small text-muted">Actual margin</div><b class="${q.actual_margin<0?'neg':'pos'}">${fmtR(q.actual_margin)} (${q.actual_margin_pct}%)</b></div>
+        </div>
+        ${q.actual_cost? `<div class="small mt-2 ${over?'neg':''}">${over?'Over the estimate by '+fmtR(q.cost_variance):'Within the estimate — '+fmtR(-q.cost_variance)+' to spare'}.</div>`:'<div class="small mt-2 text-muted">No expenses linked yet.</div>'}
+      </div>
+      <h6>Expenses linked to this quote</h6>
+      ${q.expenses.length?`<table class="table table-sm"><tbody>${q.expenses.map(e=>`<tr><td>${fmtD(e.expense_date)}</td><td>${esc(e.vendor)}<div class="text-muted small">${esc(e.category)}${e.description?' — '+esc(e.description):''}</div></td><td>${e.payment_status==='unpaid'?'<span class="badge bg-warning text-dark">unpaid</span>':''}</td><td class="text-end">${fmtR(e.amount)}</td></tr>`).join('')}</tbody></table>`:'<div class="text-muted small mb-2">None.</div>'}
+      ${canEdit?`<a class="btn btn-sm btn-outline-primary" href="/portal/dashboard/expenses/?quotation=${q.id}">+ Log an expense for this quote</a>`:''}
+      ${q.invoice_number?`<div class="mt-3">Invoice: <a href="/portal/invoices/?search=${encodeURIComponent(q.invoice_number)}"><b>${esc(q.invoice_number)}</b></a></div>`:''}
+      ${q.notes?`<div class="mt-3"><div class="small text-muted">Notes to client</div>${esc(q.notes)}</div>`:''}`;
+    const b=[]; const act=(a,label,cls,extra='')=>b.push(`<button class="btn ${cls}" onclick="doAction('${q.id}','${a}'${extra})">${label}</button>`);
+    if(canEdit){
+      if(['draft','sent','expired','declined'].includes(q.status)) b.push(`<button class="btn btn-outline-primary" onclick="HQ.hideDrawer('detailModal');openEditorPublic('${q.id}')">Edit</button>`);
+      if(['draft','sent','expired'].includes(q.status)){ act('send','Mark as sent','btn-outline-secondary'); if(q.client_email) act('send','Send by email','btn-outline-info',',true'); }
+      if(['draft','sent'].includes(q.status)) act('accept','Client accepted','btn-success');
+      if(['draft','sent','accepted'].includes(q.status)) act('decline','Declined','btn-outline-danger');
+      if(q.status==='accepted') act('convert','Convert to invoice','btn-primary');
+      if(['draft','declined','expired'].includes(q.status)) b.push(`<button class="btn btn-outline-danger" onclick="delQuote('${q.id}')">Delete</button>`);
+    }
+    document.getElementById('dFooter').innerHTML=b.join('');
+    HQ.showDrawer('detailModal');
+  };
+  window.openEditorPublic=openEditor;
+  window.doAction=async function(id,action,email){
+    if(action==='convert' && !confirm('Create a draft invoice from this quotation?')) return;
+    try{
+      const r=await api('/portal/api/quotations/'+id+'/action/',{method:'POST',body:JSON.stringify({action,email:!!email})});
+      const d=await r.json();
+      if(r.ok){ let m='Quotation '+d.status+'.'; if(d.emailed===true) m+=' Email sent.'; if(d.emailed===false) m+=' The email could not be sent — the status was still updated.'; alertBox('pageAlert',m,'success'); HQ.hideDrawer('detailModal'); loadQuotes(); }
+      else alertBox('pageAlert',d.detail||'Action failed.');
+    }catch(e){ if(e.message!=='Unauth') alertBox('pageAlert','Action failed.'); }
+  };
+  window.delQuote=async function(id){
+    if(!confirm('Delete this quotation?')) return;
+    const r=await api('/portal/api/quotations/'+id+'/',{method:'DELETE'});
+    if(r.ok||r.status===204){ HQ.hideDrawer('detailModal'); loadQuotes(); } else { const d=await r.json(); alertBox('pageAlert',d.detail||'Could not delete.'); }
+  };
+
+  fSearch.addEventListener('input',HQFilters.debounce(loadQuotes,350));
+  [fStatus,fFrom,fTo].forEach(e=>e.addEventListener('change',loadQuotes));
+  document.getElementById('fClear').onclick=()=>{ fSearch.value='';fStatus.value='';fFrom.value='';fTo.value=''; loadQuotes(); };
+  loadRefs().then(()=>{ loadQuotes(); const open=new URLSearchParams(location.search).get('open'); if(open) openDetail(open); });
+  if(window.feather) feather.replace();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,19 @@
+{% extends "hr/base_manage.html" %}
+{% block title %}Payrun{% endblock %}
+{% block content %}
+<h4 class="mb-1">Payrun {{ run.pay_period.label }} <span class="badge {% if run.status == 'LOCKED' %}bg-success{% else %}bg-warning text-dark{% endif %}">{{ run.get_status_display }}</span></h4>
+<p class="text-muted small">Load the per-person totals from your payroll tool, check the advance recoveries below, then lock. Locking takes the recoveries (they appear on the payslip) and syncs to the reconciliation system.</p>
+{% if run.status == 'OPEN' %}
+<div class="row g-3 mb-3">
+  <div class="col-md-7"><form method="post" enctype="multipart/form-data" class="card card-body">{% csrf_token %}<input type="hidden" name="action" value="import">
+    <label class="small text-muted">CSV: employee_number, gross, other_deductions, net (company_cost optional)</label>
+    <input type="file" name="file" accept=".csv" class="form-control mb-2" required><button class="btn btn-outline-primary btn-sm" style="width:140px">Load totals</button></form></div>
+  <div class="col-md-5"><form method="post" class="card card-body" onsubmit="return confirm('Lock this payrun? Recoveries are taken and the sync runs.')">{% csrf_token %}<input type="hidden" name="action" value="lock"><button class="btn btn-success" {% if not lines %}disabled{% endif %}>Lock payrun</button></form></div>
+</div>
+{% if preview %}<div class="card mb-3"><div class="card-header">Advance recoveries that locking will take</div><table class="table table-sm mb-0">
+  {% for p in preview %}<tr><td>{{ p.line.employee }}</td><td>{% for adv, amt in p.items %}{{ adv.number }}: R{{ amt }} {% endfor %}</td><td>net after R{{ p.net_after|floatformat:2 }}</td></tr>{% endfor %}</table></div>{% endif %}
+{% endif %}
+<div class="card"><table class="table table-sm mb-0"><thead class="table-light"><tr><th>Employee</th><th>Gross</th><th>Other deductions</th><th>Advance recovery</th><th>Net</th></tr></thead>
+{% for l in lines %}<tr><td>{{ l.employee }}</td><td>R{{ l.gross|floatformat:2 }}</td><td>R{{ l.other_deductions|floatformat:2 }}</td><td>R{{ l.advance_recovery|floatformat:2 }}</td><td>R{{ l.net|floatformat:2 }}</td></tr>
+{% empty %}<tr><td colspan="5" class="text-muted text-center py-3">No totals loaded.</td></tr>{% endfor %}</table></div>
+{% endblock %}

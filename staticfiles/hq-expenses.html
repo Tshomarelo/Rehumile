@@ -43,27 +43,32 @@
     <main class="content">
       <div class="container-fluid p-0">
         <div class="d-flex align-items-center justify-content-between mb-3">
-          <h1 class="h3 mb-0"><strong>Expenses &amp; Chart of Accounts</strong></h1>
-          <button class="btn btn-primary" id="newExpenseBtn">
-            <i class="align-middle me-1" data-feather="plus"></i> Log Expense
-          </button>
+          <h1 class="h3 mb-0"><strong>Expenses &amp; Categories</strong></h1>
+          <div class="d-flex gap-2">
+            <button class="btn btn-outline-primary" id="newCategoryBtn" style="display:none"><i class="align-middle me-1" data-feather="tag"></i> New Category</button>
+            <button class="btn btn-primary" id="newExpenseBtn"><i class="align-middle me-1" data-feather="plus"></i> Log Expense</button>
+          </div>
         </div>
         <div id="pageAlert"></div>
 
         <ul class="nav nav-tabs mb-3" id="mainTabs">
           <li class="nav-item"><a class="nav-link active" onclick="switchTab('expenses')">Expenses</a></li>
+          <li class="nav-item"><a class="nav-link" onclick="switchTab('categories')">Categories &amp; Budgets</a></li>
           <li class="nav-item"><a class="nav-link" onclick="switchTab('accounts')">Chart of Accounts</a></li>
         </ul>
 
         <!-- Expenses tab -->
         <div id="tab-expenses" class="tab-pane active">
           <div class="row g-2 mb-3">
-            <div class="col-md-3">
+            <div class="col-md-2">
               <input type="text" class="form-control form-control-sm" id="fSearch" placeholder="Search vendor or description…">
             </div>
             <div class="col-md-2">
+              <select class="form-select form-select-sm" id="fExpCat"><option value="">All categories</option></select>
+            </div>
+            <div class="col-md-2">
               <select class="form-select form-select-sm" id="fCategory">
-                <option value="">All Categories</option>
+                <option value="">Any cost type</option>
                 <option value="cogs">Cost of Goods Sold</option>
                 <option value="operating">Operating Expense</option>
                 <option value="capital">Capital / Asset Purchase</option>
@@ -82,10 +87,11 @@
             <div class="col-md-1">
               <input type="date" class="form-control form-control-sm" id="fDateTo" title="To">
             </div>
-            <div class="col-md-2">
+            <div class="col-md-1">
               <button class="btn btn-sm btn-outline-secondary w-100" id="fClear">Clear</button>
             </div>
           </div>
+          <div class="row g-2 mb-3" id="expSummary"></div>
           <div class="card">
             <div class="card-header d-flex align-items-center justify-content-between">
               <h5 class="card-title mb-0">Expenses</h5>
@@ -97,13 +103,31 @@
                 <table class="table table-hover my-0">
                   <thead><tr>
                     <th>Date</th><th>Vendor</th><th class="d-none d-md-table-cell">Description</th>
-                    <th>Category</th><th class="d-none d-lg-table-cell">Account</th>
+                    <th>Category</th><th class="d-none d-lg-table-cell">Quotation / Job</th>
                     <th>Amount</th><th>Status</th><th class="d-none d-md-table-cell">Recurring</th><th>Actions</th>
                   </tr></thead>
                   <tbody id="expenseTbody"></tbody>
                 </table>
               </div>
               <div id="tableEmpty" class="text-center py-4 text-muted" style="display:none">No expenses found.</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Categories tab -->
+        <div id="tab-categories" class="tab-pane">
+          <div class="card">
+            <div class="card-header d-flex align-items-center justify-content-between">
+              <h5 class="card-title mb-0">Expense Categories</h5>
+              <span class="text-muted small">Each category posts to a ledger account automatically. Budgets are per month.</span>
+            </div>
+            <div class="card-body p-0">
+              <div class="table-responsive">
+                <table class="table table-hover my-0 small">
+                  <thead><tr><th>Category</th><th>Type</th><th class="d-none d-md-table-cell">Posts to account</th><th>Budget / month</th><th style="min-width:180px">Spent this month</th><th>Status</th><th>Actions</th></tr></thead>
+                  <tbody id="categoryTbody"><tr><td colspan="7" class="text-center text-muted py-3">Loading…</td></tr></tbody>
+                </table>
+              </div>
             </div>
           </div>
         </div>
@@ -140,20 +164,10 @@
   <div class="hq-drawer-body">
     <div id="modalAlert"></div>
     <form id="expenseForm">
-      <div class="row">
-        <div class="col-md-4 mb-3">
-          <label class="form-label">Category <span class="text-danger">*</span></label>
-          <select class="form-select" id="f_category" required onchange="onCategoryChange()">
-            <option value="">Select…</option>
-            <option value="cogs">Cost of Goods Sold</option>
-            <option value="operating">Operating Expense</option>
-            <option value="capital">Capital / Asset Purchase</option>
-          </select>
-        </div>
-        <div class="col-md-8 mb-3">
-          <label class="form-label">Account <span class="text-danger">*</span></label>
-          <select class="form-select" id="f_account" required><option value="">Select category first…</option></select>
-        </div>
+      <div class="mb-3">
+        <label class="form-label">Expense Category <span class="text-danger">*</span></label>
+        <select class="form-select" id="f_expense_category" required onchange="onCategoryChange()"><option value="">Select category…</option></select>
+        <div class="form-text" id="f_category_hint">The category decides which ledger account and cash-flow stream this posts to.</div>
       </div>
       <div class="row">
         <div class="col-md-6 mb-3">
@@ -189,6 +203,11 @@
             <option value="unpaid">Unpaid / Payable</option>
           </select>
         </div>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Link to Quotation / Job <span class="text-muted">(optional)</span></label>
+        <select class="form-select" id="f_quotation"><option value="">— Not linked to a job —</option></select>
+        <div class="form-text">Costs linked to a quotation show up there as actual cost vs. the estimate.</div>
       </div>
       <div class="row">
         <div class="col-md-4 mb-3 d-flex align-items-end">
@@ -239,6 +258,34 @@
 </div>
 <div class="hq-backdrop" id="accountModal-bd" onclick="HQ.hideDrawer('accountModal')"></div>
 
+<!-- Category Drawer -->
+<div class="hq-drawer" id="categoryModal">
+  <div class="hq-drawer-header">
+    <h5 class="hq-drawer-title" id="catModalTitle">New Expense Category</h5>
+    <button type="button" class="btn-close btn-close-white" onclick="HQ.hideDrawer('categoryModal')"></button>
+  </div>
+  <div class="hq-drawer-body">
+    <div id="catModalAlert"></div>
+    <input type="hidden" id="cat_id">
+    <div class="mb-3"><label class="form-label">Name <span class="text-danger">*</span></label><input type="text" class="form-control" id="cat_name" placeholder="e.g. Fuel & Travel"></div>
+    <div class="mb-3"><label class="form-label">Cost type <span class="text-danger">*</span></label>
+      <select class="form-select" id="cat_kind" onchange="fillCatAccounts()">
+        <option value="operating">Operating expense (running costs)</option>
+        <option value="cogs">Cost of goods sold (stock, parts)</option>
+        <option value="capital">Capital / asset purchase (not deducted from profit)</option>
+      </select></div>
+    <div class="mb-3"><label class="form-label">Ledger account <span class="text-danger">*</span></label><select class="form-select" id="cat_account"></select></div>
+    <div class="mb-3"><label class="form-label">Monthly budget (R) <span class="text-muted">0 = none</span></label><input type="number" class="form-control" id="cat_budget" min="0" step="0.01" value="0"></div>
+    <div class="mb-3"><label class="form-label">Description</label><input type="text" class="form-control" id="cat_description"></div>
+    <div class="form-check"><input class="form-check-input" type="checkbox" id="cat_active" checked><label class="form-check-label" for="cat_active">Active (selectable on the expense form)</label></div>
+  </div>
+  <div class="hq-drawer-footer">
+    <button type="button" class="btn btn-secondary" onclick="HQ.hideDrawer('categoryModal')">Cancel</button>
+    <button type="button" class="btn btn-primary" id="saveCatBtn">Save Category</button>
+  </div>
+</div>
+<div class="hq-backdrop" id="categoryModal-bd" onclick="HQ.hideDrawer('categoryModal')"></div>
+
 <script src="/portal/static/js/app.js"></script>
 <script src="/portal/static/js/hq-sidebar-menu.js"></script>
 <script src="/portal/static/js/hq-filters.js"></script>
@@ -250,6 +297,8 @@
   const userData = JSON.parse(localStorage.getItem('ims_user')||'{}');
   if(!['admin','agent','finance','cashier','technician'].includes(userData.role)){ window.location.href='/portal/client/'; return; }
   const isAdmin = userData.role === 'admin';
+  const canManage = ['admin','finance'].includes(userData.role);
+  const esc = s => String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
   document.getElementById('navUserName').textContent=((userData.first_name||'')+' '+(userData.last_name||'')).trim()||userData.email||'User';
   document.getElementById('navUserRole').textContent=(userData.role||'').toUpperCase();
   document.getElementById('logoutBtn').onclick=e=>{ e.preventDefault(); localStorage.clear(); window.location.href='/portal/login/'; };
@@ -277,26 +326,42 @@
     document.getElementById('tab-'+name).classList.add('active');
     document.querySelector(`[onclick="switchTab('${name}')"]`).classList.add('active');
     if(name==='accounts') loadAccounts();
+    if(name==='categories') renderCategories();
+    document.getElementById('newCategoryBtn').style.display = (name==='categories' && canManage) ? '' : 'none';
   };
 
-  let allAccounts = [];
+  let allAccounts = [], categories = [], openQuotes = [];
+  const KIND_LABEL = {cogs:'Cost of goods', operating:'Operating', capital:'Capital / asset'};
+  const KIND_STREAM = {cogs:'Operating', operating:'Operating', capital:'Investing'};
 
   async function loadAccountsIntoSelects(){
+    try{ allAccounts = await (await api('/portal/api/accounts/?is_active=1')).json(); }catch{ allAccounts = []; }
+  }
+  async function loadCategories(){
+    try{ categories = await (await api('/portal/api/expense-categories/')).json(); }catch{ categories = []; }
+    const active = categories.filter(c=>c.is_active);
+    const groups = ['operating','cogs','capital'].map(k=>{
+      const items = active.filter(c=>c.kind===k);
+      return items.length ? `<optgroup label="${KIND_LABEL[k]}">${items.map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join('')}</optgroup>` : '';
+    }).join('');
+    document.getElementById('f_expense_category').innerHTML = '<option value="">Select category…</option>'+groups;
+    document.getElementById('fExpCat').innerHTML = '<option value="">All categories</option>'+categories.map(c=>`<option value="${c.id}">${esc(c.name)}${c.is_active?'':' (inactive)'}</option>`).join('');
+  }
+  async function loadOpenQuotes(){
     try{
-      const r = await api('/portal/api/accounts/?is_active=1');
-      allAccounts = await r.json();
-    }catch{ allAccounts = []; }
+      const d = await (await api('/portal/api/quotations/')).json();
+      openQuotes = (d.results||[]).filter(q=>['draft','sent','accepted','invoiced'].includes(q.status));
+    }catch{ openQuotes = []; }
+    document.getElementById('f_quotation').innerHTML = '<option value="">— Not linked to a job —</option>'+openQuotes.map(q=>`<option value="${q.id}">${esc(q.quote_number)} — ${esc(q.client_name)}${q.title?' ('+esc(q.title)+')':''}</option>`).join('');
   }
 
   window.onCategoryChange = function(){
-    const cat = document.getElementById('f_category').value;
-    const subtypeMap = { cogs: 'cogs', operating: 'operating_expense', capital: 'fixed_asset' };
-    const wanted = subtypeMap[cat];
-    const sel = document.getElementById('f_account');
-    const opts = allAccounts.filter(a => !wanted || a.account_subtype === wanted || (cat==='capital' && a.account_type==='asset'));
-    sel.innerHTML = '<option value="">Select account…</option>' + opts.map(a=>`<option value="${a.id}">${a.code} — ${a.name}</option>`).join('');
-    if(cat === 'capital') document.getElementById('f_cash_flow_stream').value = 'icf';
-    else document.getElementById('f_cash_flow_stream').value = 'ocf';
+    const c = categories.find(x=>x.id===document.getElementById('f_expense_category').value);
+    const hint = document.getElementById('f_category_hint');
+    if(!c){ hint.textContent='The category decides which ledger account and cash-flow stream this posts to.'; return; }
+    const budget = c.monthly_budget>0 ? ' · Budget this month: '+fmtR(c.monthly_budget)+', spent so far '+fmtR(c.spent_this_month) : '';
+    hint.textContent = 'Posts to '+c.account_name+' · '+KIND_LABEL[c.kind]+' · '+KIND_STREAM[c.kind]+' cash flow'+budget;
+    document.getElementById('f_cash_flow_stream').value = c.default_cash_flow_stream;
   };
 
   window.onRecurringChange = function(){
@@ -307,6 +372,7 @@
     return {
       search: document.getElementById('fSearch').value.trim(),
       category: document.getElementById('fCategory').value,
+      expense_category: document.getElementById('fExpCat').value,
       payment_status: document.getElementById('fPaymentStatus').value,
       date_from: document.getElementById('fDateFrom').value,
       date_to: document.getElementById('fDateTo').value,
@@ -326,21 +392,34 @@
       document.getElementById('expenseTbody').innerHTML = data.map(e => `
         <tr>
           <td>${fmtDate(e.expense_date)}</td>
-          <td><strong>${e.vendor}</strong></td>
-          <td class="d-none d-md-table-cell">${e.description||'—'}</td>
-          <td>${categoryBadge(e.category)}</td>
-          <td class="d-none d-lg-table-cell">${e.account_name}</td>
+          <td><strong>${esc(e.vendor)}</strong></td>
+          <td class="d-none d-md-table-cell">${esc(e.description)||'—'}</td>
+          <td>${esc(e.expense_category_name||e.account_name)}<br>${categoryBadge(e.category)}</td>
+          <td class="d-none d-lg-table-cell">${e.quotation_number ? `<a href="/portal/dashboard/quotations/">${esc(e.quotation_number)}</a>` : '—'}</td>
           <td>${fmtR(e.amount)}</td>
           <td>${statusBadge(e.payment_status)}</td>
           <td class="d-none d-md-table-cell">${e.is_recurring ? `<span class="badge bg-secondary">${e.recurring_frequency||'recurring'}</span>` : '—'}</td>
-          <td>${['admin','finance'].includes(userData.role) ? `<button class="btn btn-sm btn-outline-danger" onclick="deleteExpense('${e.id}')"><i data-feather="trash-2" style="width:13px;height:13px"></i></button>` : ''}</td>
+          <td class="text-nowrap">${canManage ? `${e.payment_status==='unpaid' ? `<button class="btn btn-sm btn-outline-success me-1" title="Mark as paid" onclick="markExpensePaid('${e.id}')">Mark paid</button>` : ''}<button class="btn btn-sm btn-outline-danger" title="Delete" onclick="deleteExpense('${e.id}')"><i data-feather="trash-2" style="width:13px;height:13px"></i></button>` : ''}</td>
         </tr>`).join('');
+      const tot = data.reduce((s,e)=>s+parseFloat(e.amount),0);
+      const unpaid = data.filter(e=>e.payment_status==='unpaid').reduce((s,e)=>s+parseFloat(e.amount),0);
+      const capital = data.filter(e=>e.category==='capital').reduce((s,e)=>s+parseFloat(e.amount),0);
+      const tile = (l,v,s)=>`<div class="col-md-3"><div class="card mb-0"><div class="card-body py-2"><div class="text-muted small">${l}</div><div class="h5 mb-0">${fmtR(v)}</div><div class="text-muted small">${s}</div></div></div></div>`;
+      document.getElementById('expSummary').innerHTML = tile('Total shown',tot,data.length+' record(s)')+tile('Unpaid to suppliers',unpaid,'counted as an expense, not yet paid')+tile('Capital purchases',capital,'assets — not deducted from profit')+tile('Counts against profit',tot-capital,'cost of goods + running costs');
       if(window.feather) feather.replace();
     }catch(e){ if(e.message!=='Unauth') showAlert('pageAlert','Failed to load expenses.'); }
   }
 
+  window.markExpensePaid = async function(id){
+    try{
+      const r = await api('/portal/api/expenses/'+id+'/', {method:'PATCH', body:JSON.stringify({payment_status:'paid'})});
+      if(r.ok){ showAlert('pageAlert','Marked as paid and booked against the bank account.','success'); loadExpenses(); }
+      else { const d = await r.json(); showAlert('pageAlert', d.detail||'Could not update expense.'); }
+    }catch(e){ if(e.message!=='Unauth') showAlert('pageAlert','Could not update expense.'); }
+  };
+
   window.deleteExpense = async function(id){
-    if(!confirm('Delete this expense? This does not reverse any ledger entries already posted — contact Finance to correct the books.')) return;
+    if(!confirm('Delete this expense? Its ledger entries will be reversed so the books stay correct.')) return;
     try{
       const r = await api('/portal/api/expenses/'+id+'/', {method:'DELETE'});
       if(r.ok || r.status===204){ showAlert('pageAlert','Expense deleted.','success'); loadExpenses(); }
@@ -351,7 +430,8 @@
   function resetForm(){
     document.getElementById('expenseForm').reset();
     document.getElementById('modalAlert').innerHTML='';
-    document.getElementById('f_account').innerHTML='<option value="">Select category first…</option>';
+    document.getElementById('f_category_hint').textContent='The category decides which ledger account and cash-flow stream this posts to.';
+    loadOpenQuotes();
     document.getElementById('f_frequency_row').style.display='none';
     document.getElementById('f_expense_date').value = new Date().toISOString().slice(0,10);
   }
@@ -360,8 +440,8 @@
 
   document.getElementById('saveBtn').onclick = async () => {
     const body = {
-      category: document.getElementById('f_category').value,
-      account: document.getElementById('f_account').value,
+      expense_category: document.getElementById('f_expense_category').value,
+      quotation: document.getElementById('f_quotation').value || null,
       vendor: document.getElementById('f_vendor').value.trim(),
       amount: document.getElementById('f_amount').value,
       description: document.getElementById('f_description').value.trim(),
@@ -371,9 +451,10 @@
       is_recurring: document.getElementById('f_is_recurring').checked,
       recurring_frequency: document.getElementById('f_is_recurring').checked ? document.getElementById('f_recurring_frequency').value : '',
     };
-    if(!body.category || !body.account || !body.vendor || !body.amount || !body.expense_date){
-      showAlert('modalAlert','Category, account, vendor, amount, and date are all required.'); return;
+    if(!body.expense_category || !body.vendor || !body.amount || !body.expense_date){
+      showAlert('modalAlert','Category, vendor, amount, and date are all required.'); return;
     }
+    if(!(parseFloat(body.amount) > 0)){ showAlert('modalAlert','Amount must be greater than zero.'); return; }
     const btn = document.getElementById('saveBtn');
     const orig = btn.innerHTML;
     btn.disabled = true;
@@ -384,11 +465,76 @@
       if(r.ok){
         HQ.hideDrawer('expenseModal');
         showAlert('pageAlert','Expense logged successfully.','success');
-        loadExpenses();
+        loadExpenses(); loadCategories();
       } else { showAlert('modalAlert', data.detail || JSON.stringify(data)); }
     }catch(e){ if(e.message!=='Unauth') showAlert('modalAlert','Failed to save expense.'); }
     btn.disabled = false;
     btn.innerHTML = orig;
+  };
+
+  // ── Categories tab ──
+  function renderCategories(){
+    const tb = document.getElementById('categoryTbody');
+    if(!categories.length){ tb.innerHTML='<tr><td colspan="7" class="text-center text-muted py-3">No categories yet.</td></tr>'; return; }
+    tb.innerHTML = categories.map(c=>{
+      const pct = c.monthly_budget>0 ? Math.min(100, Math.round(c.spent_this_month/c.monthly_budget*100)) : 0;
+      const over = c.monthly_budget>0 && c.spent_this_month>c.monthly_budget;
+      const bar = c.monthly_budget>0
+        ? `<div class="progress" style="height:8px"><div class="progress-bar ${over?'bg-danger':'bg-success'}" style="width:${pct}%"></div></div><div class="small ${over?'text-danger':'text-muted'}">${fmtR(c.spent_this_month)} of ${fmtR(c.monthly_budget)}${over?' — over budget':''}</div>`
+        : `<div class="small text-muted">${fmtR(c.spent_this_month)}</div>`;
+      return `<tr>
+        <td><strong>${esc(c.name)}</strong>${c.description?`<div class="text-muted small">${esc(c.description)}</div>`:''}</td>
+        <td>${categoryBadge(c.kind)}</td>
+        <td class="d-none d-md-table-cell">${esc(c.account_name)}</td>
+        <td>${c.monthly_budget>0?fmtR(c.monthly_budget):'—'}</td>
+        <td>${bar}</td>
+        <td>${c.is_active?'<span class="badge bg-success">Active</span>':'<span class="badge bg-secondary">Inactive</span>'}</td>
+        <td class="text-nowrap">${canManage?`<button class="btn btn-sm btn-outline-primary me-1" onclick="openCategory('${c.id}')">Edit</button><button class="btn btn-sm btn-outline-danger" onclick="deleteCategory('${c.id}')">${c.is_system?'Deactivate':'Delete'}</button>`:'—'}</td>
+      </tr>`;
+    }).join('');
+  }
+  window.fillCatAccounts = function(selected){
+    const kind = document.getElementById('cat_kind').value;
+    const want = kind==='capital' ? a=>a.account_type==='asset' : a=>a.account_type==='expense' && (kind==='cogs' ? a.account_subtype==='cogs' : a.account_subtype==='operating_expense');
+    document.getElementById('cat_account').innerHTML = allAccounts.filter(want).map(a=>`<option value="${a.id}" ${a.id===selected?'selected':''}>${a.code} — ${esc(a.name)}</option>`).join('');
+  };
+  window.openCategory = function(id){
+    const c = categories.find(x=>x.id===id) || {};
+    document.getElementById('catModalAlert').innerHTML='';
+    document.getElementById('catModalTitle').textContent = id ? 'Edit Expense Category' : 'New Expense Category';
+    document.getElementById('cat_id').value = id||'';
+    document.getElementById('cat_name').value = c.name||'';
+    document.getElementById('cat_kind').value = c.kind||'operating';
+    fillCatAccounts(c.account);
+    document.getElementById('cat_budget').value = c.monthly_budget||0;
+    document.getElementById('cat_description').value = c.description||'';
+    document.getElementById('cat_active').checked = id ? c.is_active : true;
+    HQ.showDrawer('categoryModal');
+  };
+  document.getElementById('newCategoryBtn').onclick = () => openCategory('');
+  document.getElementById('saveCatBtn').onclick = async () => {
+    const id = document.getElementById('cat_id').value;
+    const body = {
+      name: document.getElementById('cat_name').value.trim(), kind: document.getElementById('cat_kind').value,
+      account: document.getElementById('cat_account').value, monthly_budget: document.getElementById('cat_budget').value||0,
+      description: document.getElementById('cat_description').value.trim(), is_active: document.getElementById('cat_active').checked,
+    };
+    if(!body.name || !body.account){ showAlert('catModalAlert','Name and ledger account are required.'); return; }
+    try{
+      const r = await api('/portal/api/expense-categories/'+(id?id+'/':''), {method:id?'PATCH':'POST', body:JSON.stringify(body)});
+      const d = await r.json();
+      if(r.ok){ HQ.hideDrawer('categoryModal'); await loadCategories(); renderCategories(); }
+      else showAlert('catModalAlert', d.detail||JSON.stringify(d));
+    }catch(e){ if(e.message!=='Unauth') showAlert('catModalAlert','Failed to save category.'); }
+  };
+  window.deleteCategory = async function(id){
+    if(!confirm('Delete this category? If it already has expenses it will be deactivated instead, so history is kept.')) return;
+    try{
+      const r = await api('/portal/api/expense-categories/'+id+'/', {method:'DELETE'});
+      const d = r.status===204 ? {} : await r.json();
+      if(r.ok){ await loadCategories(); renderCategories(); showAlert('pageAlert', d.detail||'Category deleted.', 'success'); }
+      else showAlert('pageAlert', d.detail||'Could not delete category.');
+    }catch(e){ if(e.message!=='Unauth') showAlert('pageAlert','Could not delete category.'); }
   };
 
   // ── Chart of Accounts tab ──
@@ -456,20 +602,25 @@
 
   document.getElementById('fSearch').addEventListener('input', HQFilters.debounce(loadExpenses, 350));
   document.getElementById('fCategory').addEventListener('change', loadExpenses);
+  document.getElementById('fExpCat').addEventListener('change', loadExpenses);
   document.getElementById('fPaymentStatus').addEventListener('change', loadExpenses);
   document.getElementById('fDateFrom').addEventListener('change', loadExpenses);
   document.getElementById('fDateTo').addEventListener('change', loadExpenses);
   document.getElementById('fClear').addEventListener('click', () => {
     document.getElementById('fSearch').value='';
     document.getElementById('fCategory').value='';
+    document.getElementById('fExpCat').value='';
     document.getElementById('fPaymentStatus').value='';
     document.getElementById('fDateFrom').value='';
     document.getElementById('fDateTo').value='';
     loadExpenses();
   });
 
-  loadAccountsIntoSelects();
+  loadAccountsIntoSelects().then(loadCategories).then(()=>{ renderCategories(); });
   loadExpenses();
+  // Arrived from a quotation ("Log an expense for this quote"): open the form already linked to it.
+  const _q = new URLSearchParams(location.search).get('quotation');
+  if(_q){ resetForm(); HQ.showDrawer('expenseModal'); loadOpenQuotes().then(()=>{ document.getElementById('f_quotation').value=_q; }); }
   if(window.feather) feather.replace();
 })();
 </script>

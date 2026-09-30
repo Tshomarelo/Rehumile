@@ -33,3 +33,6 @@ django-phonenumber-field==7.2.0
 phonenumbers==8.13.0
 python-dateutil==2.8.2
 pytz==2023.3
+
+# HR system — encrypts ID numbers, bank accounts and salaries at rest
+cryptography>=42.0

@@ -1,6 +1,6 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from . import views
+from . import views, finance_views
 
 router = DefaultRouter()
 router.register(r'companies', views.CompanyViewSet, basename='company')
@@ -12,6 +12,7 @@ urlpatterns = [
     path('auth/login/', views.LoginView.as_view(), name='login'),
     path('auth/register/', views.RegisterView.as_view(), name='register'),
     path('auth/logout/', views.LogoutView.as_view(), name='logout'),
+    path('auth/session/', views.SessionFromTokenView.as_view(), name='auth-session'),
     path('auth/me/', views.MeView.as_view(), name='me'),
     path('auth/password-reset/', views.PasswordResetRequestView.as_view(), name='password-reset-request'),
     path('auth/password-reset/confirm/', views.PasswordResetConfirmView.as_view(), name='password-reset-confirm'),
@@ -65,6 +66,7 @@ urlpatterns = [
     # Website Content Management
     path('website/prices/', views.ServicePriceView.as_view(), name='service-price-list'),
     path('website/prices/<uuid:pk>/', views.ServicePriceView.as_view(), name='service-price-detail'),
+    path('website/seed/', views.WebsiteSeedView.as_view(), name='website-seed'),
     path('website/content/', views.WebsiteContentView.as_view(), name='website-content-list'),
     path('website/content/<uuid:pk>/', views.WebsiteContentView.as_view(), name='website-content-detail'),
     # PayFast Payments
@@ -89,5 +91,13 @@ urlpatterns = [
     path('company-settings/', views.CompanySettingsView.as_view(), name='company-settings'),
     # Invoice print detail
     path('invoices/<uuid:pk>/print/', views.InvoicePrintView.as_view(), name='invoice-print'),
+    # Integrated finance: dashboard summary/trend, expense categories, quotations
+    path('finance/summary/', finance_views.FinanceSummaryView.as_view(), name='finance-summary'),
+    path('finance/trend/', finance_views.FinanceTrendView.as_view(), name='finance-trend'),
+    path('expense-categories/', finance_views.ExpenseCategoryView.as_view(), name='expense-category-list'),
+    path('expense-categories/<uuid:pk>/', finance_views.ExpenseCategoryView.as_view(), name='expense-category-detail'),
+    path('quotations/', finance_views.QuotationListView.as_view(), name='quotation-list'),
+    path('quotations/<uuid:pk>/', finance_views.QuotationDetailView.as_view(), name='quotation-detail'),
+    path('quotations/<uuid:pk>/action/', finance_views.QuotationActionView.as_view(), name='quotation-action'),
     path('', include(router.urls)),
 ]

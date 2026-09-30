@@ -176,3 +176,12 @@ def portal_settings_view(request):
 
 def invoice_print_view(request, invoice_id):
     return _serve('invoice-print.html')
+
+
+def portal_hr_access_view(request):
+    """Turns the portal's JWT login into a Django session, then opens the HR system."""
+    return _serve('hr-access.html')
+
+
+def portal_quotations_view(request):
+    return _serve('hq-quotations.html')

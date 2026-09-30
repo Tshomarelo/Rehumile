@@ -1,0 +1,61 @@
+{% extends "hr/base_portal.html" %}
+{% block title %}Apply for leave{% endblock %}
+{% block content %}
+<h4 class="mb-3">Apply for leave</h4>
+<div class="card" style="max-width:640px">
+  <div class="card-body">
+    <form method="post" enctype="multipart/form-data" id="leaveForm">
+      {% csrf_token %}
+      {% if form.non_field_errors %}<div class="alert alert-danger">{% for e in form.non_field_errors %}<div>{{ e }}</div>{% endfor %}</div>{% endif %}
+      <div class="mb-3">{{ form.leave_type.label_tag }} {{ form.leave_type }}{{ form.leave_type.errors }}</div>
+      <div class="row g-3 mb-3">
+        <div class="col-6">{{ form.start_date.label_tag }} {{ form.start_date }}{{ form.start_date.errors }}</div>
+        <div class="col-6">{{ form.end_date.label_tag }} {{ form.end_date }}{{ form.end_date.errors }}</div>
+      </div>
+      <div class="form-check mb-1">{{ form.half_day_start }} <label class="form-check-label" for="{{ form.half_day_start.id_for_label }}">{{ form.half_day_start.label }}</label></div>
+      <div class="form-check mb-3">{{ form.half_day_end }} <label class="form-check-label" for="{{ form.half_day_end.id_for_label }}">{{ form.half_day_end.label }}</label></div>
+      <div id="preview" class="alert alert-secondary py-2 d-none"></div>
+      <div class="mb-3">{{ form.reason.label_tag }} {{ form.reason }}</div>
+      <div class="mb-3">{{ form.attachment.label_tag }} {{ form.attachment }}{{ form.attachment.errors }}<div class="form-text">PDF, image or Word document, up to 10 MB.</div></div>
+      <button class="btn btn-warning fw-bold">Submit for approval</button>
+      <a class="btn btn-link" href="{% url 'hr:leave_home' %}">Cancel</a>
+    </form>
+  </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+(function () {
+  var form = document.getElementById('leaveForm'), box = document.getElementById('preview');
+  function check() {
+    var g = function (n) { return form.elements[n]; };
+    if (!g('leave_type').value || !g('start_date').value || !g('end_date').value) { box.classList.add('d-none'); return; }
+    var q = new URLSearchParams({
+      leave_type: g('leave_type').value, start_date: g('start_date').value, end_date: g('end_date').value,
+      half_day_start: g('half_day_start').checked, half_day_end: g('half_day_end').checked,
+      has_attachment: g('attachment').files.length > 0
+    });
+    fetch("{% url 'hr:leave_preview' %}?" + q).then(function (r) { return r.json(); }).then(function (d) {
+      if (d.days === null) { box.classList.add('d-none'); return; }
+      box.classList.remove('d-none');
+      var bad = d.errors.length > 0;
+      box.className = 'alert py-2 ' + (bad ? 'alert-danger' : 'alert-success');
+      box.textContent = '';
+      var strong = document.createElement('strong');
+      strong.textContent = d.days + ' working day(s)';
+      box.appendChild(strong);
+      box.appendChild(document.createTextNode(' (weekends and public holidays excluded). ' + d.available + ' available.'));
+      if (bad) {
+        var ul = document.createElement('ul');
+        ul.className = 'mb-0 mt-1';
+        d.errors.forEach(function (e) { var li = document.createElement('li'); li.textContent = e; ul.appendChild(li); });
+        box.appendChild(ul);
+      }
+    });
+  }
+  form.addEventListener('change', check);
+  form.addEventListener('input', check);
+  check();
+})();
+</script>
+{% endblock %}

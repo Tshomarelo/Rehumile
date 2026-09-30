@@ -1,0 +1,50 @@
+{% extends "hr/base_portal.html" %}
+{% block title %}My Roster{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3"><h4 class="mb-0">My Roster</h4>
+  {% if offers %}<a class="btn btn-warning btn-sm" href="{% url 'hr:roster_offers' %}">{{ offers }} shift offer{{ offers|pluralize }}</a>{% endif %}</div>
+
+{% if incoming %}<div class="alert alert-info">
+  <strong>Swap requests for you</strong>
+  {% for r in incoming %}<div class="d-flex justify-content-between align-items-center mt-1">
+    <span>{{ r.employee.display_name }} asks to swap {{ r.shift.date|date:"D j M" }} {{ r.shift.start_time|time:"H:i" }} for your {{ r.swap_shift.date|date:"D j M" }} {{ r.swap_shift.start_time|time:"H:i" }}</span>
+    <form method="post" action="{% url 'hr:request_respond' r.pk %}" class="d-flex gap-1">{% csrf_token %}<button name="action" value="accept" class="btn btn-sm btn-success">Accept</button><button name="action" value="decline" class="btn btn-sm btn-outline-danger">Decline</button></form></div>{% endfor %}
+</div>{% endif %}
+
+<h6 class="text-muted">Next four weeks</h6>
+<ul class="list-group mb-4">
+  {% for s in shifts %}<li class="list-group-item">
+    <div class="d-flex justify-content-between align-items-center"><span><strong>{{ s.date|date:"D j M" }}</strong> {{ s.start_time|time:"H:i" }}-{{ s.end_time|time:"H:i" }}
+      <span class="text-muted small">{{ s.site|default:"" }} {% if s.post %}&middot; {{ s.post.name }}{% endif %}{% if s.note %} &middot; {{ s.note }}{% endif %}</span></span>
+      <button class="btn btn-sm btn-outline-primary" data-bs-toggle="collapse" data-bs-target="#c{{ s.pk }}">Change</button></div>
+    <div class="collapse mt-2" id="c{{ s.pk }}"><form method="post" action="{% url 'hr:shift_request' s.pk %}" class="row g-2">{% csrf_token %}
+      <div class="col-md-4"><select name="kind" class="form-select form-select-sm">{% for k, v in kinds %}<option value="{{ k }}">{{ v }}</option>{% endfor %}</select></div>
+      <div class="col-md-8"><select name="swap_shift" class="form-select form-select-sm"><option value="">For a swap: choose a colleague's shift...</option>
+        {% for x in swap_pool %}{% if x.site_id == s.site_id %}<option value="{{ x.pk }}">{{ x.employee.display_name }} &middot; {{ x.date|date:"D j M" }} {{ x.start_time|time:"H:i" }}{% if x.post %} &middot; {{ x.post.name }}{% endif %}</option>{% endif %}{% endfor %}</select></div>
+      <div class="col-md-3"><input type="time" name="new_start" class="form-control form-control-sm" title="New start (for a time change)"></div>
+      <div class="col-md-3"><input type="time" name="new_end" class="form-control form-control-sm" title="New end"></div>
+      <div class="col-md-4"><input name="reason" class="form-control form-control-sm" placeholder="Reason"></div>
+      <div class="col-md-2"><button class="btn btn-sm btn-primary w-100">Ask</button></div>
+      <div class="col-12 small text-muted">Requests need at least {{ min_notice }} hours notice. Swaps are checked against the rules for both of you first.</div>
+    </form></div>
+  </li>{% empty %}<li class="list-group-item text-muted">No published shifts.</li>{% endfor %}
+</ul>
+
+<h6 class="text-muted">My availability</h6>
+<form method="post" action="{% url 'hr:availability_save' %}" class="card card-body mb-4">{% csrf_token %}
+  {% for i, name, a in avail %}<div class="d-flex flex-wrap gap-2 align-items-center mb-1">
+    <div class="form-check" style="width:120px"><input class="form-check-input" type="checkbox" name="day{{ i }}" id="d{{ i }}" {% if not a or a.available %}checked{% endif %}><label class="form-check-label" for="d{{ i }}">{{ name }}</label></div>
+    <input type="time" name="from{{ i }}" value="{{ a.from_time|time:'H:i' }}" class="form-control form-control-sm" style="width:110px" title="From">
+    <input type="time" name="to{{ i }}" value="{{ a.to_time|time:'H:i' }}" class="form-control form-control-sm" style="width:110px" title="To">
+    <input name="note{{ i }}" value="{{ a.note|default:'' }}" class="form-control form-control-sm" style="max-width:220px" placeholder="Note"></div>{% endfor %}
+  <button class="btn btn-primary btn-sm mt-2" style="width:120px">Save</button>
+</form>
+
+<h6 class="text-muted">My requests</h6>
+<ul class="list-group mb-4">{% for r in requests %}<li class="list-group-item d-flex justify-content-between align-items-center"><span>{{ r.get_kind_display }}{% if r.shift %} &middot; {{ r.shift.date|date:"j M" }}{% endif %}{% if r.decision_note %} <span class="small text-muted">({{ r.decision_note }})</span>{% endif %}</span>
+  <span class="d-flex gap-1 align-items-center"><span class="badge bg-secondary">{{ r.get_status_display }}</span>{% if r.status == 'AWAITING_COLLEAGUE' or r.status == 'AWAITING_MANAGER' or r.status == 'REQUESTED' %}<form method="post" action="{% url 'hr:request_cancel' r.pk %}">{% csrf_token %}<button class="btn btn-sm btn-outline-secondary">Cancel</button></form>{% endif %}</span></li>{% empty %}<li class="list-group-item text-muted">None.</li>{% endfor %}</ul>
+
+<h6 class="text-muted">Phone calendar</h6>
+<p class="small">Subscribe to this address in your phone's calendar app. Keep it private.</p>
+<input class="form-control mb-4" readonly value="{{ feed }}" onclick="this.select()">
+{% endblock %}
