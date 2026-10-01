@@ -49,11 +49,6 @@ class Migration(migrations.Migration):
             name="reminder_count",
             field=models.PositiveSmallIntegerField(default=0),
         ),
-        migrations.AddField(
-            model_name="subscription",
-            name="contact_phone",
-            field=models.CharField(blank=True, max_length=30),
-        ),
         migrations.CreateModel(
             name="RecurringExpense",
             fields=[

@@ -44,3 +44,12 @@ def _clear_throttle_cache():
     cache.clear()
     yield
     cache.clear()
+
+
+@pytest.fixture(autouse=True)
+def _frozen_clock(monkeypatch):
+    """Tests are written around mid-September 2026; pin 'now' so they do not depend on the real date."""
+    from datetime import datetime, timezone as dt_tz
+    from django.utils import timezone
+    fixed = datetime(2026, 9, 15, 10, 0, tzinfo=dt_tz.utc)
+    monkeypatch.setattr(timezone, 'now', lambda: fixed)

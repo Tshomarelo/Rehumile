@@ -133,8 +133,15 @@ def _invoiced_qs(start, end):
     )
 
 
+OPEN_STATUSES = ('sent', 'partially_paid', 'overdue')
+
+
 def _unpaid_qs(as_of):
-    """Issued but not paid, as at `as_of` (today for the live picture)."""
+    """
+    THE definition of "unpaid": issued (sent / part-paid / overdue) on or before `as_of` and not yet fully paid.
+    Everything that talks about money owed (dashboard, Business Intelligence, the Profit & Money Owed report)
+    uses this one rule; a slice by billing period is applied on top, never a different definition.
+    """
     return Invoice.objects.filter(
         status__in=('sent', 'partially_paid', 'overdue'), **until('sent_at', as_of),
     )
@@ -202,6 +209,11 @@ def _raw_split(inv):
     streams[stream] = inv.subtotal
     if inv.invoice_type == 'wifi':
         axxess = inv.wholesale_cost or ZERO
+    else:
+        # ad-hoc / job invoices: the optional "Your cost" on each line is the cost of the job
+        svc_cost = sum(((it.quantity or ZERO) * (it.unit_cost or ZERO) for it in inv.items.all()), ZERO)
+        if not svc_cost and inv.invoice_type == 'subscription':
+            svc_cost = inv.wholesale_cost or ZERO
     return {'streams': streams, 'axxess': axxess, 'services_cost': svc_cost}
 
 
@@ -214,11 +226,19 @@ def paid_by_stream(start, end):
     return {k: float(v) for k, v in out.items()}
 
 
-def outstanding_by_stream(start, end):
-    """Invoiced for the period but not yet paid (incl. VAT, apportioned by line), split by stream."""
+def is_from_period(inv, start, end):
+    """An unpaid invoice is 'from this period' when its billing period starts inside it; otherwise it is earlier."""
+    return bool(inv.billing_period_start and start <= inv.billing_period_start <= end)
+
+
+def outstanding_by_stream(start, end, as_of=None, scope='period'):
+    """
+    Money still owed (incl. VAT, apportioned by line), split by stream. Uses the single unpaid rule
+    (_unpaid_qs); scope = 'period' (billing period inside the window), 'earlier' or 'all'.
+    """
     out = {'wifi': ZERO, 'sla': ZERO, 'adhoc': ZERO, 'services': ZERO}
-    qs = Invoice.objects.filter(status__in=('sent', 'partially_paid', 'overdue'), billing_period_start__gte=start,
-                                billing_period_start__lte=end).prefetch_related('items')
+    qs = [i for i in _unpaid_qs(as_of or min(end, date.today())).prefetch_related('items')
+          if scope == 'all' or (is_from_period(i, start, end) == (scope == 'period'))]
     for inv in qs:
         split = invoice_split(inv)['streams']
         base = sum(split.values(), ZERO) or ZERO
@@ -260,6 +280,8 @@ def summary(start, end, today=None):
     unpaid_invoices = list(_unpaid_qs(min(end, today))
                            .select_related('company', 'wifi_subscriber', 'sla_contract').order_by('due_date', 'sent_at'))
     unpaid_total = sum((i.balance_due for i in unpaid_invoices), ZERO)
+    unpaid_from_period = sum((i.balance_due for i in unpaid_invoices if is_from_period(i, start, end)), ZERO)
+    unpaid_earlier = unpaid_total - unpaid_from_period
     overdue = [i for i in unpaid_invoices if i.status == 'overdue' or (i.due_date and i.due_date < today)]
     overdue_total = sum((i.balance_due for i in overdue), ZERO)
 
@@ -355,6 +377,7 @@ def summary(start, end, today=None):
             'paid': {'count': len(paid_invoices), 'subtotal': _f(paid_sub), 'vat': _f(paid_vat), 'total': _f(paid_total)},
             'unpaid': {
                 'count': len(unpaid_invoices), 'total': _f(unpaid_total),
+                'from_period': _f(unpaid_from_period), 'from_earlier': _f(unpaid_earlier),
                 'overdue_count': len(overdue), 'overdue_total': _f(overdue_total),
                 'rows': [dict(_invoice_row(i, i.due_date or (i.sent_at.date() if i.sent_at else None), include_total=True),
                               amount=_f(i.balance_due), overdue=(i in overdue))

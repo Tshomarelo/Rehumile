@@ -158,6 +158,7 @@ def test_legacy_wifi_and_sla_join_the_combined_invoice(db):
     c = SLAContract.objects.create(client_name='Acme', company=acme, monthly_retainer=1500, contract_start=date(2026, 1, 1), billing_day=1)
     sub(acme, stype='email', price=100)
     assert Subscription.objects.filter(company=acme).count() == 3           # mirrored automatically
+    Subscription.objects.filter(company=acme).update(start_date=date(2026, 1, 1))   # mirrored rows start on the day they are created
     inv = billing.generate(Y, M)
     assert len(inv) == 1 and inv[0].items.count() == 3 and inv[0].subtotal == 599 + 1500 + 100
     assert inv[0].due_date == date(2026, 9, 1)                                # earliest billing day

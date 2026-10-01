@@ -3770,7 +3770,8 @@ class RevenueIntelligenceView(APIView):
         # Split line by line, so a combined monthly invoice still counts WiFi, SLA and
         # email/hosting separately.
         paid = _finance.paid_by_stream(m_start, m_end)
-        outstanding = _finance.outstanding_by_stream(m_start, m_end)
+        outstanding = _finance.outstanding_by_stream(m_start, m_end, scope='period')
+        outstanding_earlier = _finance.outstanding_by_stream(m_start, m_end, scope='earlier')
         active_subs = Subscription.objects.filter(status='active', start_date__lte=m_end).exclude(end_date__lt=m_start)
 
         def expected(types):
@@ -3898,9 +3899,9 @@ class RevenueIntelligenceView(APIView):
         return Response({
             'period': {'start': m_start, 'end': m_end, 'label': m_start.strftime('%B %Y')},
             'streams': {
-                'wifi': {'paid': wifi_paid, 'outstanding': wifi_outstanding, 'expected': wifi_expected},
-                'sla': {'paid': sla_paid, 'outstanding': sla_outstanding, 'expected': sla_expected},
-                'services': {'paid': services_paid, 'outstanding': services_outstanding, 'expected': services_expected},
+                'wifi': {'paid': wifi_paid, 'outstanding': wifi_outstanding, 'outstanding_earlier': outstanding_earlier['wifi'], 'expected': wifi_expected},
+                'sla': {'paid': sla_paid, 'outstanding': sla_outstanding, 'outstanding_earlier': outstanding_earlier['sla'], 'expected': sla_expected},
+                'services': {'paid': services_paid, 'outstanding': services_outstanding, 'outstanding_earlier': outstanding_earlier['services'], 'expected': services_expected},
                 'adhoc': {'paid': adhoc_paid},
                 'direct': {'paid': direct_sales},
             },

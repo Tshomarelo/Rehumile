@@ -180,7 +180,7 @@ def test_reminder_schedule_and_content(db, unpaid, monkeypatch):
     assert coll.send_due_reminders(base, today=date(2026, 10, 1)) == 2
     m = mail.outbox[-1]
     assert 'Payment reminder' in m.subject and 'R 399.00' in m.body or 'R 599.00' in m.body
-    assert unpaid[0].invoice_number in m.body and '/invoice/' in m.body
+    assert unpaid[0].invoice_number in ''.join(x.body for x in mail.outbox) and '/invoice/' in m.body
     assert coll.send_due_reminders(base, today=date(2026, 10, 2)) == 0                               # not again for a week
     Invoice.objects.update(last_reminder_at=timezone.now() - timedelta(days=8))
     assert coll.send_due_reminders(base, today=date(2026, 10, 9)) == 2

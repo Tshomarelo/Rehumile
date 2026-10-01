@@ -60,6 +60,7 @@ assert InvoicePayment.objects.filter(invoice=inv).count() == 1 and BankStatement
 from ims import billing
 from datetime import date
 billing._today = lambda: date(2026, 9, 1)
+Subscription.objects.filter(client_name="Domain Client").update(start_date=date(2026, 1, 1))   # it had no start date: filled with the day of the upgrade
 made = billing.generate(2026, 9)
 assert len(made) == 1 and float(made[0].total_amount) == 50   # the hosting row ended on 31 Aug, so only the domain is billed
 print('OK')
