@@ -355,6 +355,7 @@ class BillingRunView(APIView):
         keys = d.get('keys')
         if keys is not None and not isinstance(keys, list):
             return Response({'detail': 'keys must be a list.'}, status=400)
+        skipped = len(billing.plan(year, month, vat)['skipped'])          # already invoiced BEFORE this run
         invoices = billing.generate(year, month, status=new_status, vat_rate=vat, only_keys=set(keys) if keys is not None else None)
         emailed = 0
         if d.get('send_email', True) and new_status == 'sent':
@@ -362,7 +363,6 @@ class BillingRunView(APIView):
             for inv in invoices:
                 if inv._recipients and send_invoice_email(inv, inv._recipients, base):
                     emailed += 1
-        skipped = len(billing.plan(year, month, vat)['skipped'])
         return Response({
             'detail': f"Created {len(invoices)} invoice(s)" + (f", emailed {emailed}" if emailed else '') + (f". {skipped} service(s) were already invoiced." if skipped else '.'),
             'created': len(invoices), 'emailed': emailed, 'skipped': skipped,

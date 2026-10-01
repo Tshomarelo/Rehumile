@@ -268,6 +268,7 @@ def test_quotation_lifecycle_links_expenses(db, api):
     assert c.status_code == 200 and c.data['status'] == 'invoiced' and c.data['invoice_number']
     inv = Invoice.objects.get(invoice_number=c.data['invoice_number'])
     assert inv.subtotal == 2000 and inv.total_amount == 2300 and inv.items.count() == 2 and inv.status == 'draft'
+    assert finance.invoice_split(inv)['services_cost'] == 800            # the quoted cost per line travels to the invoice
     assert api.post(f'/api/quotations/{qid}/action/', {'action': 'convert'}, format='json').status_code == 400
 
 

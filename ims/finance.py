@@ -32,6 +32,11 @@ from .models import (
 )
 
 ZERO = Decimal('0')
+
+
+def _today():
+    from . import billing          # one clock for the whole app (tests pin it)
+    return billing._today()
 ROW_LIMIT = 100  # cap on drill-down rows returned per step
 
 
@@ -59,7 +64,7 @@ def parse_date(value):
 
 def resolve_period(period='month', anchor=None, date_from=None, date_to=None, today=None):
     """Return (start, end, label) for period in week|month|quarter|year|custom."""
-    today = today or date.today()
+    today = today or _today()
     anchor = parse_date(anchor) or today
     if period == 'custom':
         start, end = parse_date(date_from), parse_date(date_to)
@@ -237,7 +242,7 @@ def outstanding_by_stream(start, end, as_of=None, scope='period'):
     (_unpaid_qs); scope = 'period' (billing period inside the window), 'earlier' or 'all'.
     """
     out = {'wifi': ZERO, 'sla': ZERO, 'adhoc': ZERO, 'services': ZERO}
-    qs = [i for i in _unpaid_qs(as_of or min(end, date.today())).prefetch_related('items')
+    qs = [i for i in _unpaid_qs(as_of or min(end, _today())).prefetch_related('items')
           if scope == 'all' or (is_from_period(i, start, end) == (scope == 'period'))]
     for inv in qs:
         split = invoice_split(inv)['streams']
@@ -266,7 +271,7 @@ def _invoice_row(inv, date_value, include_total=False):
 # ─────────────────────────────────────────────────────────────────────────────
 
 def summary(start, end, today=None):
-    today = today or date.today()
+    today = today or _today()
 
     # ── Invoices ────────────────────────────────────────────────────────────
     paid_invoices = _paid_events(start, end)
@@ -448,7 +453,7 @@ def trend(granularity='monthly', periods=None, today=None, anchor=None):
     """Revenue / expenses / profit per bucket, ending at the bucket containing `anchor` (today)."""
     if granularity not in DEFAULT_PERIODS:
         raise ValueError('granularity must be weekly, monthly or yearly.')
-    today = today or date.today()
+    today = today or _today()
     anchor = parse_date(anchor) or today
     n = max(1, min(int(periods or DEFAULT_PERIODS[granularity]), 60))
 

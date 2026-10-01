@@ -196,3 +196,20 @@ def test_loading_finance_pages_twice_does_not_double_post(books, db):
     api.get('/api/finance/summary/?period=month&date=2026-10-01')
     api.get('/api/finance/summary/?period=month&date=2026-10-01'); housekeeping.run_if_due(force=True)
     assert Expense.objects.filter(recurring_source__name='New').count() == 1
+
+
+def test_adhoc_invoice_line_cost_via_api_gives_real_profit(db):
+    api = client_for(make_user('admin'))
+    co = Company.objects.create(name='Acme', slug='acme', contact_person='P', contact_email='a@b.co')
+    r = api.post('/api/invoices/', {'company': str(co.id), 'invoice_number': 'INV-API-1', 'ticket_count': 0, 'hours_worked': 0, 'invoice_type': 'adhoc', 'status': 'sent', 'billing_period_start': '2026-09-01',
+                                    'billing_period_end': '2026-09-30', 'tax_rate': 15, 'due_date': '2026-09-30',
+                                    'items': [{'description': 'Router', 'quantity': 2, 'unit_price': 1000, 'unit_cost': 600},
+                                              {'description': 'Labour', 'quantity': 1, 'unit_price': 500}]}, format='json')
+    assert r.status_code == 201, r.data
+    inv_ = Invoice.objects.get(pk=r.data['id'])
+    split = finance.invoice_split(inv_)
+    assert split['services_cost'] == 1200 and split['streams'] == {'adhoc': Decimal('2500')}
+    rep = profit_report.build('month', date(2026, 9, 15), basis='owed', today=date(2026, 9, 30))
+    inv_row = rep['sections']['revenue']['invoices'][0]
+    assert inv_row['cost'] == 1200 and inv_row['profit'] == 1300 and not inv_row['no_cost']
+    assert any('Job cost R1,200.00 — Router' in x['source'] for x in rep['sections']['provider_costs']['rows'])

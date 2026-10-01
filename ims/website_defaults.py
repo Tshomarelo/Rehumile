@@ -23,7 +23,7 @@ CONTENT_DEFAULTS = [
     ('hero', 'hero_stat_turnaround_label', 'Stat 4 — caption', 'Turnaround'),
     ('services', 'pricing_headline', 'Pricing section headline', 'Clear, Upfront Costs'),
     ('services', 'pricing_note', 'Pricing footnote', 'All prices exclude VAT where applicable. Final quotes provided before any work begins.'),
-    ('services', 'consultation_banner', 'Consultation offer banner', '🎉 Discounted Consultation Block (5 Hrs) — Now R349.99!'),
+    ('services', 'consultation_banner', 'Consultation offer banner', 'Discounted Consultation Block (5 Hrs) — Now R349.99!'),
     ('cta', 'cta_headline', 'Call-to-action headline', 'Ready to transform your IT?'),
     ('contact', 'contact_email', 'Contact email', 'infor@rehumile.co.za'),
     ('contact', 'contact_email_note', 'Email caption', 'For quotes, general enquiries & support'),

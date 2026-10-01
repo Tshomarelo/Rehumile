@@ -340,3 +340,26 @@ existing services are kept: name and contact move into the description/notes, do
 
 Date filters use explicit Africa/Johannesburg day boundaries (`ims/timeutils.py`), so MySQL time-zone tables are not required.
 `tests/test_upgrade_path.py` rebuilds the 0014 schema with sample data and proves the upgrade keeps it.
+
+
+## Update: Profit & Money Owed report, send invoice, invoice-separately (migration 0023)
+
+Run these in a PythonAnywhere Bash console, in the project folder with the virtualenv active:
+
+```bash
+mysqldump -u <user> -h <host> '<db>' > backup_$(date +%F).sql        # 1. backup first
+git checkout -- ims/migrations/0021_collections_recurring.py          # 2. drop the hand fix; git has the same fix now
+git pull origin claude/gallant-hypatia-tgbx85                         # 3. get the update
+pip install -r requirements.txt                                       # 4. (nothing new, but safe)
+python manage.py migrate --plan                                       # 5. expect ONLY: ims.0023_subscription_invoice_separately_domain
+python manage.py migrate                                              # 6.
+python manage.py collectstatic --noinput                              # 7.
+```
+
+Then press **Reload** on the Web tab. Hard-refresh the browser (Ctrl+Shift+R) once so the new menu and pages load.
+
+Things that could fail on MySQL (utf8mb3 tables):
+- **Emoji / 4-byte characters** cannot be saved in the database (a "Incorrect string value" error). The default website text no longer contains the party-popper emoji, and a test guards seed data. If you type an emoji into Website Manager, a client name, or a note it will be rejected until the tables are converted to utf8mb4.
+- `migrate --plan` must show **only** `0023`. If it lists anything older, stop and do not run `migrate`.
+- 0023 adds one yes/no column and changes only the allowed list of service types (no data change), so it is quick and safe.
+- Date filters never use `__date`, so missing MySQL time-zone tables do not matter.

@@ -80,7 +80,7 @@ def _line(sub):
     label = SERVICE_LABELS.get(sub.service_type, sub.get_service_type_display())
     desc = (sub.description or '').strip()
     # never repeat the label: "WiFi / Internet (AX123)" already starts with it
-    text = label if not desc or desc.lower() == label.lower() else (desc if desc.lower().startswith(label.lower()) else f"{label} — {desc}")
+    text = label if not desc or desc.lower() == label.lower() else (desc if desc.lower().startswith(label.split(' ')[0].lower()) else f"{label} — {desc}")
     site_name = sub.site.name if sub.site_id else ''
     return {
         'subscription_id': str(sub.id), 'service_type': sub.service_type, 'description': text[:255],

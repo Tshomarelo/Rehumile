@@ -498,7 +498,7 @@ class QuotationActionView(APIView):
         for it in q.items.all():
             InvoiceItem.objects.create(
                 invoice=inv, description=it.description, quantity=it.quantity,
-                unit_price=it.unit_price, amount=it.line_total, item_type='service')
+                unit_price=it.unit_price, amount=it.line_total, item_type='service', unit_cost=it.unit_cost)
         q.invoice, q.status = inv, 'invoiced'
         q.save(update_fields=['invoice', 'status', 'updated_at'])
 

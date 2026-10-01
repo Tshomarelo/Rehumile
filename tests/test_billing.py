@@ -373,6 +373,8 @@ def test_line_wording_is_not_doubled(db):
     assert billing._line(s1)['description'] == 'WiFi / Internet (AX123)'
     s2 = sub(acme, stype='hosting', price=100, desc='acme.co.za')
     assert billing._line(s2)['description'] == 'Website hosting — acme.co.za'
+    s3 = sub(acme, stype='sla', price=1500, desc='SLA monthly retainer')
+    assert billing._line(s3)['description'] == 'SLA monthly retainer'
 
 
 def test_api_accepts_domain_and_invoice_separately(api, db):

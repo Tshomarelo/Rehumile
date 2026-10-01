@@ -8,7 +8,34 @@
   <link href="/portal/static/css/app.css" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;606&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
-  <style>.seg{display:inline-flex;border:1px solid #d1d5db;border-radius:8px;overflow:hidden}.seg button{border:0;background:#fff;padding:6px 14px;font-size:.8125rem;cursor:pointer}.seg button.on{background:#50181E;color:#fff}.neg{color:#b91c1c}.pos{color:#15803d}</style>
+  <style>.seg{display:inline-flex;border:1px solid #d1d5db;border-radius:8px;overflow:hidden}.seg button{border:0;background:#fff;padding:6px 14px;font-size:.8125rem;cursor:pointer}.seg button.on{background:#50181E;color:#fff}.neg{color:#b91c1c}.pos{color:#15803d}
+    .rp-eq{background:#fdf5f5;border-left:5px solid #50181E;border-radius:8px;padding:14px 18px;font-size:1.05rem;line-height:1.7}
+    .rp-eq b{white-space:nowrap}
+    .rp-sec{border:1px solid #e5e7eb;border-radius:10px;margin-bottom:12px;background:#fff}
+    .rp-sec>summary{cursor:pointer;padding:12px 16px;font-weight:700;display:flex;justify-content:space-between;gap:12px;list-style:none}
+    .rp-sec>summary::-webkit-details-marker{display:none}
+    .rp-sec .rp-in{padding:0 16px 14px}
+    .rp-why{color:#555;font-size:.85rem;margin:2px 0 10px}
+    .rp-inv{border-top:1px solid #eee;padding:8px 0}
+    .rp-inv summary{cursor:pointer;display:flex;flex-wrap:wrap;gap:6px 14px;align-items:baseline;font-size:.85rem}
+    .rp-warn{border-left:5px solid #d97706;background:#fffbeb;border-radius:8px;padding:10px 14px;margin-bottom:8px}
+    .rp-num{text-align:right;white-space:nowrap}
+    .rp-neg{color:#b00020}.rp-pos{color:#15803d}
+
+  <style>
+    .rp-eq{background:#fdf5f5;border-left:5px solid #50181E;border-radius:8px;padding:14px 18px;font-size:1.05rem;line-height:1.7}
+    .rp-eq b{white-space:nowrap}
+    .rp-sec{border:1px solid #e5e7eb;border-radius:10px;margin-bottom:12px;background:#fff}
+    .rp-sec>summary{cursor:pointer;padding:12px 16px;font-weight:700;display:flex;justify-content:space-between;gap:12px;list-style:none}
+    .rp-sec>summary::-webkit-details-marker{display:none}
+    .rp-sec .rp-in{padding:0 16px 14px}
+    .rp-why{color:#555;font-size:.85rem;margin:2px 0 10px}
+    .rp-inv{border-top:1px solid #eee;padding:8px 0}
+    .rp-inv summary{cursor:pointer;display:flex;flex-wrap:wrap;gap:6px 14px;align-items:baseline;font-size:.85rem}
+    .rp-warn{border-left:5px solid #d97706;background:#fffbeb;border-radius:8px;padding:10px 14px;margin-bottom:8px}
+    .rp-num{text-align:right;white-space:nowrap}
+    .rp-neg{color:#b00020}.rp-pos{color:#15803d}
+  </style>
 </head>
 <body>
 <div class="wrapper">
@@ -52,6 +79,12 @@
           </button>
         </div>
         <div id="pageAlert"></div>
+
+        <ul class="nav nav-tabs mb-3" id="biTabs">
+          <li class="nav-item"><a class="nav-link active" href="#" data-bi="overview">Overview</a></li>
+          <li class="nav-item" id="biReportTab" style="display:none"><a class="nav-link" href="#" data-bi="report">Profit &amp; Money Owed</a></li>
+        </ul>
+        <div id="bi-overview">
 
         <!-- ── Current Month Live ─────────────────────────────────────────── -->
         <div class="row mb-3" id="liveCards" style="display:none">
@@ -209,6 +242,30 @@
           </div>
         </div>
 
+        </div><!-- /bi-overview -->
+
+        <!-- ═══ Profit & Money Owed (admin / finance) ═══ -->
+        <div id="bi-report" style="display:none">
+          <div class="card mb-3"><div class="card-body">
+            <div class="row g-2 align-items-end">
+              <div class="col-6 col-md-2"><label class="form-label small mb-1">Period</label>
+                <select class="form-select form-select-sm" id="rpPeriod"><option value="week">This week</option><option value="month" selected>This month</option><option value="quarter">This quarter</option><option value="year">This year</option><option value="custom">Custom…</option></select></div>
+              <div class="col-6 col-md-2" id="rpAnchorWrap"><label class="form-label small mb-1">Around date</label><input type="date" class="form-control form-control-sm" id="rpAnchor"></div>
+              <div class="col-6 col-md-2 rp-custom" style="display:none"><label class="form-label small mb-1">From</label><input type="date" class="form-control form-control-sm" id="rpFrom"></div>
+              <div class="col-6 col-md-2 rp-custom" style="display:none"><label class="form-label small mb-1">To</label><input type="date" class="form-control form-control-sm" id="rpTo"></div>
+              <div class="col-12 col-md-4"><label class="form-label small mb-1">Basis</label>
+                <select class="form-select form-select-sm" id="rpBasis"><option value="received">Received — money that arrived (by payment date)</option><option value="owed">Still owed — unpaid invoices only</option><option value="full">Full picture — received + still owed</option></select></div>
+              <div class="col-12 col-md-auto ms-md-auto d-flex gap-2">
+                <button class="btn btn-sm btn-primary" id="rpGo">Show report</button>
+                <button class="btn btn-sm btn-outline-secondary" id="rpPdf">PDF</button>
+                <button class="btn btn-sm btn-outline-secondary" id="rpCsv">CSV</button>
+              </div>
+            </div>
+          </div></div>
+          <div id="rpAlert"></div>
+          <div id="rpBody"><div class="text-muted text-center py-5">Choose a period and basis, then press <b>Show report</b>.</div></div>
+        </div>
+
       </div>
     </main>
     <footer class="footer"><div class="container-fluid"><p class="mb-0 text-muted">Rehumile TMW IMS &copy; 2025</p></div></footer>
@@ -296,11 +353,11 @@
       const s=d.streams||{};
       const totals=d.totals||{};
       document.getElementById('live-wifi').textContent=R(s.wifi?.paid);
-      document.getElementById('live-wifi-sub').textContent=`Expected: ${R(s.wifi?.expected)}`;
+      document.getElementById('live-wifi-sub').innerHTML=`Expected: ${R(s.wifi?.expected)}<br>Owed from this period: ${R(s.wifi?.outstanding)}<br>Owed from earlier: ${R(s.wifi?.outstanding_earlier)}`;
       document.getElementById('live-sla').textContent=R(s.sla?.paid);
-      document.getElementById('live-sla-sub').textContent=`Expected: ${R(s.sla?.expected)}`;
+      document.getElementById('live-sla-sub').innerHTML=`Expected: ${R(s.sla?.expected)}<br>Owed from this period: ${R(s.sla?.outstanding)}<br>Owed from earlier: ${R(s.sla?.outstanding_earlier)}`;
       document.getElementById('live-services').textContent=R(s.services?.paid);
-      document.getElementById('live-services-sub').textContent=`Expected: ${R(s.services?.expected)}`;
+      document.getElementById('live-services-sub').innerHTML=`Expected: ${R(s.services?.expected)}<br>Owed from this period: ${R(s.services?.outstanding)}<br>Owed from earlier: ${R(s.services?.outstanding_earlier)}`;
       document.getElementById('live-adhoc').textContent=R(s.adhoc?.paid);
       const netProfit=parseFloat(totals.net_profit||0);
       const totalRev=parseFloat(totals.revenue||0);
@@ -499,7 +556,79 @@
   };
 
   // ── Refresh ──────────────────────────────────────────────────────────────────
-  document.getElementById('refreshBtn').onclick=()=>{ loadIntelligence(); loadMonthly(); };
+  document.getElementById('refreshBtn').onclick=()=>{ loadIntelligence(); loadMonthly(); if(window._rpLoaded) loadReport(); };
+
+  // ═══ Profit & Money Owed ═══════════════════════════════════════════════
+  const canReport=['admin','finance'].includes(userData.role);
+  if(canReport) document.getElementById('biReportTab').style.display='';
+  document.querySelectorAll('#biTabs a').forEach(a=>a.onclick=e=>{ e.preventDefault(); showBi(a.dataset.bi); });
+  function showBi(name){
+    document.querySelectorAll('#biTabs a').forEach(x=>x.classList.toggle('active',x.dataset.bi===name));
+    document.getElementById('bi-overview').style.display=name==='overview'?'':'none';
+    document.getElementById('bi-report').style.display=name==='report'?'':'none';
+    if(history.replaceState) history.replaceState(null,'',name==='report'?'#report':location.pathname);
+    if(name==='report' && !window._rpLoaded){ window._rpLoaded=true; loadReport(); }
+  }
+  const E=x=>String(x==null?'':x).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  const M=n=>'R '+(parseFloat(n)||0).toLocaleString('en-ZA',{minimumFractionDigits:2,maximumFractionDigits:2});
+  document.getElementById('rpAnchor').value=new Date().toISOString().slice(0,10);
+  document.getElementById('rpPeriod').onchange=()=>{ const c=document.getElementById('rpPeriod').value==='custom';
+    document.querySelectorAll('.rp-custom').forEach(x=>x.style.display=c?'':'none'); document.getElementById('rpAnchorWrap').style.display=c?'none':''; };
+  function rpQuery(){
+    const p=document.getElementById('rpPeriod').value, q=new URLSearchParams({period:p,basis:document.getElementById('rpBasis').value});
+    if(p==='custom'){ q.set('date_from',document.getElementById('rpFrom').value); q.set('date_to',document.getElementById('rpTo').value); }
+    else q.set('date',document.getElementById('rpAnchor').value);
+    return q.toString();
+  }
+  async function loadReport(){
+    const box=document.getElementById('rpBody'); document.getElementById('rpAlert').innerHTML='';
+    box.innerHTML='<div class="text-center text-muted py-5">Working it out…</div>';
+    try{
+      const r=await api('/portal/api/finance/profit-report/?'+rpQuery()); const d=await r.json();
+      if(!r.ok){ box.innerHTML=''; showAlert('rpAlert',d.detail||'Could not build the report.'); return; }
+      box.innerHTML=renderReport(d);
+    }catch(e){ if(e.message!=='Unauth'){ box.innerHTML=''; showAlert('rpAlert','Could not load the report.'); } }
+  }
+  function rows(list,cols){ return '<table class="table table-sm mb-2"><tbody>'+list.map(r=>'<tr>'+cols(r)+'</tr>').join('')+'</tbody></table>'; }
+  function invBlock(i){
+    const lines='<table class="table table-sm mb-1"><thead><tr class="small text-muted"><th>Line</th><th>Branch</th><th class="rp-num">Qty</th><th class="rp-num">Price</th><th class="rp-num">Your cost / unit</th><th class="rp-num">Profit</th><th class="rp-num">Counted</th></tr></thead><tbody>'+
+      i.lines.map(l=>`<tr><td>${E(l.description)}${l.source?`<div class="small text-muted">${E(l.source)}</div>`:''}</td><td>${E(l.branch)}</td><td class="rp-num">${l.quantity}</td><td class="rp-num">${M(l.unit_price)}</td><td class="rp-num">${l.cost_per_unit?M(l.cost_per_unit):'<span class="text-muted">—</span>'}</td><td class="rp-num ${l.profit<0?'rp-neg':''}">${M(l.profit)}</td><td class="rp-num">${M(l.counted)}</td></tr>`).join('')+'</tbody></table>';
+    return `<details class="rp-inv"><summary><a href="${E(i.url)}" onclick="event.stopPropagation()"><b>${E(i.number)}</b></a><span>${E(i.client)}</span><span class="text-muted">period ${E(i.period_start||'')} → ${E(i.period_end||'')}</span><span class="text-muted">issued ${E(i.issued||'—')} · due ${E(i.due||'—')}</span>${i.days_overdue?`<span class="rp-neg"><b>${i.days_overdue} day(s) overdue</b></span>`:''}<span>total ${M(i.total)} · paid ${M(i.paid)} · balance ${M(i.balance)}</span><b class="ms-auto">counted ${M(i.counted)}</b>${i.no_cost?'<span class="badge bg-warning text-dark">no cost recorded</span>':`<span class="text-muted">cost ${M(i.cost)} · profit ${M(i.profit)}</span>`}</summary>${lines}</details>`;
+  }
+  function section(key,sec,body,open){
+    return `<details class="rp-sec" ${open?'open':''}><summary><span>${E(sec.label)}</span><span>${M(sec.amount)}</span></summary><div class="rp-in"><div class="rp-why">${E(sec.explain)}</div>${body}</div></details>`;
+  }
+  function renderReport(d){
+    const S=d.sections, h=Object.fromEntries(d.headline.map(x=>[x.key,x]));
+    let out=`<div class="rp-eq mb-3">${E(d.headline[0].label)} <b>${M(h.revenue.amount)}</b> − Service-provider costs <b>${M(h.provider_costs.amount)}</b> − Running costs <b>${M(h.running_costs.amount)}</b> − Payroll <b>${M(h.payroll.amount)}</b> = <span class="${h.net.amount<0?'rp-neg':'rp-pos'}">${E(h.net.label)} <b>${M(h.net.amount)}</b></span>
+      <div class="small text-muted mt-1">${E(d.basis_label)} · ${E(d.period.label)} (${E(d.period.start)} → ${E(d.period.end)}) · amounts exclude VAT · generated ${E(d.generated_at)}</div></div>`;
+    if(d.warnings.length){
+      out+='<div class="mb-3"><h6 class="fw-bold">Things to check</h6>'+d.warnings.map(w=>`<div class="rp-warn"><b>${E(w.title)}</b><div class="small">${E(w.detail)}</div><ul class="small mb-0 mt-1">`+w.rows.map(r=>`<li><a href="${E(r.url)}">${E(r.ref)}</a> — ${E(r.label)} ${M(r.amount)}${r.note?' · '+E(r.note):''}</li>`).join('')+'</ul></div>').join('')+'</div>';
+    }
+    out+=section('revenue',S.revenue,(S.revenue.invoices.map(invBlock).join('')||'<div class="text-muted small">No invoices in this view.</div>')+
+      (S.revenue.direct_sales.length?'<div class="mt-2 small fw-bold">Till sales '+M(S.revenue.direct_amount)+'</div>'+rows(S.revenue.direct_sales,r=>`<td>${E(r.date)}</td><td>${E(r.label)}</td><td class="rp-num">${M(r.amount)}</td>`):''),true);
+    out+=section('provider',S.provider_costs,rows(S.provider_costs.rows,r=>`<td><a href="${E(r.url)}">${E(r.ref)}</a></td><td>${E(r.source)}</td><td class="rp-num">${M(r.amount)}</td>`)||'',false);
+    out+=section('running',S.running_costs,rows(S.running_costs.rows,r=>`<td>${E(r.date)}</td><td><a href="${E(r.url)}">${E(r.ref)}</a></td><td>${E(r.source)}</td><td class="rp-num">${M(r.amount)}</td>`)+
+      '<div class="small fw-bold mt-2">Recurring costs and whether they are posted</div>'+rows(S.running_costs.recurring,t=>`<td><a href="${E(t.url)}">${E(t.name)}</a></td><td>${E(t.supplier)}</td><td>${E(t.category)}</td><td>${E(t.frequency)}</td><td class="rp-num">${M(t.amount)}</td><td class="${t.status.startsWith('due')?'rp-neg':'text-muted'}">${E(t.status)}</td>`),false);
+    out+=section('payroll',S.payroll,S.payroll.rows.length?rows(S.payroll.rows,r=>`<td><a href="${E(r.url)}">${E(r.ref)}</a></td><td>${E(r.label)}</td><td>${E(r.source)}</td><td class="rp-num">${M(r.amount)}</td>`):'',false);
+    out+=`<div class="card"><div class="card-header"><b>Per client</b> <span class="small text-muted">(branches sit under their head office)</span></div><div class="table-responsive"><table class="table table-sm mb-0"><thead><tr><th>Client</th><th class="rp-num">Counted</th><th class="rp-num">Still owed</th><th class="rp-num">Cost</th><th class="rp-num">Profit</th><th class="rp-num">Overdue</th><th>Oldest due</th></tr></thead><tbody>`+
+      d.clients.map(c=>`<tr><td><b>${E(c.client)}</b> <span class="small text-muted">${c.invoices} invoice(s)</span></td><td class="rp-num">${M(c.amount)}</td><td class="rp-num">${M(c.owed)}</td><td class="rp-num">${M(c.cost)}</td><td class="rp-num ${c.profit<0?'rp-neg':''}">${M(c.profit)}</td><td class="rp-num ${c.overdue?'rp-neg':''}">${M(c.overdue)}</td><td>${E(c.oldest_due||'—')}</td></tr>`+
+        c.branches.map(b=>`<tr class="small text-muted"><td>&nbsp;&nbsp;↳ ${E(b.branch)}</td><td class="rp-num">${M(b.amount)}</td><td></td><td class="rp-num">${M(b.cost)}</td><td class="rp-num">${M(b.profit)}</td><td></td><td></td></tr>`).join('')).join('')+'</tbody></table></div></div>';
+    return out;
+  }
+  document.getElementById('rpGo').onclick=loadReport;
+  async function rpDownload(kind){
+    try{
+      const r=await api('/portal/api/finance/profit-report/'+kind+'/?'+rpQuery());
+      if(!r.ok){ const d=await r.json().catch(()=>({})); showAlert('rpAlert',d.detail||'Could not export.'); return; }
+      const blob=await r.blob(), a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+      a.download='profit-and-money-owed.'+kind; document.body.appendChild(a); a.click(); a.remove();
+    }catch(e){ if(e.message!=='Unauth') showAlert('rpAlert','Could not export.'); }
+  }
+  document.getElementById('rpPdf').onclick=()=>rpDownload('pdf');
+  document.getElementById('rpCsv').onclick=()=>rpDownload('csv');
+  if(location.hash==='#report' && canReport) showBi('report');
+
 
   document.getElementById('fClientType').addEventListener('change', renderClientTable);
 
