@@ -18,7 +18,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from . import finance
+from . import finance, housekeeping, profit_report, profit_report_pdf
 from .ledger import ensure_seeded
 from .models import (
     Account, Company, Expense, ExpenseCategory, Invoice, InvoiceItem,
@@ -50,6 +50,7 @@ class FinanceSummaryView(APIView):
     def get(self, request):
         if request.user.role not in FINANCE_ROLES:
             return _denied()
+        housekeeping.run_if_due(request.user)
         p = request.query_params
         try:
             start, end, label = finance.resolve_period(
@@ -631,3 +632,41 @@ def _notify_staff_of_decision(q, request):
                       settings.DEFAULT_FROM_EMAIL, [to], fail_silently=True)
     except Exception:
         pass
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Profit & Money Owed report (internal: shows costs and profit)
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _report_from(request):
+    p = request.query_params
+    report = profit_report.build(p.get('period', 'month'), p.get('date'), p.get('date_from'), p.get('date_to'), p.get('basis', 'received'))
+    report['generated_at'] = timezone.localtime().strftime('%d %b %Y %H:%M')
+    return report
+
+
+class ProfitReportView(APIView):
+    """GET /finance/profit-report/?period=&date=&date_from=&date_to=&basis=received|owed|full"""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, fmt=None):
+        if request.user.role not in FINANCE_ROLES:
+            return _denied()
+        housekeeping.run_if_due(request.user)
+        try:
+            report = _report_from(request)
+        except ValueError as exc:
+            return Response({'detail': str(exc)}, status=400)
+        if fmt == 'csv':
+            from django.http import HttpResponse
+            resp = HttpResponse(profit_report_pdf.build_csv(report), content_type='text/csv; charset=utf-8')
+            resp['Content-Disposition'] = f'attachment; filename="profit-{report["basis"]}-{report["period"]["start"]}.csv"'
+            return resp
+        if fmt == 'pdf':
+            from django.http import HttpResponse
+            from .views import _company_settings
+            pdf = profit_report_pdf.build_pdf(report, _company_settings().company_name or 'Rehumile TMW')
+            resp = HttpResponse(pdf, content_type='application/pdf')
+            resp['Content-Disposition'] = f'attachment; filename="profit-{report["basis"]}-{report["period"]["start"]}.pdf"'
+            return resp
+        return Response(report)

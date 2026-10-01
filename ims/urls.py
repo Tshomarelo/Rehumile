@@ -109,6 +109,8 @@ urlpatterns = [
     path('invoices/<uuid:pk>/print/', views.InvoicePrintView.as_view(), name='invoice-print'),
     # Integrated finance: dashboard summary/trend, expense categories, quotations
     path('finance/summary/', finance_views.FinanceSummaryView.as_view(), name='finance-summary'),
+    path('finance/profit-report/', finance_views.ProfitReportView.as_view(), name='profit-report'),
+    path('finance/profit-report/<str:fmt>/', finance_views.ProfitReportView.as_view(), name='profit-report-export'),
     path('finance/trend/', finance_views.FinanceTrendView.as_view(), name='finance-trend'),
     path('expense-categories/', finance_views.ExpenseCategoryView.as_view(), name='expense-category-list'),
     path('expense-categories/<uuid:pk>/', finance_views.ExpenseCategoryView.as_view(), name='expense-category-detail'),
