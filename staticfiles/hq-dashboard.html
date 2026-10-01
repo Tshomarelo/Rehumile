@@ -187,7 +187,7 @@
           <div class="fin-tile paid"><div class="lbl">Paid invoices</div><div class="val" id="tPaid">—</div><div class="sub" id="tPaidSub"></div></div>
           <div class="fin-tile unpaid"><div class="lbl">Unpaid invoices</div><div class="val" id="tUnpaid">—</div><div class="sub" id="tUnpaidSub"></div></div>
           <div class="fin-tile exp"><div class="lbl">Expenses</div><div class="val" id="tExp">—</div><div class="sub" id="tExpSub"></div></div>
-          <div class="fin-tile rev"><div class="lbl">Revenue</div><div class="val" id="tRev">—</div><div class="sub" id="tRevSub"></div></div>
+          <div class="fin-tile rev"><div class="lbl">Money received this period (by payment date)</div><div class="val" id="tRev">—</div><div class="sub" id="tRevSub"></div></div>
           <div class="fin-tile profit"><div class="lbl">Net profit</div><div class="val" id="tProfit">—</div><div class="sub" id="tProfitSub"></div></div>
         </div>
         <div class="fin-eq" id="finEq"></div>
@@ -285,7 +285,7 @@
 </div>
 
 <script src="/portal/static/js/app.js"></script>
-<script src="/portal/static/js/hq-sidebar-menu.js"></script>
+<script src="/portal/static/js/hq-sidebar-menu.js?v=20261001"></script>
 <script>
 (function(){
   /* ── Auth guard ─────────────────────────────── */
@@ -431,13 +431,13 @@
     document.getElementById('finPeriodLabel').textContent = s.period.label+'  ('+s.period.start+' → '+s.period.end+')';
     const inv=s.invoices, ex=s.expenses, rev=s.revenue, pr=s.profit;
     document.getElementById('tPaid').textContent = fmtR(inv.paid.subtotal);
-    document.getElementById('tPaidSub').innerHTML = inv.paid.count+' invoice(s) paid<br>Client paid '+fmtR(inv.paid.total)+' incl. VAT '+fmtR(inv.paid.vat);
+    document.getElementById('tPaidSub').innerHTML = inv.paid.count+' payment(s) received<br>Clients paid '+fmtR(inv.paid.total)+' incl. VAT '+fmtR(inv.paid.vat);
     document.getElementById('tUnpaid').textContent = fmtR(inv.unpaid.total);
-    document.getElementById('tUnpaidSub').innerHTML = inv.unpaid.count+' invoice(s) still owed'+(inv.unpaid.overdue_count?'<br><b class="neg">'+inv.unpaid.overdue_count+' overdue: '+fmtR(inv.unpaid.overdue_total)+'</b>':'');
+    document.getElementById('tUnpaidSub').innerHTML = inv.unpaid.count+' invoice(s) still owed<br>Owed from this period: <b>'+fmtR(inv.unpaid.from_period)+'</b><br>Owed from earlier periods: <b>'+fmtR(inv.unpaid.from_earlier)+'</b>'+(inv.unpaid.overdue_count?'<br><b class="neg">'+inv.unpaid.overdue_count+' overdue: '+fmtR(inv.unpaid.overdue_total)+'</b>':'');
     document.getElementById('tExp').textContent = fmtR(ex.total);
     document.getElementById('tExpSub').innerHTML = 'Cost of sales '+fmtR(ex.cost_of_sales)+'<br>Running costs '+fmtR(ex.operating)+'<br>Payroll '+fmtR(ex.payroll);
     document.getElementById('tRev').textContent = fmtR(rev.total);
-    document.getElementById('tRevSub').innerHTML = 'Paid invoices '+fmtR(rev.invoices)+'<br>Till / POS sales '+fmtR(rev.direct_sales);
+    document.getElementById('tRevSub').innerHTML = 'Paid invoices '+fmtR(rev.invoices)+'<br>Till / POS sales '+fmtR(rev.direct_sales)+'<br>Invoiced for this period: <b>'+fmtR(inv.invoiced.subtotal)+'</b> ('+inv.invoiced.count+' invoice(s), excl. VAT)';
     const pv = document.getElementById('tProfit');
     pv.textContent = signedR(pr.net); pv.className = 'val '+(pr.net<0?'neg':'pos');
     document.getElementById('tProfitSub').innerHTML = 'Margin '+pr.margin_pct+'%<br>Gross profit '+signedR(pr.gross);
@@ -567,6 +567,8 @@
 
   window.loadAll = loadAll;
   loadAll();
+  /* keep the numbers fresh while the page is open */
+  setInterval(function(){ if(!document.hidden) loadAll(); }, 60000);
 
   /* ── Feather icons ─────────────────────────── */
   if(window.feather) feather.replace();

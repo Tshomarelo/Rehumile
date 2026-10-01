@@ -284,7 +284,7 @@
       </div>
       <div class="table-responsive mb-2">
         <table class="table table-sm align-middle mb-0">
-          <thead><tr><th>Description</th><th style="width:90px">Qty</th><th style="width:130px">Price each (R)</th><th style="width:120px" class="text-end">Amount</th><th style="width:36px"></th></tr></thead>
+          <thead><tr><th>Description</th><th style="width:90px">Qty</th><th style="width:130px">Price each (R)</th><th style="width:130px" title="Optional, internal only — what this line costs you, so the report shows your real profit">Your cost each (R)</th><th style="width:120px" class="text-end">Amount</th><th style="width:36px"></th></tr></thead>
           <tbody id="itemRows"></tbody>
         </table>
       </div>
@@ -329,9 +329,9 @@
 <div class="hq-backdrop" id="invoiceModal-bd" onclick="HQ.hideDrawer('invoiceModal')"></div>
 
 <script src="/portal/static/js/app.js"></script>
-<script src="/portal/static/js/hq-sidebar-menu.js"></script>
+<script src="/portal/static/js/hq-sidebar-menu.js?v=20261001"></script>
 <script src="/portal/static/js/hq-filters.js"></script>
-<script src="/portal/static/js/hq-record-payment.js"></script>
+<script src="/portal/static/js/hq-record-payment.js?v=20261001"></script>
 <script>(function(){function _i(){var s=document.querySelector('.js-sidebar'),t=document.querySelector('.js-sidebar-toggle');if(!s||!t)return;if(window.innerWidth<992&&localStorage.getItem('ims_sidebar')==='open')s.classList.add('collapsed');t.addEventListener('click',function(){setTimeout(function(){localStorage.setItem('ims_sidebar',s.classList.contains('collapsed')?'open':'closed');},50);});}document.readyState==='loading'?document.addEventListener('DOMContentLoaded',_i):_i();})();</script>
 <script>
 window.onInvoiceTypeChange = function(){
@@ -344,11 +344,12 @@ window.addItemRow = function(it){
   it = it||{};
   const tr=document.createElement('tr');
   // lines made by the monthly billing run carry their branch / service / cost; keep them when the invoice is edited
-  tr.dataset.service=it.service_type||''; tr.dataset.site=it.site_name||''; tr.dataset.cost=it.unit_cost||0; tr.dataset.sub=it.subscription||'';
+  tr.dataset.service=it.service_type||''; tr.dataset.site=it.site_name||''; tr.dataset.sub=it.subscription||'';
   tr.innerHTML=`<td><input class="form-control form-control-sm i-desc" value="${escH(it.description)}" placeholder="What was supplied / done">${it.site_name?`<div class="small text-muted mt-1">Branch: ${escH(it.site_name)}</div>`:''}</td>
     <td><input type="number" class="form-control form-control-sm i-qty" min="0.01" step="0.01" value="${it.quantity!=null?it.quantity:1}"></td>
     <td><input type="number" class="form-control form-control-sm i-price" min="0" step="0.01" value="${it.unit_price!=null?it.unit_price:''}"></td>
-    <td class="text-end i-amt">R 0.00</td>
+    <td><input type="number" class="form-control form-control-sm i-cost" min="0" step="0.01" value="${it.unit_cost?it.unit_cost:''}" placeholder="optional"></td>
+    <td class="text-end"><span class="i-amt">R 0.00</span><div class="small i-profit"></div></td>
     <td><button type="button" class="btn btn-sm btn-outline-danger" title="Remove">×</button></td>`;
   tr.querySelector('button').onclick=()=>{ tr.remove(); calcTotal(); };
   tr.querySelectorAll('input').forEach(i=>i.oninput=calcTotal);
@@ -360,6 +361,8 @@ window.calcTotal = function(){
   document.querySelectorAll('#itemRows tr').forEach(tr=>{
     const q=parseFloat(tr.querySelector('.i-qty').value)||0, p=parseFloat(tr.querySelector('.i-price').value)||0;
     const amt=Math.round(q*p*100)/100; tr.querySelector('.i-amt').textContent=money(amt); sub+=amt;
+    const c=parseFloat(tr.querySelector('.i-cost').value)||0, pr=tr.querySelector('.i-profit');
+    pr.innerHTML=c>0?`<span class="${amt-q*c>=0?'text-success':'text-danger'}">profit ${money(Math.round((amt-q*c)*100)/100)}</span>`:'';
   });
   const tax=parseFloat(document.getElementById('f_tax_rate').value)||0;
   const vat=Math.round(sub*tax)/100;
@@ -367,7 +370,7 @@ window.calcTotal = function(){
   document.getElementById('f_total_display').value=money(sub+vat)+(vat?'  (incl. VAT '+money(vat)+')':'');
 };
 window.collectItems = function(){
-  return [...document.querySelectorAll('#itemRows tr')].map(tr=>({description:tr.querySelector('.i-desc').value.trim(),quantity:tr.querySelector('.i-qty').value||1,unit_price:tr.querySelector('.i-price').value||0,service_type:tr.dataset.service||'',site_name:tr.dataset.site||'',unit_cost:tr.dataset.cost||0,subscription:tr.dataset.sub||null}))
+  return [...document.querySelectorAll('#itemRows tr')].map(tr=>({description:tr.querySelector('.i-desc').value.trim(),quantity:tr.querySelector('.i-qty').value||1,unit_price:tr.querySelector('.i-price').value||0,service_type:tr.dataset.service||'',site_name:tr.dataset.site||'',unit_cost:tr.querySelector('.i-cost').value||0,subscription:tr.dataset.sub||null}))
     .filter(i=>i.description||parseFloat(i.unit_price));
 };
 
@@ -447,9 +450,10 @@ window.collectItems = function(){
           <td>${statusBadge(inv.status)}</td>
           <td class="d-none d-lg-table-cell">${fmtDate(inv.due_date)}</td>
           <td class="d-flex gap-1 flex-wrap">
-            <button class="btn btn-sm btn-outline-primary" onclick='openEdit(${JSON.stringify(inv)})'>Edit</button>
+            <button class="btn btn-sm btn-outline-primary" onclick="openEdit(${attrJson(inv)})">Edit</button>
             <a class="btn btn-sm btn-outline-secondary" href="/portal/invoices/print/${inv.id}/" target="_blank" title="Print / Save PDF"><i data-feather="printer" style="width:13px;height:13px"></i></a>
-            ${['sent','overdue','partially_paid'].includes(inv.status) ? `<button class="btn btn-sm btn-success" title="Record money received (full or part payment)" onclick='recordPay(${JSON.stringify({id:inv.id,invoice_number:inv.invoice_number,client:inv.company_name||inv.bill_to_name||'',total:(inv.balance_due!=null?inv.balance_due:inv.total_amount)}).replace(/'/g,'&#39;')})'>Record payment</button>` : ''}
+            ${['sent','overdue','partially_paid'].includes(inv.status) ? `<button class="btn btn-sm btn-success" title="Record money received (full or part payment)" onclick="recordPay(${attrJson({id:inv.id,invoice_number:inv.invoice_number,client:inv.company_name||inv.bill_to_name||'',total:(inv.balance_due!=null?inv.balance_due:inv.total_amount)})})">Record payment</button>` : ''}
+            ${['draft','sent','overdue','partially_paid'].includes(inv.status) ? `<button class="btn btn-sm btn-outline-primary" onclick="sendInvoice(${attrJson(inv.id)},${attrJson(inv.invoice_number)},${attrJson(inv.status)})" title="${inv.status==='draft'?'Issue this invoice and email it to the client':'Email this invoice to the client'}">${inv.status==='draft'?'Issue &amp; send':'Send'}</button>` : ''}
             ${['sent','overdue','draft'].includes(inv.status) ? `<button class="btn btn-sm btn-outline-warning remind-btn" data-id="${inv.id}" data-num="${inv.invoice_number||'INV-'+inv.id.slice(0,8)}" title="Send email reminder"><i data-feather="mail" style="width:13px;height:13px"></i> Remind</button>` : ''}
           </td>
         </tr>`).join('');
@@ -521,7 +525,14 @@ window.collectItems = function(){
     HQ.showDrawer('invoiceModal');
   };
 
-  window.recordPay=function(inv){ RecordPayment.open(inv,()=>{ showAlert('pageAlert','Payment recorded.','success'); loadInvoices(); }); };
+  window.sendInvoice=async function(id,num,status){
+    if(!confirm((status==='draft'?'Issue invoice ':'Email invoice ')+num+' to the client now?')) return;
+    try{
+      const r=await api('/portal/api/invoices/'+id+'/send/',{method:'POST',body:JSON.stringify({})}); const d=await r.json().catch(()=>({}));
+      showAlert('pageAlert',d.detail||'Done.',r.ok?'success':'danger'); if(r.ok) loadInvoices();
+    }catch(e){ if(e.message!=='Unauth') showAlert('pageAlert','Could not reach the server.'); }
+  };
+  window.recordPay=function(inv){ RecordPayment.open(inv,(d)=>{ showAlert('pageAlert','Payment recorded.'+(d&&d.warning?'<br><strong>Check:</strong> '+d.warning:''),d&&d.warning?'warning':'success'); loadInvoices(); }); };
 
   document.getElementById('saveInvoiceBtn').onclick=async()=>{
     const id=document.getElementById('editId').value;

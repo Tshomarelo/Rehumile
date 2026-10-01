@@ -175,7 +175,7 @@
 <div class="hq-backdrop" id="deleteModal-bd" onclick="HQ.hideDrawer('deleteModal')"></div>
 
 <script src="/portal/static/js/app.js"></script>
-<script src="/portal/static/js/hq-sidebar-menu.js"></script>
+<script src="/portal/static/js/hq-sidebar-menu.js?v=20261001"></script>
 <script src="/portal/static/js/hq-filters.js"></script>
 <script>(function(){function _i(){var s=document.querySelector('.js-sidebar'),t=document.querySelector('.js-sidebar-toggle');if(!s||!t)return;if(window.innerWidth<992&&localStorage.getItem('ims_sidebar')==='open')s.classList.add('collapsed');t.addEventListener('click',function(){setTimeout(function(){localStorage.setItem('ims_sidebar',s.classList.contains('collapsed')?'open':'closed');},50);});}document.readyState==='loading'?document.addEventListener('DOMContentLoaded',_i):_i();})();</script>
 <script>
@@ -228,7 +228,7 @@
           <td>${statusBadge(c.status)}</td>
           <td class="d-none d-lg-table-cell">${fmtDate(c.created_at)}</td>
           <td>
-            <button class="btn btn-sm btn-outline-primary me-1" onclick='openEdit(${JSON.stringify(c)})'>Edit</button>
+            <button class="btn btn-sm btn-outline-primary me-1" onclick="openEdit(${attrJson(c)})">Edit</button>
             <button class="btn btn-sm btn-outline-danger" onclick="openDelete('${c.id}','${c.name.replace(/'/g,`\\'`)}')">Delete</button>
           </td>
         </tr>`).join('');

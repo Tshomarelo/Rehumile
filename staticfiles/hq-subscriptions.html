@@ -81,6 +81,10 @@
               <select class="form-select form-select-sm" id="runStatus"><option value="sent">Sent (issued to clients now)</option><option value="draft">Drafts (review first)</option></select></div>
             <div class="form-check mt-3"><input class="form-check-input" type="checkbox" id="runEmail" checked><label class="form-check-label" for="runEmail">Email each client one invoice</label></div>
             <button class="btn btn-success ms-auto" id="btnRun">Create selected invoices</button>
+          </div>
+          <div class="card-footer" id="runConfirm" style="display:none;background:#fff8e1">
+            <div class="d-flex flex-wrap gap-3 align-items-center"><div id="runConfirmText" class="fw-semibold"></div>
+              <div class="ms-auto d-flex gap-2"><button class="btn btn-outline-secondary" id="btnRunNo">Not yet</button><button class="btn btn-success" id="btnRunYes">Yes, create them</button></div></div>
           </div></div>
         </div>
 
@@ -101,7 +105,7 @@
             <div class="row g-2 flex-grow-1 me-2">
               <div class="col-md-3"><input type="text" class="form-control form-control-sm" id="fSearch" placeholder="Search client, branch, description…"></div>
               <div class="col-md-3"><select class="form-select form-select-sm" id="fCompany"><option value="">All clients</option></select></div>
-              <div class="col-md-2"><select class="form-select form-select-sm" id="fType"><option value="">All services</option><option value="wifi">WiFi</option><option value="email">Email</option><option value="hosting">Hosting</option><option value="sla">SLA</option><option value="other">Other</option></select></div>
+              <div class="col-md-2"><select class="form-select form-select-sm" id="fType"><option value="">All services</option><option value="wifi">WiFi</option><option value="email">Email</option><option value="hosting">Hosting</option><option value="domain">Domain</option><option value="sla">SLA</option><option value="other">Other</option></select></div>
               <div class="col-md-2"><select class="form-select form-select-sm" id="fStatus"><option value="active">Active</option><option value="suspended">Suspended</option><option value="cancelled">Cancelled</option><option value="">All</option></select></div>
               <div class="col-md-2"><button class="btn btn-sm btn-outline-secondary w-100" id="fClear">Clear</button></div>
             </div>
@@ -143,12 +147,13 @@
       <div class="col-md-6" id="rowSite"><label class="form-label">Branch</label><select class="form-select" id="s_site"><option value="">Head office</option></select>
         <div class="form-text" id="siteHint"></div></div>
       <div class="col-md-6"><label class="form-label">Service <span class="text-danger">*</span></label>
-        <select class="form-select" id="s_type"><option value="wifi">WiFi / Internet</option><option value="email">Email hosting</option><option value="hosting">Website hosting</option><option value="sla">SLA retainer</option><option value="other">Other service</option></select></div>
+        <select class="form-select" id="s_type"><option value="wifi">WiFi / Internet</option><option value="email">Email hosting</option><option value="hosting">Website hosting</option><option value="domain">Domain</option><option value="sla">SLA retainer</option><option value="other">Other service</option></select></div>
       <div class="col-12"><label class="form-label">Wording on the invoice</label><input class="form-control" id="s_desc" placeholder='e.g. "20Mbps fibre", "5 mailboxes", "acme.co.za"'></div>
       <div class="col-md-3"><label class="form-label">Quantity</label><input type="number" class="form-control" id="s_qty" min="0.01" step="0.01" value="1"></div>
       <div class="col-md-3"><label class="form-label">Price each / month (R) <span class="text-danger">*</span></label><input type="number" class="form-control" id="s_price" min="0" step="0.01"></div>
       <div class="col-md-3"><label class="form-label">Your cost each (R)</label><input type="number" class="form-control" id="s_cost" min="0" step="0.01" value="0"></div>
       <div class="col-md-3"><label class="form-label">Due day</label><input type="number" class="form-control" id="s_day" min="1" max="31" value="1"></div>
+      <div class="col-12"><div class="form-check"><input class="form-check-input" type="checkbox" id="s_sep"><label class="form-check-label" for="s_sep">Give this service its own invoice <span class="text-muted small">(instead of combining it with the client's other services)</span></label></div></div>
       <div class="col-md-4"><label class="form-label">Start date</label><input type="date" class="form-control" id="s_start"></div>
       <div class="col-md-4"><label class="form-label">End date <span class="text-muted small">(optional)</span></label><input type="date" class="form-control" id="s_end"></div>
       <div class="col-md-4"><label class="form-label">Status</label><select class="form-select" id="s_status"><option value="active">Active</option><option value="suspended">Suspended</option><option value="cancelled">Cancelled</option></select></div>
@@ -182,9 +187,9 @@
 <div class="hq-backdrop" id="siteModal-bd" onclick="HQ.hideDrawer('siteModal')"></div>
 
 <script src="/portal/static/js/app.js"></script>
-<script src="/portal/static/js/hq-sidebar-menu.js"></script>
+<script src="/portal/static/js/hq-sidebar-menu.js?v=20261001"></script>
 <script src="/portal/static/js/hq-filters.js"></script>
-<script src="/portal/static/js/hq-record-payment.js"></script>
+<script src="/portal/static/js/hq-record-payment.js?v=20261001"></script>
 <script>
 (function(){
   const token = localStorage.getItem('ims_access');
@@ -253,20 +258,29 @@
       const rows=g.lines.map(l=>{ let h=''; if(multi && l.site_name!==last){ h=`<tr class="grp"><td colspan="4">${esc(l.site_name||'Head office')}</td></tr>`; last=l.site_name; }
         return h+`<tr><td>${esc(l.description)}</td><td class="text-end">${l.quantity}</td><td class="text-end">${R(l.unit_price)}</td><td class="text-end">${R(l.amount)}</td></tr>`; }).join('');
       return `<div class="inv-card"><div class="hd"><div class="form-check"><input class="form-check-input grp-sel" type="checkbox" id="g${i}" data-i="${i}" checked><label class="form-check-label" for="g${i}"><b>${esc(g.client_name)}</b></label>
-          <div class="small text-muted ms-0">${g.branches.map(b=>`<span class="chip ${g.site_id?'self':''}">${esc(b)}</span>`).join('')||''}${g.site_id?'<span class="chip self">branch pays itself</span>':''}
+          <div class="small text-muted ms-0">${g.branches.map(b=>`<span class="chip ${g.site_id?'self':''}">${esc(b)}</span>`).join('')||''}${g.site_id?'<span class="chip self">branch pays itself</span>':''}${g.separate?'<span class="chip self">own invoice</span>':''}
           Due ${esc(g.due_date)} · ${g.recipients.length?'email to '+g.recipients.map(esc).join(', '):'<span class="neg">no email address on file</span>'}</div></div>
           <div class="text-end"><div class="h5 mb-0">${R(g.total)}</div><div class="small text-muted">${g.vat_rate?'incl. VAT '+R(g.tax_amount):'no VAT'} · cost ${R(g.cost)}</div></div></div>
         <table class="table table-sm"><thead><tr><th>Service</th><th class="text-end">Qty</th><th class="text-end">Price</th><th class="text-end">Amount</th></tr></thead><tbody>${rows}</tbody></table></div>`;
     }).join('');
-    $('runActions').style.display='';
+    $('runActions').style.display=''; $('runConfirm').style.display='none';
     document.querySelectorAll('.grp-sel').forEach(c=>c.onchange=updSel); updSel();
   }
   function updSel(){ const sel=[...document.querySelectorAll('.grp-sel')].filter(c=>c.checked).map(c=>plan.groups[+c.dataset.i]);
     $('selCount').textContent=sel.length; $('selTotal').textContent=R(sel.reduce((s,g)=>s+g.total,0)); $('btnRun').disabled=!sel.length; }
-  $('btnRun').onclick=async()=>{
+  // in-page confirmation (no browser pop-up): first click asks, "Yes, create them" does it
+  $('btnRun').onclick=()=>{
+    const sel=[...document.querySelectorAll('.grp-sel')].filter(c=>c.checked).map(c=>plan.groups[+c.dataset.i]);
+    if(!sel.length) return;
+    const how=$('runStatus').value==='sent'?'issue them to the clients now':'save them as drafts';
+    $('runConfirmText').innerHTML=`Create ${sel.length} invoice(s) for ${esc(plan.period.label)} totalling ${R(sel.reduce((a,g)=>a+g.total,0))} and ${how}${$('runEmail').checked&&$('runStatus').value==='sent'?', emailing each client':''}?`;
+    $('runConfirm').style.display=''; $('btnRun').disabled=true;
+  };
+  $('btnRunNo').onclick=()=>{ $('runConfirm').style.display='none'; updSel(); };
+  $('btnRunYes').onclick=async()=>{
     const keys=[...document.querySelectorAll('.grp-sel')].filter(c=>c.checked).map(c=>plan.groups[+c.dataset.i].key);
     if(!keys.length) return;
-    if(!confirm(`Create ${keys.length} invoice(s) for ${plan.period.label}?`)) return;
+    $('runConfirm').style.display='none';
     const btn=$('btnRun'); btn.disabled=true; btn.textContent='Creating…';
     try{
       const r=await api('/portal/api/billing/run/',{method:'POST',body:JSON.stringify({...ym(),vat_rate:$('runVat').value||0,status:$('runStatus').value,send_email:$('runEmail').checked,keys})}); const d=await r.json();
@@ -347,9 +361,9 @@
     $('s_company').value=s.company||''; $('s_client_name').value=s.company?'':(s.client_name||''); fillSites(s.company||'',s.site||'');
     $('s_email').value=s.contact_email||''; $('s_phone').value=s.contact_phone||'';
     $('s_type').value=s.service_type||'wifi'; $('s_desc').value=s.description||''; $('s_qty').value=s.quantity!=null?s.quantity:1; $('s_price').value=s.unit_price!=null?s.unit_price:''; $('s_cost').value=s.unit_cost||0;
-    $('s_day').value=s.billing_day||1; $('s_start').value=s.start_date||new Date().toISOString().slice(0,10); $('s_end').value=s.end_date||''; $('s_status').value=s.status||'active'; $('s_notes').value=s.notes||'';
+    $('s_day').value=s.billing_day||1; $('s_sep').checked=!!s.invoice_separately; $('s_start').value=s.start_date||new Date().toISOString().slice(0,10); $('s_end').value=s.end_date||''; $('s_status').value=s.status||'active'; $('s_notes').value=s.notes||'';
     const legacy=!!s.managed_by; $('legacyNote').style.display=legacy?'':'none'; $('legacyKind').textContent=s.managed_by==='sla'?'SLA contract':'WiFi subscriber';
-    ['s_company','s_client_name','s_email','s_phone','s_type','s_price','s_cost','s_day','s_start','s_end','s_status'].forEach(i=>$(i).disabled=legacy);
+    ['s_company','s_client_name','s_email','s_phone','s_type','s_price','s_cost','s_day','s_sep','s_start','s_end','s_status'].forEach(i=>$(i).disabled=legacy);
     prev(); HQ.showDrawer('subModal');
   }
   $('btnNewSub').onclick=()=>openSub(null);
@@ -360,7 +374,7 @@
     const id=$('s_id').value; const legacy=$('s_type').disabled;
     const body = legacy ? {site:$('s_site').value||null,description:$('s_desc').value,quantity:$('s_qty').value,notes:$('s_notes').value}
       : {company:$('s_company').value||null,client_name:$('s_client_name').value,contact_email:$('s_email').value,contact_phone:$('s_phone').value,site:$('s_site').value||null,service_type:$('s_type').value,description:$('s_desc').value,quantity:$('s_qty').value,
-         unit_price:$('s_price').value,unit_cost:$('s_cost').value||0,billing_day:$('s_day').value||1,start_date:$('s_start').value||null,end_date:$('s_end').value||null,status:$('s_status').value,notes:$('s_notes').value};
+         unit_price:$('s_price').value,unit_cost:$('s_cost').value||0,billing_day:$('s_day').value||1,invoice_separately:$('s_sep').checked,start_date:$('s_start').value||null,end_date:$('s_end').value||null,status:$('s_status').value,notes:$('s_notes').value};
     const r=await api('/portal/api/subscriptions/'+(id?id+'/':''),{method:id?'PATCH':'POST',body:JSON.stringify(body)}); const d=await r.json();
     if(r.ok){ HQ.hideDrawer('subModal'); alertBox('pageAlert','Service saved.','success'); loadSubs(); } else alertBox('subAlert',d.detail||JSON.stringify(d));
   };

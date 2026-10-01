@@ -1,3 +1,5 @@
+/* JSON that is safe inside a double-quoted onclick attribute: names with quotes, apostrophes or & no longer break a page */
+window.attrJson=function(v){return JSON.stringify(v).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/</g,'&lt;');};
 /* Rehumile TMW — HQ Shared Sidebar + Custom Drawer System */
 (function () {
 

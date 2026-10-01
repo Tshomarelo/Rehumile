@@ -460,7 +460,7 @@
 <div class="hq-backdrop" id="calloutModal-bd" onclick="HQ.hideDrawer('calloutModal')"></div>
 
 <script src="/portal/static/js/app.js"></script>
-<script src="/portal/static/js/hq-sidebar-menu.js"></script>
+<script src="/portal/static/js/hq-sidebar-menu.js?v=20261001"></script>
 <script src="/portal/static/js/hq-filters.js"></script>
 <script>(function(){function _i(){var s=document.querySelector('.js-sidebar'),t=document.querySelector('.js-sidebar-toggle');if(!s||!t)return;if(window.innerWidth<992&&localStorage.getItem('ims_sidebar')==='open')s.classList.add('collapsed');t.addEventListener('click',function(){setTimeout(function(){localStorage.setItem('ims_sidebar',s.classList.contains('collapsed')?'open':'closed');},50);});}document.readyState==='loading'?document.addEventListener('DOMContentLoaded',_i):_i();})();</script>
 <script>
@@ -561,8 +561,8 @@
           <td class="${marginCls}">${R(margin)} <small>(${pct}%)</small>${w.is_loss_making?'<br><span class="badge bg-danger small">Loss-making</span>':''}</td>
           <td>${statusBadge(w.status)}</td>
           <td class="d-flex gap-1 flex-wrap">${canEdit?`
-            <button class="btn btn-sm btn-outline-primary" onclick='editWifi(${JSON.stringify(w)})'>Edit</button>
-            <button class="btn btn-sm btn-outline-danger" onclick='deleteWifi("${w.id}","${w.client_name}")'>Del</button>`
+            <button class="btn btn-sm btn-outline-primary" onclick="editWifi(${attrJson(w)})">Edit</button>
+            <button class="btn btn-sm btn-outline-danger" onclick="deleteWifi(${attrJson(w.id)},${attrJson(w.client_name)})">Del</button>`
           :'<span class="text-muted small">View only</span>'}
           </td>
         </tr>`;
@@ -690,9 +690,9 @@
           <td>${s.contract_end?fmt(s.contract_end):'<span class="text-muted">Open-ended</span>'}</td>
           <td>${statusBadge(s.status)}</td>
           <td class="d-flex gap-1 flex-wrap">${canEdit?`
-            <button class="btn btn-sm btn-outline-primary" onclick='editSla(${JSON.stringify(s)})'>Edit</button>
-            <button class="btn btn-sm btn-outline-info" onclick='raiseCallout("${s.id}","${s.client_name}")'>Call-Out</button>
-            <button class="btn btn-sm btn-outline-danger" onclick='deleteSla("${s.id}","${s.client_name}")'>Del</button>`
+            <button class="btn btn-sm btn-outline-primary" onclick="editSla(${attrJson(s)})">Edit</button>
+            <button class="btn btn-sm btn-outline-info" onclick="raiseCallout(${attrJson(s.id)},${attrJson(s.client_name)})">Call-Out</button>
+            <button class="btn btn-sm btn-outline-danger" onclick="deleteSla(${attrJson(s.id)},${attrJson(s.client_name)})">Del</button>`
           :'<span class="text-muted small">View only</span>'}
           </td>
         </tr>`).join('');
