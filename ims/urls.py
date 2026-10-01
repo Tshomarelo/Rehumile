@@ -73,6 +73,7 @@ urlpatterns = [
     path('payments/payfast-notify/', views.PayFastITNView.as_view(), name='payfast-itn'),
     path('payments/', views.PaymentListView.as_view(), name='payment-list'),
     path('invoices/<uuid:invoice_id>/remind/', collections_views.InvoiceReminderView.as_view(), name='invoice-remind'),
+    path('invoices/<uuid:pk>/send/', collections_views.InvoiceSendView.as_view(), name='invoice-send'),
     path('invoices/<uuid:pk>/record-payment/', collections_views.RecordPaymentView.as_view(), name='invoice-record-payment'),
     path('collections/', collections_views.CollectionsView.as_view(), name='collections'),
     path('recurring-expenses/', collections_views.RecurringExpenseListView.as_view(), name='recurring-expense-list'),

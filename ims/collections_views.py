@@ -13,7 +13,7 @@ from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 
-from . import collections as coll
+from . import collections as coll, housekeeping
 from . import recurring
 from .ledger import ensure_seeded
 from .models import ExpenseCategory, Invoice, Notification, RecurringExpense, User
@@ -172,6 +172,7 @@ class CollectionsView(APIView):
     def get(self, request):
         if request.user.role not in ROLES:
             return _denied()
+        housekeeping.run_if_due(request.user)
         coll.mark_overdue()                      # cheap; keeps the list honest even if the daily job has not run
         today = coll._today()
         qs = Invoice.objects.filter(status__in=('sent', 'partially_paid', 'overdue')).select_related('company', 'wifi_subscriber', 'sla_contract')
@@ -217,8 +218,13 @@ class RecordPaymentView(APIView):
             coll.record_payment(inv, request.user, paid_on, method, reference, note, amount=d.get('amount'))
         except (ValueError, InvalidOperation) as exc:
             return Response({'detail': str(exc) if isinstance(exc, ValueError) else 'Amount must be a number.'}, status=400)
+        paid = paid_on or coll._today()
+        warning = ''
+        if inv.billing_period_end and (paid.year, paid.month) > (inv.billing_period_end.year, inv.billing_period_end.month):
+            warning = (f"This payment is dated {paid:%d %b %Y}, a later month than the work it pays for ({inv.billing_period_end:%B %Y}). "
+                       f"It will count as money received in {paid:%B %Y}. If the money really arrived earlier, change the payment date.")
         return Response({'id': str(inv.id), 'status': inv.status, 'payment_date': inv.payment_date.isoformat() if inv.payment_date else None,
-                         'amount_paid': float(inv.amount_paid), 'balance_due': float(inv.balance_due)}, status=201)
+                         'amount_paid': float(inv.amount_paid), 'balance_due': float(inv.balance_due), 'warning': warning}, status=201)
 
 
 class InvoiceReminderView(APIView):
@@ -237,6 +243,40 @@ class InvoiceReminderView(APIView):
             return Response({'detail': 'There is no email address on file for this client. Add one on the subscription or company.'}, status=400)
         ok = coll.send_reminder(inv, _base(request), overdue=inv.status == 'overdue' or coll.days_overdue(inv) > 0)
         return Response({'detail': 'Reminder sent.' if ok else 'The email could not be sent.', 'sent': ok}, status=200 if ok else 502)
+
+
+class InvoiceSendView(APIView):
+    """POST — email an existing invoice to the client. A draft is issued (status Sent, booked in the ledger) when it goes out."""
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pk):
+        if request.user.role not in ROLES:
+            return _denied()
+        inv = Invoice.objects.select_related('company', 'wifi_subscriber', 'sla_contract').filter(pk=pk).first()
+        if not inv:
+            return Response({'detail': 'Invoice not found.'}, status=404)
+        if inv.status in ('paid', 'cancelled'):
+            return Response({'detail': f'This invoice is {inv.status}; there is nothing to send.'}, status=400)
+        to = coll.recipients_for(inv)
+        if request.data.get('email'):
+            to = [str(request.data['email']).strip()]
+        if not to:
+            return Response({'detail': 'There is no email address on file for this client. Add one on the company or service, or type one here.'}, status=400)
+        from .subscription_views import send_invoice_email
+        issued = False
+        if inv.status == 'draft':
+            from django.utils import timezone as _tz
+            from .ledger import post_invoice_sent
+            inv.status = 'sent'
+            inv.sent_at = _tz.now()
+            inv.save()
+            post_invoice_sent(inv, request.user)
+            issued = True
+        ok = send_invoice_email(inv, to, _base(request))
+        if not ok:
+            return Response({'detail': 'The email could not be sent.' + (' The invoice was issued though.' if issued else ''), 'sent': False, 'status': inv.status}, status=502)
+        return Response({'detail': f"Invoice {inv.invoice_number} sent to {', '.join(to)}." + (' It is now issued.' if issued else ''),
+                         'sent': True, 'status': inv.status, 'issued': issued})
 
 
 # ── Client-facing invoice page ───────────────────────────────────────────────

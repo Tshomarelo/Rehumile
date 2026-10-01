@@ -351,3 +351,32 @@ def test_editing_invoice_type_dropdown_value_is_supported(api, db):
     inv = billing.generate(Y, M)[0]
     r = api.patch(f'/api/invoices/{inv.id}/', {'invoice_type': 'subscription', 'notes': 'edited'}, format='json')
     assert r.status_code == 200 and r.data['invoice_type'] == 'subscription'
+
+
+def test_invoice_separately_gets_its_own_invoice_and_domain_type(db):
+    acme = company('Acme')
+    sub(acme, stype='wifi', price=599, desc='fibre')
+    sub(acme, stype='email', price=120)
+    sub(acme, stype='domain', price=15, desc='acme.co.za', invoice_separately=True)
+    p = billing.plan(Y, M)
+    assert len(p['groups']) == 2 and sorted(len(g['lines']) for g in p['groups']) == [1, 2]
+    sep = next(g for g in p['groups'] if g['separate'])
+    assert sep['lines'][0]['service_type'] == 'domain' and sep['lines'][0]['description'] == 'Domain — acme.co.za'
+    made = billing.generate(Y, M)
+    assert len(made) == 2 and {i.invoice_type for i in made} == {'subscription'}
+    assert billing.generate(Y, M) == []                                         # still idempotent
+
+
+def test_line_wording_is_not_doubled(db):
+    acme = company('Acme')
+    s1 = sub(acme, stype='wifi', price=599, desc='WiFi / Internet (AX123)')
+    assert billing._line(s1)['description'] == 'WiFi / Internet (AX123)'
+    s2 = sub(acme, stype='hosting', price=100, desc='acme.co.za')
+    assert billing._line(s2)['description'] == 'Website hosting — acme.co.za'
+
+
+def test_api_accepts_domain_and_invoice_separately(api, db):
+    co = company('Acme')
+    r = api.post('/api/subscriptions/', {'company': str(co.id), 'service_type': 'domain', 'unit_price': '15', 'invoice_separately': True,
+                                         'start_date': '2026-01-01'}, format='json')
+    assert r.status_code == 201 and r.data['invoice_separately'] is True and r.data['service_label'] == 'Domain'

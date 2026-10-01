@@ -26,7 +26,7 @@ from .models import Invoice, InvoiceItem, Subscription
 
 CENT = Decimal('0.01')
 SERVICE_LABELS = {
-    'wifi': 'WiFi / Internet', 'email': 'Email hosting', 'hosting': 'Website hosting',
+    'wifi': 'WiFi / Internet', 'email': 'Email hosting', 'hosting': 'Website hosting', 'domain': 'Domain',
     'sla': 'SLA retainer', 'other': 'Other service',
 }
 
@@ -67,6 +67,8 @@ def _billed_subscription_ids(period_start, period_end):
 
 def _group_key(sub):
     """(kind, id, site_id): who receives the invoice."""
+    if sub.invoice_separately:
+        return ('service', str(sub.id), None)           # its own invoice
     if sub.company_id:
         if sub.site_id and sub.site.billing_mode == 'self':
             return ('company', str(sub.company_id), str(sub.site_id))
@@ -77,7 +79,8 @@ def _group_key(sub):
 def _line(sub):
     label = SERVICE_LABELS.get(sub.service_type, sub.get_service_type_display())
     desc = (sub.description or '').strip()
-    text = label if not desc or desc.lower() == label.lower() else f"{label} — {desc}"
+    # never repeat the label: "WiFi / Internet (AX123)" already starts with it
+    text = label if not desc or desc.lower() == label.lower() else (desc if desc.lower().startswith(label.lower()) else f"{label} — {desc}")
     site_name = sub.site.name if sub.site_id else ''
     return {
         'subscription_id': str(sub.id), 'service_type': sub.service_type, 'description': text[:255],
@@ -129,7 +132,7 @@ def plan(year, month, vat_rate=0):
             continue
         key = _group_key(sub)
         g = groups.setdefault(key, {'key': '|'.join(str(k or '') for k in key), 'company': sub.company, 'site': None,
-                                    'client_name': sub.client_label, 'subs': [], 'lines': []})
+                                    'client_name': sub.client_label, 'subs': [], 'lines': [], 'separate': key[0] == 'service'})
         if key[2]:
             g['site'] = sub.site
             g['client_name'] = f"{sub.client_label} — {sub.site.name}"
@@ -147,7 +150,7 @@ def plan(year, month, vat_rate=0):
         if due < _today():
             due = _today() + timedelta(days=7)     # never issue an invoice that is already late: give 7 days
         out.append({
-            'key': g['key'], 'company_id': str(g['company'].id) if g['company'] else None,
+            'key': g['key'], 'separate': g['separate'], 'company_id': str(g['company'].id) if g['company'] else None,
             'site_id': str(g['site'].id) if g['site'] else None, 'client_name': g['client_name'],
             'branches': sorted({l['site_name'] for l in g['lines'] if l['site_name']}),
             'lines': [{**l, 'quantity': float(l['quantity']), 'unit_price': float(l['unit_price']),
@@ -183,6 +186,8 @@ def generate(year, month, *, status='sent', vat_rate=0, only_keys=None):
             continue
         site = g['_site']
         title = f"Monthly services — {start.strftime('%B %Y')}" + (f" — {site.name}" if site else '')
+        if g.get('separate'):
+            title = f"{g['lines'][0]['description']} — {start.strftime('%B %Y')}"
         inv = Invoice.objects.create(
             invoice_number=_next_invoice_number(start), company=g['_company'],
             invoice_type='subscription', billing_period_start=start, billing_period_end=end,

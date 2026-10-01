@@ -328,3 +328,30 @@ def test_part_payments_settle_an_invoice_in_steps(api, unpaid):
     agg = LedgerEntry.objects.aggregate(d=Sum('debit'), c=Sum('credit'))
     assert agg['d'] == agg['c'] > 0
     assert api.post(url, {'amount': '1'}, format='json').status_code == 400   # nothing left to pay
+
+
+def test_record_payment_warns_when_dated_in_a_later_month_than_the_work(api, unpaid):
+    inv = by_name(unpaid, 'Thabo Home')                                  # September invoice
+    Invoice.objects.filter(pk=inv.pk).update(billing_period_end=date(2026, 9, 30))
+    r = api.post(f'/api/invoices/{inv.id}/record-payment/', {'paid_on': '2026-09-30'}, format='json')
+    assert r.status_code == 201 and r.data['warning'] == ''
+    inv2 = by_name(unpaid, 'Nomsa Home')
+    Invoice.objects.filter(pk=inv2.pk).update(billing_period_end=date(2026, 8, 31))
+    r = api.post(f'/api/invoices/{inv2.id}/record-payment/', {'paid_on': '2026-09-30'}, format='json')
+    assert r.status_code == 201 and 'later month' in r.data['warning'] and 'August 2026' in r.data['warning']
+
+
+def test_send_invoice_issues_a_draft_and_emails_it(api, unpaid):
+    inv = by_name(unpaid, 'Thabo Home')
+    Invoice.objects.filter(pk=inv.pk).update(status='draft', sent_at=None)
+    mail.outbox.clear()
+    r = api.post(f'/api/invoices/{inv.id}/send/', {}, format='json')
+    assert r.status_code == 200 and r.data['sent'] and r.data['issued'] and r.data['status'] == 'sent'
+    assert mail.outbox and inv.invoice_number in mail.outbox[0].body and 'R 399.00' in mail.outbox[0].body
+    inv.refresh_from_db(); assert inv.status == 'sent' and inv.sent_at
+    assert LedgerEntry.objects.filter(transaction__source_model='Invoice', transaction__source_id=str(inv.id)).exists()
+    r = api.post(f'/api/invoices/{inv.id}/send/', {}, format='json')               # a sent invoice can be sent again
+    assert r.status_code == 200 and not r.data['issued'] and len(mail.outbox) == 2
+    Invoice.objects.filter(pk=inv.pk).update(status='paid')
+    assert api.post(f'/api/invoices/{inv.id}/send/', {}, format='json').status_code == 400
+    assert client_for(make_user('cashier')).post(f'/api/invoices/{by_name(unpaid, "Nomsa Home").id}/send/', {}, format='json').status_code == 403

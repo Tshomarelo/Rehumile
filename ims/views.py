@@ -3745,6 +3745,8 @@ class RevenueIntelligenceView(APIView):
         if request.user.role not in ('admin', 'finance', 'agent'):
             return Response({'detail': 'HQ access required.'}, status=403)
 
+        from . import housekeeping as _housekeeping
+        _housekeeping.run_if_due(request.user)
         today = date.today()
         m_start, m_end = _month_bounds(today.year, today.month)
         alloc = _revenue_alloc()

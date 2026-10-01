@@ -2366,6 +2366,7 @@ class ServiceTypeChoices(models.TextChoices):
     WIFI = 'wifi', _('WiFi / Internet')
     EMAIL = 'email', _('Email hosting')
     HOSTING = 'hosting', _('Website hosting')
+    DOMAIN = 'domain', _('Domain')
     SLA = 'sla', _('SLA retainer')
     OTHER = 'other', _('Other service')
 
@@ -2425,6 +2426,7 @@ class Subscription(models.Model):
     unit_price = models.DecimalField(max_digits=12, decimal_places=2, help_text='What the client pays per unit per month')
     unit_cost = models.DecimalField(max_digits=12, decimal_places=2, default=0, help_text='What it costs you per unit per month')
     billing_day = models.PositiveSmallIntegerField(default=1, help_text='Invoice is due on this day of the month')
+    invoice_separately = models.BooleanField(default=False, help_text='Give this service its own invoice instead of combining it with the client\'s other services')
     start_date = models.DateField()
     end_date = models.DateField(null=True, blank=True)
     status = models.CharField(max_length=20, choices=SubscriberStatusChoices.choices, default='active', db_index=True)
