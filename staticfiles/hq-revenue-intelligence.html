@@ -84,6 +84,7 @@
           <li class="nav-item"><a class="nav-link active" href="#" data-bi="overview">Overview</a></li>
           <li class="nav-item" id="biReportTab" style="display:none"><a class="nav-link" href="#" data-bi="report">Profit &amp; Money Owed</a></li>
           <li class="nav-item" id="biPnlTab" style="display:none"><a class="nav-link" href="#" data-bi="pnl">Profit &amp; Loss</a></li>
+          <li class="nav-item" id="biPbiTab" style="display:none"><a class="nav-link" href="#" data-bi="pbi">Profit by invoice</a></li>
         </ul>
         <div id="bi-overview">
 
@@ -244,6 +245,20 @@
         </div>
 
         </div><!-- /bi-overview -->
+
+        <!-- ═══ Profit by invoice (admin / finance) ═══ -->
+        <div id="bi-pbi" style="display:none">
+          <div class="card mb-3"><div class="card-body d-flex flex-wrap gap-2 align-items-center">
+            <button class="btn btn-sm btn-outline-secondary" id="pbiPrev" title="Previous month">&#8249;</button>
+            <input type="month" class="form-control form-control-sm" id="pbiMonth" style="width:170px">
+            <button class="btn btn-sm btn-outline-secondary" id="pbiNext" title="Next month">&#8250;</button>
+            <button class="btn btn-sm btn-primary" id="pbiGo">Show</button>
+            <div class="ms-auto d-flex gap-2"><button class="btn btn-sm btn-outline-secondary" id="pbiPdf">PDF</button><button class="btn btn-sm btn-outline-secondary" id="pbiCsv">CSV</button></div>
+            <div class="small text-muted w-100">One row per invoice for the month, by billing period. Amounts exclude VAT; drafts and cancelled invoices are left out. Costs are the full cost of each invoice (line costs, Axxess/service costs and job costs tied to it).</div>
+          </div></div>
+          <div id="pbiAlert"></div>
+          <div id="pbiBody"><div class="text-muted text-center py-5">Press <b>Show</b>.</div></div>
+        </div>
 
         <!-- ═══ Profit & Loss (admin / finance) ═══ -->
         <div id="bi-pnl" style="display:none">
@@ -582,16 +597,18 @@
 
   // ═══ Profit & Money Owed ═══════════════════════════════════════════════
   const canReport=['admin','finance'].includes(userData.role);
-  if(canReport){ document.getElementById('biReportTab').style.display=''; document.getElementById('biPnlTab').style.display=''; }
+  if(canReport){ document.getElementById('biReportTab').style.display=''; document.getElementById('biPnlTab').style.display=''; document.getElementById('biPbiTab').style.display=''; }
   document.querySelectorAll('#biTabs a').forEach(a=>a.onclick=e=>{ e.preventDefault(); showBi(a.dataset.bi); });
   function showBi(name){
     document.querySelectorAll('#biTabs a').forEach(x=>x.classList.toggle('active',x.dataset.bi===name));
     document.getElementById('bi-overview').style.display=name==='overview'?'':'none';
     document.getElementById('bi-report').style.display=name==='report'?'':'none';
     document.getElementById('bi-pnl').style.display=name==='pnl'?'':'none';
-    if(history.replaceState) history.replaceState(null,'',name==='report'?'#report':name==='pnl'?'#pnl':location.pathname);
+    document.getElementById('bi-pbi').style.display=name==='pbi'?'':'none';
+    if(history.replaceState) history.replaceState(null,'',name==='report'?'#report':name==='pnl'?'#pnl':name==='pbi'?'#pbi':location.pathname);
     if(name==='report' && !window._rpLoaded){ window._rpLoaded=true; loadReport(); }
     if(name==='pnl' && !window._pnlLoaded){ window._pnlLoaded=true; loadPnl(); }
+    if(name==='pbi' && !window._pbiLoaded){ window._pbiLoaded=true; loadPbi(); }
   }
   const E=x=>String(x==null?'':x).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
   const M=n=>'R '+(parseFloat(n)||0).toLocaleString('en-ZA',{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -694,6 +711,42 @@
   async function pnlDownload(kind){ try{ const r=await api('/portal/api/finance/pnl/'+kind+'/?'+pnlQuery()); if(!r.ok){ showAlert('pnlAlert','Could not export.'); return; }
       const blob=await r.blob(), a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='profit-and-loss.'+kind; document.body.appendChild(a); a.click(); a.remove(); }catch(e){ if(e.message!=='Unauth') showAlert('pnlAlert','Could not export.'); } }
   document.getElementById('pnlPdf').onclick=()=>pnlDownload('pdf'); document.getElementById('pnlCsv').onclick=()=>pnlDownload('csv');
+
+  // ═══ Profit by invoice ═══════════════════════════════════════════════════
+  document.getElementById('pbiMonth').value=new Date().toISOString().slice(0,7);
+  function pbiShift(d){ const [y,m]=document.getElementById('pbiMonth').value.split('-').map(Number); const dt=new Date(y,m-1+d,1); document.getElementById('pbiMonth').value=dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0'); loadPbi(); }
+  document.getElementById('pbiPrev').onclick=()=>pbiShift(-1); document.getElementById('pbiNext').onclick=()=>pbiShift(1);
+  document.getElementById('pbiMonth').onchange=()=>loadPbi(); document.getElementById('pbiGo').onclick=()=>loadPbi();
+  const RN=n=>{ const v=parseFloat(n)||0; const t=M(Math.abs(v)); return v<0?`<span class="rp-neg">−${t}</span>`:t; };
+  function pbiTable(sec,label){
+    return `<div class="card mb-3"><div class="card-header"><b>${label}</b></div><div class="table-responsive"><table class="table table-sm mb-0"><thead><tr class="text-muted small"><th>Invoice</th><th>Client</th><th>Job</th><th class="rp-num">Amount</th><th class="rp-num">Costs</th><th class="rp-num">Profit</th><th>Note</th></tr></thead><tbody>`+
+      (sec.rows.length?sec.rows.map(r=>`<tr><td><a href="${E(r.url)}"><b>${E(r.invoice)}</b></a></td><td>${E(r.client)}</td><td>${E(r.job)}</td><td class="rp-num">${M(r.amount)}</td><td class="rp-num">${M(r.cost)}</td><td class="rp-num">${RN(r.profit)}</td><td class="small ${r.no_cost?'text-warning':'text-muted'}">${E(r.note)}</td></tr>`).join(''):'<tr><td colspan="7" class="text-center text-muted py-3">None</td></tr>')+
+      `</tbody><tfoot><tr class="fw-bold border-top"><td colspan="3">Total</td><td class="rp-num">${M(sec.totals.amount)}</td><td class="rp-num">${M(sec.totals.cost)}</td><td class="rp-num">${RN(sec.totals.profit)}</td><td></td></tr></tfoot></table></div></div>`;
+  }
+  async function loadPbi(){
+    const box=document.getElementById('pbiBody'); document.getElementById('pbiAlert').innerHTML=''; box.innerHTML='<div class="text-center text-muted py-5">Working it out…</div>';
+    try{
+      const r=await api('/portal/api/finance/profit-by-invoice/?month='+document.getElementById('pbiMonth').value); const d=await r.json();
+      if(!r.ok){ box.innerHTML=''; showAlert('pbiAlert',d.detail||'Could not build the report.'); return; }
+      let out='';
+      if(!d.check.ok) out+=`<div class="alert alert-danger"><b>Warning:</b> this report does not agree with the dashboard / Profit &amp; Loss (report ${M(d.check.report)}, dashboard ${M(d.check.dashboard)}, Profit &amp; Loss ${M(d.check.pnl)}).</div>`;
+      d.warnings.filter(w=>w.kind!=='mismatch').forEach(w=>{ out+=`<div class="rp-warn"><b>${E(w.title)}</b><div class="small">${E(w.detail)}</div></div>`; });
+      out+=pbiTable(d.unpaid,'A. Still unpaid — '+E(d.label))+pbiTable(d.paid,'B. Already paid');
+      out+=`<div class="card mb-3"><div class="card-header d-flex justify-content-between"><b>C. Running costs</b><b>${M(d.running.amount)}</b></div><div class="card-body small p-0"><table class="table table-sm mb-0"><tbody>`+
+        d.running.items.map(g=>`<tr class="fw-semibold"><td>${E(g.item)}</td><td class="text-muted fw-normal">${E([...new Set(g.rows.map(x=>x.label))].join(', '))}</td><td class="rp-num">${M(g.amount)}</td></tr>`).join('')+
+        `<tr class="fw-bold border-top"><td colspan="2">Total running costs</td><td class="rp-num">${M(d.running.amount)}</td></tr></tbody></table></div></div>`;
+      out+=`<div class="rp-eq mb-3"><div class="fw-bold mb-1">D. Profit if everyone pays</div><table class="w-100">`+d.summary.map(l=>`<tr class="${l.total?'fw-bold border-top':''}"><td style="width:28px">${l.sign}</td><td>${E(l.label)}</td><td class="rp-num">${l.key==='net'?RN(l.amount):M(l.amount)}</td></tr>`).join('')+
+        `</table><div class="small mt-2 ${d.check.ok?'text-success':'rp-neg'}">${d.check.ok?'✓ Agrees with the dashboard “Profit if all invoices are paid” and the Profit &amp; Loss (accrual) to the rand.':'✗ Does NOT agree with the dashboard / Profit &amp; Loss — see the warning above.'}</div></div>`;
+      out+=`<div class="card mb-3"><div class="card-header d-flex justify-content-between"><b>E. What we owe suppliers (Axxess account bills)</b><b>${M(d.suppliers.total)}</b></div><div class="card-body small"><div class="text-muted mb-2">${E(d.suppliers.note)}</div>`+
+        (d.suppliers.rows.length?`<table class="table table-sm mb-0"><thead><tr class="text-muted"><th>Account</th><th>What it covers</th><th>Status</th><th class="rp-num">Amount</th></tr></thead><tbody>`+d.suppliers.rows.map(b=>`<tr><td><b>${E(b.account)}</b></td><td>${E(b.covers)}</td><td>${b.status==='paid'?'<span class="rp-pos">paid</span>':'<span class="rp-neg">unpaid</span>'}</td><td class="rp-num">${M(b.amount)}</td></tr>`).join('')+
+        `<tr class="fw-bold border-top"><td colspan="3">Total</td><td class="rp-num">${M(d.suppliers.total)}</td></tr><tr class="fw-bold"><td colspan="3">Still to pay</td><td class="rp-num rp-neg">${M(d.suppliers.still_to_pay)}</td></tr></tbody></table>`:'<div class="text-muted">No supplier bills logged for this month. Log them under Expenses &rarr; Supplier bills (Axxess).</div>')+`</div></div>`;
+      box.innerHTML=out;
+    }catch(e){ if(e.message!=='Unauth'){ box.innerHTML=''; showAlert('pbiAlert','Could not load the report.'); } }
+  }
+  async function pbiDownload(kind){ try{ const r=await api('/portal/api/finance/profit-by-invoice/'+kind+'/?month='+document.getElementById('pbiMonth').value); if(!r.ok){ showAlert('pbiAlert','Could not export.'); return; }
+      const blob=await r.blob(), a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='profit-by-invoice-'+document.getElementById('pbiMonth').value+'.'+kind; document.body.appendChild(a); a.click(); a.remove(); }catch(e){ if(e.message!=='Unauth') showAlert('pbiAlert','Could not export.'); } }
+  document.getElementById('pbiPdf').onclick=()=>pbiDownload('pdf'); document.getElementById('pbiCsv').onclick=()=>pbiDownload('csv');
+  if(location.hash==='#pbi' && canReport) showBi('pbi');
   if(location.hash==='#pnl' && canReport) showBi('pnl');
   if(location.hash==='#report' && canReport) showBi('report');
 

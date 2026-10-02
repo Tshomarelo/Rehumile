@@ -10,6 +10,7 @@ Two views of the same period (all amounts exclude VAT):
 Every figure carries the records behind it. Figures come from ims/finance.py (the same engine as the dashboard).
 Internal only: it shows costs and margins, so it is never exposed to clients.
 """
+import re
 from collections import OrderedDict
 from datetime import date
 from decimal import Decimal
@@ -79,12 +80,19 @@ def build(view='accrual', period='month', anchor=None, date_from=None, date_to=N
     today = today or billing._today()
     start, end, label = finance.resolve_period(period, anchor, date_from, date_to, today=today)
 
-    rev_rows, cost_rows = [], []
+    rev_rows, cost_rows, job_rows = [], [], []
+    jobmap = finance.job_costs_by_invoice()
+    linked_ids = {e.id for lst in jobmap.values() for e in lst}
     if view == 'accrual':
         for inv in finance._issued(start, end):
             r, c = _invoice_line_rows(inv, Decimal('1'), finance.invoice_period_date(inv), inv.status == 'paid')
             rev_rows += r
             cost_rows += c
+            for e in jobmap.get(inv.id, []):         # job / parts / labour costs tied to this invoice count with it
+                job_rows.append({'ref': inv.invoice_number, 'label': finance._client_name(inv), 'line': e.description or e.vendor, 'branch': '',
+                                 'date': (finance.invoice_period_date(inv) or e.expense_date).isoformat(), 'paid': e.payment_status == 'paid', 'amount': _f(e.amount),
+                                 'stream': 'job', 'source': f"Job cost logged as an expense — {e.vendor}, {e.expense_date:%d %b %Y}" + ('' if e.payment_status == 'paid' else ' (unpaid)'),
+                                 'url': '/portal/dashboard/expenses/'})
     else:
         for ev in finance._paid_events(start, end):
             r, c = _invoice_line_rows(ev._inv, ev.frac, ev.payment_date, True)
@@ -101,6 +109,8 @@ def build(view='accrual', period='month', anchor=None, date_from=None, date_to=N
     parts, opex_groups = [], OrderedDict()
     if view == 'accrual':
         for e in base_exp.filter(expense_date__gte=start, expense_date__lte=end, is_supplier_bill=False).order_by('expense_date'):
+            if e.id in linked_ids:
+                continue
             if e.category == 'cogs':
                 parts.append(_expense_row(e))
             elif e.category != 'capital':
@@ -131,6 +141,8 @@ def build(view='accrual', period='month', anchor=None, date_from=None, date_to=N
             cost_groups.append(_group(f"Axxess / supplier cost — {STREAM_LABELS.get(k, k)}", rows, k))
     elif cost_rows:
         cost_groups.append(_group('Supplier bills paid (e.g. Axxess account)', cost_rows, 'supplier_bills'))
+    if job_rows:
+        cost_groups.append(_group('Job / parts / labour costs tied to invoices', job_rows, 'job_costs'))
     if parts:
         cost_groups.append(_group('Parts / stock bought', parts, 'parts'))
     opex = [_group(k, v, k) for k, v in opex_groups.items()]
@@ -222,4 +234,139 @@ def build(view='accrual', period='month', anchor=None, date_from=None, date_to=N
         'we_owe': {'amount': _f(owe_total), 'rows': owe_rows, 'by_vendor': [{'vendor': k, 'amount': _f(v)} for k, v in by_vendor.items()],
                    'explain': 'Expenses and supplier bills (e.g. the Axxess account) that are marked unpaid, so we still have to pay them.'},
         'warnings': warnings,
+    }
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Profit by invoice: one row per invoice for a month, so the owner can budget on real figures
+# ─────────────────────────────────────────────────────────────────────────────
+
+SERVICE_WORDS = {'wifi': 'Axxess', 'email': 'email', 'hosting': 'hosting', 'domain': 'domain', 'sla': 'SLA'}
+
+
+def _short(text, n=40):
+    text = ' '.join((text or '').split())
+    return text if len(text) <= n else text[:n - 1].rstrip() + '…'
+
+
+def _expense_label(e):
+    text = re.sub(r'\(?\s*invoice\s+INV-[\w-]+\s*\)?', '', e.description or '', flags=re.I).strip(' -—:')
+    return _short(text or (e.expense_category.name if e.expense_category_id else e.vendor), 30)
+
+
+def _cost_note(inv, lines, jobs, cost, engine_line_cost):
+    """'Axxess R700 + hosting R300' / 'supplies R1,250 + labour R600' / 'no cost recorded'."""
+    if cost == 0:
+        return 'no cost recorded'
+    parts = OrderedDict()
+    for ln in lines:
+        if ln['cost']:
+            word = SERVICE_WORDS.get(ln['service_type']) or _short(ln['description'], 24)
+            parts[word] = parts.get(word, ZERO) + ln['cost']
+    drift = engine_line_cost - sum(parts.values(), ZERO)
+    if abs(drift) >= Decimal('0.005'):
+        parts['other cost'] = parts.get('other cost', ZERO) + drift
+    for e in jobs:
+        parts[_expense_label(e)] = parts.get(_expense_label(e), ZERO) + e.amount
+    return ' + '.join(f"{k} {_money(v)}" for k, v in parts.items() if v)
+
+
+def profit_by_invoice(month=None, today=None):
+    today = today or billing._today()
+    if month:
+        y, m = (int(x) for x in str(month)[:7].split('-'))
+    else:
+        y, m = today.year, today.month
+    start, end = billing.month_bounds(y, m)
+    jobmap = finance.job_costs_by_invoice()
+    linked_ids = {e.id for lst in jobmap.values() for e in lst}
+    invoices = finance._issued(start, end)
+
+    unpaid, paid = [], []
+    for inv in sorted(invoices, key=lambda i: (finance._client_name(i).lower(), i.invoice_number)):
+        lines = costlines.lines(inv)
+        split = finance.invoice_split(inv)
+        engine_line_cost = split['axxess'] + split['services_cost']
+        jobs = jobmap.get(inv.id, [])
+        cost = engine_line_cost + sum((e.amount for e in jobs), ZERO)       # the same cost the accrual P&L and the dashboard use
+        amount = inv.subtotal
+        job_text = inv.description or '; '.join(ln['description'] for ln in lines)
+        note = _cost_note(inv, lines, jobs, cost, engine_line_cost)
+        if inv.status == 'partially_paid':
+            note += f" · part-paid, {_money(inv.amount_paid)} received"
+        row = {'id': str(inv.id), 'invoice': inv.invoice_number, 'client': finance._client_name(inv), 'job': _short(job_text), 'amount': _f(amount),
+               'cost': _f(cost), 'profit': _f(amount - cost), 'note': note, 'status': inv.status, 'no_cost': cost == 0,
+               'url': costlines.invoice_link(inv), 'period': (finance.invoice_period_date(inv) or start).isoformat()}
+        (paid if inv.status == 'paid' else unpaid).append(row)
+
+    def totals(rows):
+        a, c = sum((D(r['amount']) for r in rows), ZERO), sum((D(r['cost']) for r in rows), ZERO)
+        return {'amount': _f(a), 'cost': _f(c), 'profit': _f(a - c)}
+
+    D = lambda x: Decimal(str(x))
+    tu, tp = totals(unpaid), totals(paid)
+
+    # running costs: everything that is not tied to an invoice and is not a supplier account bill
+    exp = Expense.objects.select_related('expense_category', 'account').filter(expense_date__gte=start, expense_date__lte=end, is_supplier_bill=False).order_by('expense_date')
+    groups = OrderedDict()
+    for e in exp:
+        if e.id in linked_ids or e.category == 'capital':
+            continue
+        name = ('Parts / stock bought' if e.category == 'cogs' else (e.expense_category.name if e.expense_category_id else e.account.name))
+        groups.setdefault(name, []).append({'label': e.vendor, 'line': e.description, 'date': e.expense_date.isoformat(), 'amount': _f(e.amount),
+                                            'paid': e.payment_status == 'paid', 'url': '/portal/dashboard/expenses/'})
+    running = [{'item': k, 'amount': _f(sum((D(r['amount']) for r in v), ZERO)), 'rows': v} for k, v in groups.items()]
+    running_total = sum((D(g['amount']) for g in running), ZERO)
+
+    payroll_total = sum((p.employer_cost for p in finance._payroll_qs(start, end)), ZERO)
+    till = sum((t.amount for t in finance._direct_sales_qs(start, end)), ZERO)
+    invoiced = D(tu['amount']) + D(tp['amount'])
+    costs = D(tu['cost']) + D(tp['cost'])
+    gross = invoiced + till - costs
+    net = gross - running_total - payroll_total
+    summary_lines = [{'key': 'invoiced', 'label': 'Invoiced in the period (still unpaid + already paid)', 'sign': '+', 'amount': _f(invoiced)}]
+    if till:
+        summary_lines.append({'key': 'till', 'label': 'Till sales', 'sign': '+', 'amount': _f(till)})
+    summary_lines += [{'key': 'costs', 'label': 'Less costs on invoices', 'sign': '−', 'amount': _f(costs)},
+                      {'key': 'gross', 'label': 'Gross profit', 'sign': '=', 'amount': _f(gross), 'total': True},
+                      {'key': 'running', 'label': 'Less running costs', 'sign': '−', 'amount': _f(running_total)}]
+    if payroll_total:
+        summary_lines.append({'key': 'payroll', 'label': 'Less payroll', 'sign': '−', 'amount': _f(payroll_total)})
+    summary_lines.append({'key': 'net', 'label': 'NET PROFIT', 'sign': '=', 'amount': _f(net), 'total': True})
+
+    # supplier account bills for the month: already counted above through the invoices / recurring costs
+    bills = []
+    for b in Expense.objects.select_related('supplier_account').prefetch_related('lines').filter(is_supplier_bill=True, expense_date__gte=start, expense_date__lte=end).order_by('supplier_account__account_number'):
+        covers = ', '.join(l.description for l in b.lines.all()) or b.description or b.vendor
+        bills.append({'id': str(b.id), 'account': b.supplier_account.account_number if b.supplier_account_id else b.vendor, 'covers': _short(covers, 80),
+                      'status': b.payment_status, 'amount': _f(b.amount), 'paid_on': b.paid_on.isoformat() if b.paid_on else None})
+    bills_total = sum((D(b['amount']) for b in bills), ZERO)
+    still_to_pay = sum((D(b['amount']) for b in bills if b['status'] != 'paid'), ZERO)
+
+    # the check: this report, the dashboard figure and the accrual P&L must agree to the rand
+    dash_net = D(finance.accrual_summary(start, end, today)['profit_if_paid'])
+    pnl_net = D(next(l['amount'] for l in build('accrual', 'month', start, today=today)['lines'] if l['key'] == 'net'))
+    ok = abs(net - dash_net) < Decimal('0.005') and abs(net - pnl_net) < Decimal('0.005')
+    # job costs dated this month that belong to an invoice outside this month's list (draft / another month): not counted here
+    in_list = {i.id for i in invoices}
+    stray = [e for inv_id, lst in jobmap.items() if inv_id not in in_list for e in lst if start <= e.expense_date <= end]
+    warnings = []
+    if not ok:
+        warnings.append({'kind': 'mismatch', 'title': 'This report does not agree with the dashboard / Profit & Loss',
+                         'detail': f"Report net profit {_money(net)}, dashboard {_money(dash_net)}, Profit & Loss {_money(pnl_net)}. Please tell support."})
+    if stray:
+        warnings.append({'kind': 'stray_job_costs', 'title': f"{len(stray)} job cost(s) worth {_money(sum((e.amount for e in stray), ZERO))} belong to invoices that are not in this month's list",
+                         'detail': 'They count with their invoice (a draft or another month), not here: ' + '; '.join(_short(e.description or e.vendor, 40) for e in stray[:5])})
+    no_cost = [r['invoice'] for r in unpaid + paid if r['no_cost']]
+    if no_cost:
+        warnings.append({'kind': 'no_cost', 'title': f"{len(no_cost)} invoice(s) have no cost recorded (shown as 100% profit)", 'detail': ', '.join(no_cost[:20])})
+    return {
+        'month': start.strftime('%Y-%m'), 'label': start.strftime('%B %Y'), 'period': {'start': start.isoformat(), 'end': end.isoformat(), 'label': start.strftime('%B %Y')},
+        'unpaid': {'rows': unpaid, 'totals': tu}, 'paid': {'rows': paid, 'totals': tp},
+        'running': {'items': running, 'amount': _f(running_total)}, 'summary': summary_lines, 'net_profit': _f(net),
+        'suppliers': {'rows': bills, 'total': _f(bills_total), 'still_to_pay': _f(still_to_pay),
+                      'note': 'Already counted above (through the invoices and your own recurring costs) — not an extra cost.'},
+        'check': {'report': _f(net), 'dashboard': _f(dash_net), 'pnl': _f(pnl_net), 'ok': ok}, 'warnings': warnings,
+        'note': 'All amounts exclude VAT. Draft and cancelled invoices are left out. Invoices are placed in a month by their billing period.',
+        'generated_at': None,
     }

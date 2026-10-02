@@ -121,3 +121,103 @@ def build_csv(rep):
     for r in rep['we_owe']['rows']:
         w.writerow(['', '', r['ref'], r['label'], r['line'], '', r['date'], 'no', f"{r['amount']:.2f}"])
     return out.getvalue()
+
+
+# ── Profit by invoice ─────────────────────────────────────────────────────────
+
+def build_invoice_pdf(rep, company_name='Rehumile TMW', compress=True):
+    st = _styles()
+    buf = io.BytesIO()
+    page = landscape(A4)
+    doc = SimpleDocTemplate(buf, pagesize=page, leftMargin=14 * mm, rightMargin=14 * mm, topMargin=14 * mm, bottomMargin=18 * mm,
+                            title='Profit by invoice', author=company_name, pageCompression=1 if compress else 0)
+    W = page[0] - 28 * mm
+    P = lambda t, s='cell': Paragraph(_t(t), st[s])
+    TH = lambda t, r=False: Paragraph(_t(t), st['thr' if r else 'th'])
+    red = lambda v: Paragraph(f"<font color='#B00020'>{_t(money(v))}</font>" if v < 0 else _t(money(v)), st['cellr'])
+    story = []
+    head = []
+    if LOGO.exists():
+        head.append(Image(str(LOGO), width=38 * mm, height=13 * mm, kind='proportional', hAlign='LEFT'))
+    head.append(Paragraph(f"<b>{_t(company_name)}</b>", st['body']))
+    ht = Table([[head, [Paragraph('PROFIT BY INVOICE', st['title']), Paragraph(_t(rep['label']) + ' — amounts exclude VAT', st['rsmall'])]]], colWidths=[W * 0.4, W * 0.6])
+    ht.setStyle(TableStyle([('VALIGN', (0, 0), (-1, -1), 'TOP'), ('LEFTPADDING', (0, 0), (-1, -1), 0), ('RIGHTPADDING', (0, 0), (-1, -1), 0)]))
+    story += [ht, HRFlowable(width='100%', thickness=2.5, color=BRAND, spaceAfter=6), P(rep['note'], 'small'), Spacer(1, 6)]
+    widths = [30 * mm, 48 * mm, 52 * mm, 25 * mm, 25 * mm, 25 * mm, W - 205 * mm]
+
+    def inv_table(title, sec, total_label):
+        data = [[TH('INVOICE'), TH('CLIENT'), TH('JOB'), TH('AMOUNT', True), TH('COSTS', True), TH('PROFIT', True), TH('NOTE')]]
+        for r in sec['rows']:
+            data.append([P(r['invoice']), P(r['client']), P(r['job']), P(money(r['amount']), 'cellr'), P(money(r['cost']), 'cellr'), red(r['profit']), P(r['note'])])
+        t = sec['totals']
+        data.append([P(total_label, 'h'), P(''), P(''), P(money(t['amount']), 'cellr'), P(money(t['cost']), 'cellr'), red(t['profit']), P('')])
+        tb = Table(data, colWidths=widths, repeatRows=1)
+        tb.setStyle(TableStyle([('BACKGROUND', (0, 0), (-1, 0), BRAND), ('VALIGN', (0, 0), (-1, -1), 'TOP'), ('TOPPADDING', (0, 0), (-1, -1), 2.5), ('BOTTOMPADDING', (0, 0), (-1, -1), 2.5),
+                                ('LINEBELOW', (0, 1), (-1, -1), 0.3, LIGHT), ('BACKGROUND', (0, -1), (-1, -1), TINT), ('LINEABOVE', (0, -1), (-1, -1), 1, BRAND),
+                                ('SPAN', (0, -1), (2, -1))]))
+        return [Paragraph(title, st['h']), Spacer(1, 3), tb, Spacer(1, 10)]
+
+    story += inv_table('A. STILL UNPAID', rep['unpaid'], 'Total still unpaid')
+    story += inv_table('B. ALREADY PAID', rep['paid'], 'Total already paid')
+    story.append(Paragraph(f"C. RUNNING COSTS — {money(rep['running']['amount'])}", st['h']))
+    rows = [[P(g['item']), P(', '.join(sorted({r['label'] for r in g['rows']}))), P(money(g['amount']), 'cellr')] for g in rep['running']['items']]
+    rows.append([P('Total running costs', 'h'), P(''), P(money(rep['running']['amount']), 'cellr')])
+    story += [Spacer(1, 3), Table(rows, colWidths=[90 * mm, W - 90 * mm - 35 * mm, 35 * mm], style=[('LINEBELOW', (0, 0), (-1, -1), 0.3, LIGHT), ('VALIGN', (0, 0), (-1, -1), 'TOP')]), Spacer(1, 10)]
+    story.append(Paragraph('D. PROFIT IF EVERYONE PAYS', st['h']))
+    d = [[P(f"{l['sign']} {l['label']}", 'h' if l.get('total') else 'body'), red(l['amount']) if l['key'] == 'net' else P(money(l['amount']), 'cellr')] for l in rep['summary']]
+    c = rep['check']
+    d.append([P('Check: dashboard and Profit & Loss net profit ' + ('agree' if c['ok'] else f"DIFFER ({money(c['dashboard'])} / {money(c['pnl'])})"), 'small'), P('')])
+    story += [Spacer(1, 3), Table(d, colWidths=[W * 0.6, 40 * mm], style=[('LINEBELOW', (0, 0), (-1, -1), 0.3, LIGHT)]), Spacer(1, 10)]
+    story.append(Paragraph('E. WHAT WE OWE SUPPLIERS', st['h']))
+    story.append(P(rep['suppliers']['note'], 'small'))
+    sd = [[P(b['account']), P(b['covers']), P(b['status']), P(money(b['amount']), 'cellr')] for b in rep['suppliers']['rows']]
+    sd.append([P('Total / still to pay', 'h'), P(''), P(''), P(f"{money(rep['suppliers']['total'])} / {money(rep['suppliers']['still_to_pay'])}", 'cellr')])
+    story.append(Table(sd, colWidths=[35 * mm, W - 35 * mm - 25 * mm - 55 * mm, 25 * mm, 55 * mm], style=[('LINEBELOW', (0, 0), (-1, -1), 0.3, LIGHT), ('VALIGN', (0, 0), (-1, -1), 'TOP')]))
+
+    def on_page(canvas, d_):
+        canvas.saveState()
+        canvas.setStrokeColor(LIGHT)
+        canvas.line(14 * mm, 13 * mm, page[0] - 14 * mm, 13 * mm)
+        canvas.setFont('Helvetica', 7.5)
+        canvas.setFillColor(GREY)
+        canvas.drawString(14 * mm, 8.5 * mm, f"Profit by invoice  |  {rep['label']}  |  Generated {rep['generated_at']}  |  amounts exclude VAT")
+        canvas.drawRightString(page[0] - 14 * mm, 8.5 * mm, f"Page {d_.page}  |  Internal — contains costs")
+        canvas.restoreState()
+
+    doc.build(story, onFirstPage=on_page, onLaterPages=on_page)
+    return buf.getvalue()
+
+
+def build_invoice_csv(rep):
+    out = io.StringIO()
+    w = csv.writer(out)
+    w.writerow(['Profit by invoice', rep['label'], 'Amounts exclude VAT'])
+    w.writerow(['Generated', rep['generated_at']])
+    for title, sec in (('A. Still unpaid', rep['unpaid']), ('B. Already paid', rep['paid'])):
+        w.writerow([])
+        w.writerow([title])
+        w.writerow(['Invoice', 'Client', 'Job', 'Amount', 'Costs', 'Profit', 'Note'])
+        for r in sec['rows']:
+            w.writerow([r['invoice'], r['client'], r['job'], f"{r['amount']:.2f}", f"{r['cost']:.2f}", f"{r['profit']:.2f}", r['note']])
+        t = sec['totals']
+        w.writerow(['Total', '', '', f"{t['amount']:.2f}", f"{t['cost']:.2f}", f"{t['profit']:.2f}"])
+    w.writerow([])
+    w.writerow(['C. Running costs'])
+    for g in rep['running']['items']:
+        w.writerow([g['item'], '', '', f"{g['amount']:.2f}"])
+        for r in g['rows']:
+            w.writerow(['', r['label'], r['line'], f"{r['amount']:.2f}", r['date']])
+    w.writerow(['Total running costs', '', '', f"{rep['running']['amount']:.2f}"])
+    w.writerow([])
+    w.writerow(['D. Profit if everyone pays'])
+    for l in rep['summary']:
+        w.writerow([l['label'], '', '', f"{l['amount']:.2f}"])
+    w.writerow(['Check (dashboard / Profit & Loss agree)', 'yes' if rep['check']['ok'] else 'NO'])
+    w.writerow([])
+    w.writerow(['E. What we owe suppliers', rep['suppliers']['note']])
+    w.writerow(['Account', 'Covers', 'Status', 'Amount'])
+    for b in rep['suppliers']['rows']:
+        w.writerow([b['account'], b['covers'], b['status'], f"{b['amount']:.2f}"])
+    w.writerow(['Total', '', '', f"{rep['suppliers']['total']:.2f}"])
+    w.writerow(['Still to pay', '', '', f"{rep['suppliers']['still_to_pay']:.2f}"])
+    return out.getvalue()

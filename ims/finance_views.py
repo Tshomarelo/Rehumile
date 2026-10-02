@@ -764,3 +764,28 @@ class SupplierAccountView(APIView):
         except ValueError as exc:
             return Response({'detail': str(exc)}, status=400)
         return Response(self._d(a))
+
+
+class ProfitByInvoiceView(APIView):
+    """GET /finance/profit-by-invoice/[pdf|csv]/?month=YYYY-MM — one row per invoice with amount, costs, profit (internal)."""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, fmt=None):
+        if request.user.role not in FINANCE_ROLES:
+            return _denied()
+        housekeeping.run_if_due(request.user)
+        try:
+            rep = pnl.profit_by_invoice(request.query_params.get('month'))
+        except (ValueError, TypeError):
+            return Response({'detail': 'month must look like 2026-10.'}, status=400)
+        rep['generated_at'] = timezone.localtime().strftime('%d %b %Y %H:%M')
+        if fmt in ('pdf', 'csv'):
+            from django.http import HttpResponse
+            if fmt == 'csv':
+                resp = HttpResponse(pnl_export.build_invoice_csv(rep), content_type='text/csv; charset=utf-8')
+            else:
+                from .views import _company_settings
+                resp = HttpResponse(pnl_export.build_invoice_pdf(rep, _company_settings().company_name or 'Rehumile TMW'), content_type='application/pdf')
+            resp['Content-Disposition'] = f'attachment; filename="profit-by-invoice-{rep["month"]}.{fmt}"'
+            return resp
+        return Response(rep)

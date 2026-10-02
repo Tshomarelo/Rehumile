@@ -386,3 +386,17 @@ Reload the web app and hard-refresh the browser.
 
 No database change. Back up, `git pull origin claude/gallant-hypatia-tgbx85`, `python manage.py collectstatic --noinput`, reload the web app, hard-refresh the browser.
 `migrate --plan` should say "No planned migration operations".
+
+## Update: Profit by invoice report, job costs tied to invoices (migration 0026)
+
+```bash
+mysqldump -u <user> -h <host> '<db>' > backup_$(date +%F).sql
+git pull origin claude/gallant-hypatia-tgbx85
+pip install -r requirements.txt
+python manage.py migrate --plan     # expect ONLY ims.0026_expense_invoice_link
+python manage.py migrate
+python manage.py collectstatic --noinput
+```
+Reload the web app and hard-refresh the browser. `0026` adds one optional column (expenses.invoice); no data changes.
+Job costs (parts/labour) are tied to an invoice when they have the invoice set, are tagged to its quotation, or have its number (e.g. INV-2026-8454) in the description.
+They then count with that invoice's month on the dashboard, the Profit & Loss (accrual) and Profit by invoice.

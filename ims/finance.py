@@ -20,6 +20,7 @@ Definitions (all amounts exclude VAT, because VAT belongs to SARS, not us):
   shown separately and NOT deducted from profit.
 """
 import calendar
+import re
 from collections import OrderedDict, defaultdict
 from datetime import date, datetime, timedelta
 from decimal import Decimal
@@ -177,9 +178,44 @@ def open_issued_qs(as_of):
     return Invoice.objects.filter(status__in=OPEN_STATUSES, **until('sent_at', as_of))
 
 
+_INV_REF = re.compile(r'INV-[A-Za-z0-9][A-Za-z0-9-]*', re.I)
+
+
+def job_costs_by_invoice():
+    """
+    Job / parts / labour expenses that belong to a specific invoice, as {invoice_id: [Expense, ...]}. A cost is tied to an invoice when
+      1. it is linked to the invoice directly (Expense.invoice), or
+      2. it is tagged to the invoice's quotation, or
+      3. the invoice number appears in its description (until a proper link is set).
+    Assets (capital) and supplier account bills are never job costs. These costs count WITH their invoice, in the invoice's month.
+    """
+    out = {}
+    taken = set()
+    qs = Expense.objects.filter(is_supplier_bill=False).exclude(category='capital')
+    for e in qs.filter(invoice__isnull=False):
+        out.setdefault(e.invoice_id, []).append(e)
+        taken.add(e.id)
+    for e in qs.filter(invoice__isnull=True, quotation__invoice__isnull=False).select_related('quotation'):
+        out.setdefault(e.quotation.invoice_id, []).append(e)
+        taken.add(e.id)
+    loose = [e for e in qs.filter(invoice__isnull=True, quotation__isnull=True, description__icontains='INV-') if e.id not in taken]
+    if loose:
+        wanted = {m.group(0).upper().rstrip('-') for e in loose for m in _INV_REF.finditer(e.description)}
+        by_number = {i.invoice_number.upper(): i.id for i in Invoice.objects.filter(invoice_number__in=list(wanted) + [w.title() for w in wanted])}
+        by_number.update({i.invoice_number.upper(): i.id for i in Invoice.objects.filter(invoice_number__iregex=r'^INV-')
+                          if i.invoice_number.upper() in wanted})
+        for e in loose:
+            for m in _INV_REF.finditer(e.description):
+                inv_id = by_number.get(m.group(0).upper().rstrip('-'))
+                if inv_id:
+                    out.setdefault(inv_id, []).append(e)
+                    break
+    return out
+
+
 def job_cost_invoice_ids():
-    """Invoices whose job/parts costs are logged as expenses against their quotation: their cost IS recorded (as expenses)."""
-    return set(Invoice.objects.filter(source_quotation__expenses__isnull=False).values_list('id', flat=True))
+    """Invoices whose job/parts costs are logged as expenses: their cost IS recorded (as expenses)."""
+    return set(job_costs_by_invoice())
 
 
 def _direct_sales_qs(start, end):
@@ -469,12 +505,18 @@ def accrual_summary(start, end, today=None):
     splits = {i.id: invoice_split(i) for i in issued}
     inv_cost = sum((sp['axxess'] + sp['services_cost'] for sp in splits.values()), ZERO)
     direct_total = sum((t.amount for t in _direct_sales_qs(start, end)), ZERO)
+    # costs tied to an invoice (job / parts / labour) count with that invoice's month; the rest by their own date
+    jobmap = job_costs_by_invoice()
+    linked_ids = {e.id for lst in jobmap.values() for e in lst}
+    job_issued = sum((e.amount for i in issued for e in jobmap.get(i.id, [])), ZERO)
     expenses = list(_expense_qs(start, end))
+    job_by_date = sum((e.amount for e in expenses if e.id in linked_ids), ZERO)
+    expenses = [e for e in expenses if e.id not in linked_ids]
     cogs = sum((e.amount for e in expenses if e.category == 'cogs'), ZERO)
     opex = sum((e.amount for e in expenses if e.category not in ('cogs', 'capital')), ZERO)
     payroll = sum((p.employer_cost for p in _payroll_qs(start, end)), ZERO)
     revenue = inv_rev + direct_total
-    cost_of_sales = inv_cost + cogs
+    cost_of_sales = inv_cost + job_issued + cogs
     gross = revenue - cost_of_sales
     net = gross - opex - payroll
 
@@ -515,12 +557,15 @@ def accrual_summary(start, end, today=None):
          'explain': "Money that arrived now for earlier months' invoices. It is in the collected figure but not in this period's invoicing."},
         {'key': 'earlier_cost', 'label': "Costs of those earlier invoices", 'sign': '+', 'amount': _f(b_cost),
          'explain': "The matching costs, counted in the collected figure when the money arrived."},
+        {'key': 'job_cost_timing', 'label': "Job / parts costs counted with their invoice instead of on the day they were spent", 'sign': '−',
+         'amount': _f(job_issued - job_by_date),
+         'explain': "A job cost logged as an expense belongs to its invoice's month here; the collected figure counts it on the expense date."},
     ]
-    gap = (a_rev - a_cost) - (b_rev - b_cost)
+    gap = (a_rev - a_cost) - (b_rev - b_cost) - (job_issued - job_by_date)
     return {
         'profit_if_paid': _f(net), 'profit_collected': _f(collected), 'gap': _f(net - collected), 'gap_check': _f(gap),
         'revenue': {'invoices': _f(inv_rev), 'direct_sales': _f(direct_total), 'total': _f(revenue), 'invoice_count': len(issued)},
-        'cost_of_sales': {'invoice_costs': _f(inv_cost), 'parts': _f(cogs), 'total': _f(cost_of_sales)},
+        'cost_of_sales': {'invoice_costs': _f(inv_cost), 'job_costs': _f(job_issued), 'parts': _f(cogs), 'total': _f(cost_of_sales)},
         'gross': _f(gross), 'operating': _f(opex), 'payroll': _f(payroll), 'net': _f(net),
         'margin_pct': round(float(net / revenue * 100), 1) if revenue else 0,
         'costs_not_counted': {'amount': _f(a_cost), 'revenue': _f(a_rev), 'rows': not_counted_rows[:ROW_LIMIT]},

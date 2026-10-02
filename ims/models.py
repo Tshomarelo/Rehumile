@@ -1683,6 +1683,11 @@ class Expense(models.Model):
     expense_category = models.ForeignKey(
         ExpenseCategory, on_delete=models.SET_NULL, null=True, blank=True, related_name='expenses',
     )
+    # The invoice this cost was incurred for (job / parts / labour). When set (or when the invoice number is in the description, or
+    # the cost is tagged to the invoice's quotation) the cost counts WITH that invoice, in the invoice's month.
+    invoice = models.ForeignKey(
+        'Invoice', on_delete=models.SET_NULL, null=True, blank=True, related_name='job_expenses',
+    )
     # Optional link to the quotation/job this cost was incurred for — lets the
     # quotation show quoted-vs-actual cost and real margin.
     quotation = models.ForeignKey(

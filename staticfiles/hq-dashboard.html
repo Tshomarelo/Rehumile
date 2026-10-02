@@ -459,7 +459,7 @@
   function renderAccrual(s){
     const a=s.accrual; if(!a) return;
     const pv=document.getElementById('tProfit2'); pv.textContent=signedR(a.profit_if_paid); pv.className='val '+(a.profit_if_paid<0?'neg':'pos');
-    document.getElementById('tProfit2Sub').innerHTML='Invoiced '+fmtR(a.revenue.invoices)+' ('+a.revenue.invoice_count+' invoices)<br>− all their Axxess / service costs '+fmtR(a.cost_of_sales.invoice_costs)+'<br>− job / parts costs '+fmtR(a.cost_of_sales.parts)+'<br>Margin '+a.margin_pct+'%';
+    document.getElementById('tProfit2Sub').innerHTML='Invoiced '+fmtR(a.revenue.invoices)+' ('+a.revenue.invoice_count+' invoices)<br>− all their Axxess / service costs '+fmtR(a.cost_of_sales.invoice_costs)+'<br>− job / parts costs '+fmtR((a.cost_of_sales.job_costs||0)+a.cost_of_sales.parts)+'<br>Margin '+a.margin_pct+'%';
     const nc=a.costs_not_counted;
     const rows=nc.rows.map(r=>'<tr><td>'+(r.url?'<a href="'+r.url+'">'+esc(r.ref)+'</a>':esc(r.ref))+'</td><td>'+esc(r.label)+(r.branch?' — '+esc(r.branch):'')+'</td><td>'+esc(r.line)+'<div style="color:#6b7280;font-size:.72rem">'+esc(r.source)+'</div></td><td style="text-align:right">'+fmtR(r.amount)+'</td></tr>').join('');
     const rec=a.reconciliation.map(x=>'<tr><td class="sg">'+esc(x.sign)+'</td><td>'+esc(x.label)+'<div style="color:#6b7280;font-size:.72rem">'+esc(x.explain)+'</div></td><td style="text-align:right">'+fmtR(x.amount)+'</td></tr>').join('');

@@ -74,7 +74,7 @@ def test_two_dashboard_profit_figures_and_why_they_differ(oct_books):
     assert round(a['gap'], 2) == round(a['gap_check'], 2) == 1929                              # (5,599 unpaid revenue − 3,670 their cost)
     rows = a['costs_not_counted']['rows']
     assert round(sum(r['amount'] for r in rows), 2) == 3670 and all(r['source'] for r in rows) and {r['ref'] for r in rows} == {'INV-OPEN-1', 'INV-OPEN-2'}
-    assert {r['key'] for r in a['reconciliation']} == {'unpaid_revenue', 'unpaid_cost', 'earlier_revenue', 'earlier_cost'}
+    assert {r['key'] for r in a['reconciliation']} == {'unpaid_revenue', 'unpaid_cost', 'earlier_revenue', 'earlier_cost', 'job_cost_timing'}
     assert 'Profit if all invoices are paid' in a['explain']['profit_if_paid']
 
 
@@ -310,10 +310,152 @@ def test_loose_ends_print_title_job_costs_and_labels(oct_books):
     rep = pnl.build('accrual', 'month', OCT1, today=OCT31)
     assert not any('INV-2026-8454' in w.get('detail', '') for w in rep['warnings'])
     a = finance.summary(OCT1, OCT31, today=OCT31)['accrual']
-    assert a['cost_of_sales']['parts'] == 1850 and a['cost_of_sales']['total'] == a['cost_of_sales']['invoice_costs'] + 1850
+    assert a['cost_of_sales']['job_costs'] == 1850 and a['cost_of_sales']['parts'] == 0 and a['cost_of_sales']['total'] == a['cost_of_sales']['invoice_costs'] + 1850
     from ims import profit_report
     pr = profit_report.build('month', OCT1, basis='owed', today=OCT31)
     assert not any(w['kind'] == 'no_cost' and any(r['ref'] == 'INV-2026-8454' for r in w['rows']) for w in pr['warnings'])
     html = (__import__('pathlib').Path(__file__).resolve().parent.parent / 'staticfiles' / 'hq-dashboard.html').read_text()
     assert 'job / parts costs' in html
     assert html.index('/portal/static/js/app.js') < html.index('chart.js@4.4.3')          # app.js bundles an older Chart; v4 must load after it
+
+
+# ── Profit by invoice (the owner's October 2026 table) ─────────────────────────────────────────────────────────────────────
+
+def _inv(number, client, price, cost, lines=None, paid_on=None, status='sent', desc='', period=OCT1, issued=OCT1):
+    lines = lines or [(desc or 'Work', price, cost, '', '')]
+    i = make_inv(number, client, lines, paid_on=paid_on, period=period, issued=issued)
+    if status != 'sent' and not paid_on:
+        Invoice.objects.filter(pk=i.pk).update(status=status, **({'sent_at': None} if status == 'draft' else {}))
+    return Invoice.objects.get(pk=i.pk)
+
+
+@pytest.fixture
+def owner_oct(db, monkeypatch):
+    monkeypatch.setattr(billing, '_today', lambda: OCT31)
+    ensure_seeded()
+    admin = make_user('admin')
+    _inv('INV-2026-2651', 'Thebado Fuels', 3000, 0, desc='Fuel site job')
+    _inv('INV-2026-7448', 'Thebado Fuels', 2800, 0, desc='Second site job')
+    _inv('INV-2026-9303', 'Thebado Inc (Omoda)', 1500, 0, desc='Omoda hardware')
+    _inv('INV-2026-10-005', 'Thebado Inc (WiFi)', 0, 0, lines=[('WiFi / Internet', 1000, 700, 'Head office', 'wifi'), ('WiFi / Internet', 1000, 700, 'Mthombeni', 'wifi'),
+                                                             ('WiFi / Internet', 1000, 700, 'Zisize', 'wifi'), ('Website hosting', 1220, 558, '', 'hosting')])
+    job = _inv('INV-2026-8454', 'Nethezeka (job)', 3350, 0, desc='Network job')
+    Expense.objects.create(category='cogs', account=cat('Hardware & Parts Purchases').account, expense_category=cat('Hardware & Parts Purchases'), amount=1250, vendor='Supplier',
+                           description='Nethezeka job supplies (invoice INV-2026-8454)', expense_date=OCT1, payment_status='paid', recorded_by=admin)
+    Expense.objects.create(category='cogs', account=cat('Hardware & Parts Purchases').account, expense_category=cat('Hardware & Parts Purchases'), amount=600, vendor='Contractor',
+                           description='Nethezeka job labour (invoice INV-2026-8454)', expense_date=OCT1, payment_status='paid', recorded_by=admin)
+    _inv('INV-2026-10-004', 'Nethezeka (WiFi)', 579, 379, desc='WiFi', lines=[('WiFi / Internet', 579, 379, '', 'wifi')])
+    _inv('INV-2026-10-003', 'Maputalandfm', 0, 0, lines=[('WiFi / Internet', 1700, 700, '', 'wifi'), ('Website hosting', 1000, 300, '', 'hosting')])
+    _inv('INV-2026-10-007', 'Zisize', 899, 700, paid_on=date(2026, 10, 6), lines=[('WiFi / Internet', 899, 700, '', 'wifi')])
+    _inv('INV-2026-10-008', 'EkasiFlavours', 700, 379, paid_on=date(2026, 10, 7), lines=[('WiFi / Internet', 700, 379, '', 'wifi')])
+    _inv('INV-2026-10-009', 'IngwavumaDollie', 500, 379, paid_on=date(2026, 10, 8), lines=[('WiFi / Internet', 500, 379, '', 'wifi')])
+    _inv('INV-DRAFT', 'Draft Client', 999, 0, status='draft')
+    _inv('INV-CANCELLED', 'Cancelled Client', 888, 0, status='cancelled')
+    # running costs: rent 2,000 + own Axxess lines 979 + domains 69 = 3,048
+    Expense.objects.create(category='operating', account=cat('Rent').account, expense_category=cat('Rent'), amount=2000, vendor='Landlord', expense_date=OCT1, payment_status='paid', recorded_by=admin)
+    acct = SupplierAccount.objects.get(account_number='296356')
+    RecurringExpense.objects.create(name='Owners house', vendor='Axxess', amount=600, start_date=OCT1, supplier_account=acct, expense_category=cat('Internet & Axxess (own lines)'))
+    RecurringExpense.objects.create(name='BOSEALETSE', vendor='Axxess', amount=379, start_date=OCT1, supplier_account=acct, expense_category=cat('Internet & Axxess (own lines)'))
+    RecurringExpense.objects.create(name='Domains', vendor='Afrihost', amount=69, start_date=OCT1, expense_category=cat('Domains, Email & Hosting (own use)'))
+    recurring.post_due(OCT1)
+    # Axxess account bills for October: counted above already, never a cost again
+    for number, amt, status in (('296356', 2175, 'unpaid'), ('343721', 2655, 'unpaid'), ('379248', 1398, 'paid')):
+        Expense.objects.create(category='operating', account=cat('Internet & Axxess (own lines)').account, expense_category=cat('Internet & Axxess (own lines)'), amount=amt, vendor='Axxess',
+                               description=f'Axxess account {number}', expense_date=date(2026, 10, 2), payment_status=status, is_supplier_bill=True,
+                               supplier_account=SupplierAccount.objects.get(account_number=number), paid_on=date(2026, 10, 12) if status == 'paid' else None, recorded_by=admin)
+    return {'admin': admin, 'job': job}
+
+
+def test_profit_by_invoice_reproduces_the_owner_table(owner_oct):
+    rep = pnl.profit_by_invoice('2026-10', today=OCT31)
+    got = {r['invoice']: (r['amount'], r['cost'], r['profit']) for r in rep['unpaid']['rows']}
+    assert got == {'INV-2026-2651': (3000, 0, 3000), 'INV-2026-7448': (2800, 0, 2800), 'INV-2026-9303': (1500, 0, 1500), 'INV-2026-10-005': (4220, 2658, 1562),
+                   'INV-2026-8454': (3350, 1850, 1500), 'INV-2026-10-004': (579, 379, 200), 'INV-2026-10-003': (2700, 1000, 1700)}
+    assert rep['unpaid']['totals'] == {'amount': 18149, 'cost': 5887, 'profit': 12262}
+    assert {r['invoice']: (r['amount'], r['cost'], r['profit']) for r in rep['paid']['rows']} == {'INV-2026-10-007': (899, 700, 199), 'INV-2026-10-008': (700, 379, 321), 'INV-2026-10-009': (500, 379, 121)}
+    assert rep['paid']['totals'] == {'amount': 2099, 'cost': 1458, 'profit': 641}
+    assert [r['client'] for r in rep['unpaid']['rows']] == sorted([r['client'] for r in rep['unpaid']['rows']], key=str.lower)      # sorted by client
+    assert rep['running']['amount'] == 3048 and {g['item']: g['amount'] for g in rep['running']['items']} == {
+        'Rent': 2000, 'Internet & Axxess (own lines)': 979, 'Domains, Email & Hosting (own use)': 69}
+    s = {l['key']: l['amount'] for l in rep['summary']}
+    assert (s['invoiced'], s['costs'], s['gross'], s['running'], s['net']) == (20248, 7345, 12903, 3048, 9855) and rep['net_profit'] == 9855
+    sup = rep['suppliers']
+    assert {b['account']: (b['amount'], b['status']) for b in sup['rows']} == {'296356': (2175, 'unpaid'), '343721': (2655, 'unpaid'), '379248': (1398, 'paid')}
+    assert sup['total'] == 6228 and sup['still_to_pay'] == 4830 and 'not an extra cost' in sup['note']
+
+
+def test_profit_by_invoice_agrees_with_dashboard_and_accrual_pnl(owner_oct):
+    rep = pnl.profit_by_invoice('2026-10', today=OCT31)
+    dash = finance.summary(OCT1, OCT31, today=OCT31)['accrual']
+    accrual = pnl.build('accrual', 'month', OCT1, today=OCT31)
+    assert rep['net_profit'] == dash['profit_if_paid'] == line(accrual, 'net') == 9855
+    assert dash['revenue']['invoices'] == 20248 and rep['check'] == {'report': 9855, 'dashboard': 9855, 'pnl': 9855, 'ok': True}
+    assert dash['cost_of_sales']['job_costs'] == 1850 and dash['cost_of_sales']['invoice_costs'] == 5495 and dash['operating'] == 3048
+    assert not any(w['kind'] == 'mismatch' for w in rep['warnings'])
+    # notes: breakdowns for costed invoices, "no cost recorded" for the 100%-profit ones
+    notes = {r['invoice']: r['note'] for r in rep['unpaid']['rows']}
+    assert notes['INV-2026-2651'] == 'no cost recorded' and 'Axxess R2,100.00' in notes['INV-2026-10-005'] and 'hosting R558.00' in notes['INV-2026-10-005']
+    assert 'supplies R1,250.00' in notes['INV-2026-8454'] and 'labour R600.00' in notes['INV-2026-8454']
+    assert {w['kind'] for w in rep['warnings']} >= {'no_cost'}
+
+
+def test_supplier_bills_are_not_counted_as_cost_and_drafts_cancelled_are_excluded(owner_oct):
+    rep = pnl.profit_by_invoice('2026-10', today=OCT31)
+    listed = {r['invoice'] for r in rep['unpaid']['rows'] + rep['paid']['rows']}
+    assert 'INV-DRAFT' not in listed and 'INV-CANCELLED' not in listed
+    # taking the Axxess bills away changes nothing; they live in section E only
+    Expense.objects.filter(is_supplier_bill=True).delete()
+    assert pnl.profit_by_invoice('2026-10', today=OCT31)['net_profit'] == 9855
+
+
+def test_cost_link_by_invoice_id_quotation_or_number(owner_oct):
+    from ims.models import Quotation
+    admin = owner_oct['admin']
+    plain = _inv('INV-LINK-1', 'Link Client', 1000, 0, desc='by id')
+    quoted = _inv('INV-LINK-2', 'Link Client', 1000, 0, desc='by quote')
+    numbered = _inv('INV-LINK-3', 'Link Client', 1000, 0, desc='by number')
+    mk = lambda **kw: Expense.objects.create(category='cogs', account=cat('Hardware & Parts Purchases').account, expense_category=cat('Hardware & Parts Purchases'), vendor='S',
+                                             expense_date=OCT1, payment_status='paid', recorded_by=admin, **kw)
+    mk(amount=100, description='direct link', invoice=plain)
+    mk(amount=200, description='via quotation', quotation=Quotation.objects.create(quote_number='Q-LINK', client_name='x', invoice=quoted, issue_date=OCT1))
+    mk(amount=300, description='labour for inv-link-3 job')
+    rep = pnl.profit_by_invoice('2026-10', today=OCT31)
+    costs = {r['invoice']: r['cost'] for r in rep['unpaid']['rows']}
+    assert costs['INV-LINK-1'] == 100 and costs['INV-LINK-2'] == 200 and costs['INV-LINK-3'] == 300
+    assert rep['check']['ok'] and rep['net_profit'] == 9855 + 3000 - 600
+
+
+def test_profit_by_invoice_places_invoices_by_billing_period(owner_oct):
+    _inv('INV-MOVED', 'Moved Client', 500, 0, period=date(2026, 9, 1), issued=date(2026, 9, 27))
+    assert 'INV-MOVED' not in {r['invoice'] for r in pnl.profit_by_invoice('2026-10', today=OCT31)['unpaid']['rows']}
+    assert 'INV-MOVED' in {r['invoice'] for r in pnl.profit_by_invoice('2026-09', today=OCT31)['unpaid']['rows']}
+    Invoice.objects.filter(invoice_number='INV-MOVED').update(billing_period_start=OCT1, billing_period_end=date(2026, 10, 28))
+    assert 'INV-MOVED' in {r['invoice'] for r in pnl.profit_by_invoice('2026-10', today=OCT31)['unpaid']['rows']}
+
+
+def test_september_project_cost_follows_its_invoice(db, monkeypatch):
+    monkeypatch.setattr(billing, '_today', lambda: OCT31)
+    ensure_seeded()
+    admin = make_user('admin')
+    sept = date(2026, 9, 10)
+    _inv('INV-2026-1860', 'Siyaya', 20000, 0, desc='Siyaya project', period=date(2026, 9, 1), issued=sept)
+    Expense.objects.create(category='cogs', account=cat('Hardware & Parts Purchases').account, expense_category=cat('Hardware & Parts Purchases'), amount=13500, vendor='Siyaya suppliers',
+                           description='Siyaya project cost (INV-2026-1860)', expense_date=date(2026, 9, 12), payment_status='paid', recorded_by=admin)
+    rep = pnl.profit_by_invoice('2026-09', today=OCT31)
+    row = rep['unpaid']['rows'][0]
+    assert (row['amount'], row['cost'], row['profit']) == (20000, 13500, 6500) and rep['check']['ok'] and rep['net_profit'] == 6500
+    assert rep['summary'][0]['amount'] == 20000
+
+
+def test_profit_by_invoice_endpoint_exports_and_permissions(owner_oct):
+    api = client_for(owner_oct['admin'])
+    d = api.get('/api/finance/profit-by-invoice/?month=2026-10').data
+    assert d['net_profit'] == 9855 and d['generated_at'] and d['check']['ok']
+    assert api.get('/api/finance/profit-by-invoice/?month=garbage').status_code == 400
+    assert api.get('/api/finance/profit-by-invoice/pdf/?month=2026-10').content[:4] == b'%PDF'
+    csv_ = api.get('/api/finance/profit-by-invoice/csv/?month=2026-10').content.decode()
+    assert 'INV-2026-8454' in csv_ and 'Total' in csv_ and '9855.00' in csv_
+    for who in ('cashier', 'client'):
+        assert client_for(make_user(who)).get('/api/finance/profit-by-invoice/?month=2026-10').status_code == 403
+    ri = (__import__('pathlib').Path(__file__).resolve().parent.parent / 'staticfiles' / 'hq-revenue-intelligence.html').read_text()
+    assert 'Profit by invoice' in ri and 'pbiGo' in ri and 'pbiPdf' in ri
