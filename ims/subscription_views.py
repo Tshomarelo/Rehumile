@@ -153,6 +153,7 @@ def _sub_dict(s):
         'service_type': s.service_type, 'service_label': s.get_service_type_display(), 'description': s.description,
         'quantity': float(s.quantity), 'unit_price': float(s.unit_price), 'unit_cost': float(s.unit_cost),
         'monthly_total': float(s.monthly_total), 'monthly_margin': float(s.monthly_total - s.monthly_cost),
+        'supplier_account': str(s.supplier_account_id) if s.supplier_account_id else None, 'axxess_id': s.axxess_id,
         'invoice_separately': s.invoice_separately, 'billing_day': s.billing_day, 'start_date': s.start_date.isoformat(), 'end_date': s.end_date.isoformat() if s.end_date else None,
         'status': s.status, 'notes': s.notes, 'contact_email': s.contact_email, 'contact_phone': s.contact_phone,
         'managed_by': 'wifi' if s.legacy_wifi_id else ('sla' if s.legacy_sla_id else None),
@@ -204,6 +205,17 @@ def _apply_sub(sub, d, editing_legacy=False):
         if not 1 <= day <= 31:
             raise ValueError('billing day must be between 1 and 31.')
         sub.billing_day = day
+    if 'supplier_account' in d:
+        from .models import SupplierAccount
+        if d['supplier_account']:
+            acct = SupplierAccount.objects.filter(pk=d['supplier_account']).first()
+            if acct is None:
+                raise ValueError('Supplier account not found.')
+            sub.supplier_account = acct
+        else:
+            sub.supplier_account = None
+    if 'axxess_id' in d:
+        sub.axxess_id = (d['axxess_id'] or '').strip()[:150]
     if 'invoice_separately' in d:
         sub.invoice_separately = bool(d['invoice_separately']) and str(d['invoice_separately']).lower() not in ('false', '0', 'no')
     for f in ('start_date', 'end_date'):

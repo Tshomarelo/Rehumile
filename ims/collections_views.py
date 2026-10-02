@@ -39,6 +39,7 @@ def _rec_dict(t, today=None):
         'frequency': t.frequency, 'frequency_label': t.get_frequency_display(), 'day_of_month': t.day_of_month,
         'start_date': t.start_date.isoformat(), 'end_date': t.end_date.isoformat() if t.end_date else None,
         'payment_status': t.payment_status, 'is_active': t.is_active,
+        'supplier_account': str(t.supplier_account_id) if t.supplier_account_id else None,
         'last_posted_for': t.last_posted_for.isoformat() if t.last_posted_for else None,
         'next_due': t.next_due(today).isoformat() if t.next_due(today) else None,
         'posted_count': t.expenses.count(),
@@ -82,6 +83,15 @@ def _apply_rec(t, d):
         if d['payment_status'] not in ('paid', 'unpaid'):
             raise ValueError('Payment status must be paid or unpaid.')
         t.payment_status = d['payment_status']
+    if 'supplier_account' in d:
+        from .models import SupplierAccount
+        if d['supplier_account']:
+            acct = SupplierAccount.objects.filter(pk=d['supplier_account']).first()
+            if acct is None:
+                raise ValueError('Supplier account not found.')
+            t.supplier_account = acct
+        else:
+            t.supplier_account = None
     if 'is_active' in d:
         t.is_active = bool(d['is_active'])
     for f, label in (('name', 'Name'), ('vendor', 'Vendor / supplier')):

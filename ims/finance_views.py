@@ -18,7 +18,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from . import finance, housekeeping, profit_report, profit_report_pdf
+from . import finance, housekeeping, pnl, pnl_export, profit_report, profit_report_pdf, supplier_recon
 from .ledger import ensure_seeded
 from .models import (
     Account, Company, Expense, ExpenseCategory, Invoice, InvoiceItem,
@@ -670,3 +670,97 @@ class ProfitReportView(APIView):
             resp['Content-Disposition'] = f'attachment; filename="profit-{report["basis"]}-{report["period"]["start"]}.pdf"'
             return resp
         return Response(report)
+
+
+class PnLView(APIView):
+    """GET /finance/pnl/[pdf|csv]/?view=accrual|cash&period=month|quarter|custom|...&date=&date_from=&date_to="""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, fmt=None):
+        if request.user.role not in FINANCE_ROLES:
+            return _denied()
+        housekeeping.run_if_due(request.user)
+        p = request.query_params
+        try:
+            rep = pnl.build(p.get('view', 'accrual'), p.get('period', 'month'), p.get('date'), p.get('date_from'), p.get('date_to'))
+        except ValueError as exc:
+            return Response({'detail': str(exc)}, status=400)
+        rep['generated_at'] = timezone.localtime().strftime('%d %b %Y %H:%M')
+        if fmt in ('pdf', 'csv'):
+            from django.http import HttpResponse
+            name = f'profit-and-loss-{rep["view"]}-{rep["period"]["start"]}'
+            if fmt == 'csv':
+                resp = HttpResponse(pnl_export.build_csv(rep), content_type='text/csv; charset=utf-8')
+            else:
+                from .views import _company_settings
+                resp = HttpResponse(pnl_export.build_pdf(rep, _company_settings().company_name or 'Rehumile TMW'), content_type='application/pdf')
+            resp['Content-Disposition'] = f'attachment; filename="{name}.{fmt}"'
+            return resp
+        return Response(rep)
+
+
+class SupplierReconciliationView(APIView):
+    """GET /finance/supplier-reconciliation/?month=YYYY-MM — supplier charged vs our recorded cost, per account and per line."""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        if request.user.role not in FINANCE_ROLES:
+            return _denied()
+        try:
+            return Response(supplier_recon.reconcile(request.query_params.get('month')))
+        except (ValueError, TypeError):
+            return Response({'detail': 'month must look like 2026-10.'}, status=400)
+
+
+class SupplierAccountView(APIView):
+    """List / create / edit supplier accounts (Axxess account numbers and what they charge per month)."""
+    permission_classes = [IsAuthenticated]
+
+    @staticmethod
+    def _d(a):
+        return {'id': str(a.id), 'supplier': a.supplier, 'account_number': a.account_number, 'name': a.name,
+                'charged_total': float(a.charged_total) if a.charged_total is not None else None, 'notes': a.notes}
+
+    def get(self, request, pk=None):
+        if request.user.role not in FINANCE_ROLES:
+            return _denied()
+        from .models import SupplierAccount
+        return Response({'results': [self._d(a) for a in SupplierAccount.objects.all()]})
+
+    def _save(self, a, d):
+        if 'account_number' in d:
+            a.account_number = str(d['account_number']).strip()[:50]
+        for f in ('supplier', 'name', 'notes'):
+            if f in d:
+                setattr(a, f, str(d[f] or '').strip())
+        if 'charged_total' in d:
+            a.charged_total = None if d['charged_total'] in (None, '') else _dec(d['charged_total'])
+        if not a.account_number:
+            raise ValueError('Account number is required.')
+        a.save()
+
+    def post(self, request, pk=None):
+        if request.user.role not in FINANCE_ROLES:
+            return _denied()
+        from .models import SupplierAccount
+        try:
+            a = SupplierAccount(supplier='Axxess')
+            self._save(a, request.data)
+        except ValueError as exc:
+            return Response({'detail': str(exc)}, status=400)
+        except Exception:
+            return Response({'detail': 'That account number already exists.'}, status=400)
+        return Response(self._d(a), status=201)
+
+    def patch(self, request, pk):
+        if request.user.role not in FINANCE_ROLES:
+            return _denied()
+        from .models import SupplierAccount
+        a = SupplierAccount.objects.filter(pk=pk).first()
+        if not a:
+            return Response({'detail': 'Not found.'}, status=404)
+        try:
+            self._save(a, request.data)
+        except ValueError as exc:
+            return Response({'detail': str(exc)}, status=400)
+        return Response(self._d(a))

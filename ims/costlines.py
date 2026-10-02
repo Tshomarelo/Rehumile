@@ -47,6 +47,9 @@ def lines(inv):
             'quantity': Decimal('1'), 'unit_price': inv.subtotal, 'amount': inv.subtotal, 'unit_cost': cost, 'cost': cost,
             'axxess_id': axxess,
         })
+    base = {'wifi': 'wifi', 'sla': 'sla', 'callout': 'sla', 'subscription': 'services'}.get(inv.invoice_type, 'adhoc')
     for ln in out:
         ln['profit'] = ln['amount'] - ln['cost']
+        # which revenue stream the line belongs to (combined monthly invoices are split line by line)
+        ln['stream'] = (ln['service_type'] if ln['service_type'] in ('wifi', 'sla') else 'services') if (items and inv.invoice_type == 'subscription') else base
     return out
