@@ -381,3 +381,8 @@ Reload the web app and hard-refresh the browser.
 - After deploying: Subscriptions > Services > edit each Axxess line and pick its Axxess account; set the account on your own recurring Axxess costs
   (Expenses > Recurring). Then Expenses > Supplier bills (Axxess) shows charged vs recorded per line.
 - Nothing about prices or costs is changed by this update.
+
+## Update: invoices are placed in a month by their billing period (no migration)
+
+No database change. Back up, `git pull origin claude/gallant-hypatia-tgbx85`, `python manage.py collectstatic --noinput`, reload the web app, hard-refresh the browser.
+`migrate --plan` should say "No planned migration operations".

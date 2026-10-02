@@ -27,7 +27,7 @@ from decimal import Decimal
 from django.db.models import Q, Sum
 
 from . import costlines
-from .timeutils import since, until
+from .timeutils import local_date, since, until
 from .models import (
     CashTransaction, Expense, ExpenseCategory, Invoice, InvoicePayment, PayrollEntry,
 )
@@ -132,25 +132,54 @@ def _paid_events(start, end):
     return events
 
 
-def _invoiced_qs(start, end):
-    return Invoice.objects.filter(
-        status__in=('sent', 'partially_paid', 'paid', 'overdue'),
-        **since('sent_at', start), **until('sent_at', end),
-    )
+def invoice_period_date(inv):
+    """
+    The date that places an invoice in a reporting period (month, quarter, year): the start of its billing period, which the
+    owner can edit on the invoice; if there is none, the (local) date it was created. `created_at` itself is never changed.
+    A billing period that spans months is placed by its start.
+    """
+    if inv.billing_period_start:
+        return inv.billing_period_start
+    return local_date(inv.created_at) if inv.created_at else None
 
 
+def _period_q(start=None, end=None):
+    """Query form of invoice_period_date(): billing_period_start in [start, end], else created_at when there is no billing period."""
+    dated = Q(billing_period_start__isnull=False)
+    fallback = Q(billing_period_start__isnull=True, **since('created_at', start), **until('created_at', end))
+    if start:
+        dated &= Q(billing_period_start__gte=start)
+    if end:
+        dated &= Q(billing_period_start__lte=end)
+    return dated | fallback
+
+
+ISSUED_STATUSES = ('sent', 'partially_paid', 'paid', 'overdue')
 OPEN_STATUSES = ('sent', 'partially_paid', 'overdue')
+
+
+def _invoiced_qs(start, end):
+    """Invoices that belong to the period (by billing period; drafts and cancelled are never included)."""
+    return Invoice.objects.filter(_period_q(start, end), status__in=ISSUED_STATUSES)
 
 
 def _unpaid_qs(as_of):
     """
-    THE definition of "unpaid": issued (sent / part-paid / overdue) on or before `as_of` and not yet fully paid.
-    Everything that talks about money owed (dashboard, Business Intelligence, the Profit & Money Owed report)
-    uses this one rule; a slice by billing period is applied on top, never a different definition.
+    THE definition of "unpaid" for a period: issued (sent / part-paid / overdue), not yet fully paid, and belonging to `as_of`
+    or an earlier period (by billing period). Everything that talks about money owed per period (dashboard, Business
+    Intelligence, the Profit & Money Owed report) uses this one rule; "from this period" vs "earlier" is a slice on top.
     """
-    return Invoice.objects.filter(
-        status__in=('sent', 'partially_paid', 'overdue'), **until('sent_at', as_of),
-    )
+    return Invoice.objects.filter(_period_q(None, as_of), status__in=OPEN_STATUSES)
+
+
+def open_issued_qs(as_of):
+    """Everything issued on or before `as_of` and still unpaid, whatever month it is for (used for "money owed to us" today)."""
+    return Invoice.objects.filter(status__in=OPEN_STATUSES, **until('sent_at', as_of))
+
+
+def job_cost_invoice_ids():
+    """Invoices whose job/parts costs are logged as expenses against their quotation: their cost IS recorded (as expenses)."""
+    return set(Invoice.objects.filter(source_quotation__expenses__isnull=False).values_list('id', flat=True))
 
 
 def _direct_sales_qs(start, end):
@@ -245,7 +274,7 @@ def outstanding_by_stream(start, end, as_of=None, scope='period'):
     (_unpaid_qs); scope = 'period' (billing period inside the window), 'earlier' or 'all'.
     """
     out = {'wifi': ZERO, 'sla': ZERO, 'adhoc': ZERO, 'services': ZERO}
-    qs = [i for i in _unpaid_qs(as_of or min(end, _today())).prefetch_related('items')
+    qs = [i for i in _unpaid_qs(as_of or end).prefetch_related('items')
           if scope == 'all' or (is_from_period(i, start, end) == (scope == 'period'))]
     for inv in qs:
         split = invoice_split(inv)['streams']
@@ -285,7 +314,7 @@ def summary(start, end, today=None):
     invoiced_agg = _invoiced_qs(start, end).aggregate(s=Sum('subtotal'), v=Sum('tax_amount'), t=Sum('total_amount'))
     invoiced_count = _invoiced_qs(start, end).count()
 
-    unpaid_invoices = list(_unpaid_qs(min(end, today))
+    unpaid_invoices = list(_unpaid_qs(end)
                            .select_related('company', 'wifi_subscriber', 'sla_contract').order_by('due_date', 'sent_at'))
     unpaid_total = sum((i.balance_due for i in unpaid_invoices), ZERO)
     unpaid_from_period = sum((i.balance_due for i in unpaid_invoices if is_from_period(i, start, end)), ZERO)
@@ -466,7 +495,7 @@ def accrual_summary(start, end, today=None):
                 not_counted_rows.append({
                     'ref': inv.invoice_number, 'label': _client_name(inv), 'line': ln['description'], 'branch': ln['site_name'],
                     'amount': _f(c), 'revenue': _f(ln['amount'] * frac), 'source': costlines.line_source(inv, ln, c),
-                    'date': inv.sent_at.date().isoformat() if inv.sent_at else None,
+                    'date': invoice_period_date(inv).isoformat() if invoice_period_date(inv) else None,
                     'paid': inv.status == 'paid', 'url': costlines.invoice_link(inv)})
     # money collected in this period for invoices issued earlier (their revenue and cost count in the collected view only)
     b_rev = b_cost = ZERO
@@ -600,7 +629,7 @@ def trend(granularity='monthly', periods=None, today=None, anchor=None):
         add(t.created_at.date(), 'rev_direct', t.amount)
         add(t.created_at.date(), 'revenue', t.amount)
     for inv in _invoiced_qs(range_start, range_end):
-        add(inv.sent_at.date(), 'invoiced', inv.subtotal)
+        add(invoice_period_date(inv), 'invoiced', inv.subtotal)
     for e in _expense_qs(range_start, range_end):
         if e.category == 'capital':
             add(e.expense_date, 'capital', e.amount)

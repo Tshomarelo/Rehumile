@@ -8,7 +8,7 @@
   <link href="/portal/static/css/app.css" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
   <!-- Chart.js -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+  
   <style>
     .tab-pane{display:none}.tab-pane.active{display:block}
     .nav-tabs .nav-link{cursor:pointer}
@@ -309,6 +309,8 @@
 
 
 <script src="/portal/static/js/app.js"></script>
+<!-- loaded after app.js on purpose: app.js bundles an older Chart that would otherwise replace this one -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
 <script src="/portal/static/js/hq-sidebar-menu.js?v=20261001"></script>
 <script src="/portal/static/js/hq-filters.js"></script>
 <script>(function(){function _i(){var s=document.querySelector('.js-sidebar'),t=document.querySelector('.js-sidebar-toggle');if(!s||!t)return;if(window.innerWidth<992&&localStorage.getItem('ims_sidebar')==='open')s.classList.add('collapsed');t.addEventListener('click',function(){setTimeout(function(){localStorage.setItem('ims_sidebar',s.classList.contains('collapsed')?'open':'closed');},50);});}document.readyState==='loading'?document.addEventListener('DOMContentLoaded',_i):_i();})();</script>

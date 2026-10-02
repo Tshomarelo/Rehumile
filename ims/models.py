@@ -798,7 +798,8 @@ class Invoice(models.Model):
         ]
     
     def __str__(self):
-        return f"INV-{self.invoice_number} ({self.company.name if self.company else 'No company'})"
+        num = self.invoice_number or ''
+        return f"{num if num.upper().startswith('INV') else 'INV-' + num} ({self.company.name if self.company else 'No company'})"
 
     def ensure_public_token(self, regenerate=False):
         import secrets
@@ -864,7 +865,7 @@ class InvoicePayment(models.Model):
         ordering = ['-payment_date', '-created_at']
 
     def __str__(self):
-        return f"Payment of {self.amount} for INV-{self.invoice.invoice_number}"
+        return f"Payment of {self.amount} for {self.invoice.invoice_number}"
 
 
 class InvoiceItem(models.Model):

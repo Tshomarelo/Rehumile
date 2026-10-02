@@ -25,14 +25,14 @@ def cat(name):
     return ExpenseCategory.objects.get(name=name)
 
 
-def make_inv(number, client, lines, paid_on=None, issued=OCT1):
+def make_inv(number, client, lines, paid_on=None, issued=OCT1, period=OCT1, created=None):
     co = Company.objects.filter(name=client).first() or Company.objects.create(name=client, slug=client.lower().replace(' ', '-'), contact_person='P', contact_email='a@b.co')
     sub = sum(Decimal(str(p)) for _, p, _, _, _ in lines)
-    inv = Invoice.objects.create(invoice_number=number, company=co, billing_period_start=OCT1, billing_period_end=OCT31, subtotal=sub, tax_rate=0, tax_amount=0,
+    inv = Invoice.objects.create(invoice_number=number, company=co, billing_period_start=period, billing_period_end=date(period.year, period.month, 28), subtotal=sub, tax_rate=0, tax_amount=0,
                                  total_amount=sub, ticket_count=0, hours_worked=0, status='draft', invoice_type='subscription', due_date=date(2026, 10, 15))
     for d, p, c, branch, st in lines:
         InvoiceItem.objects.create(invoice=inv, description=d, quantity=1, unit_price=p, amount=p, unit_cost=c, site_name=branch, service_type=st, item_type='service')
-    Invoice.objects.filter(pk=inv.pk).update(status='sent', sent_at=at(issued))
+    Invoice.objects.filter(pk=inv.pk).update(status='sent', sent_at=at(issued), **({'created_at': at(created)} if created else {}))
     inv = Invoice.objects.get(pk=inv.pk)
     if paid_on:
         coll.record_payment(inv, make_user('finance'), paid_on, 'eft')
@@ -79,7 +79,7 @@ def test_two_dashboard_profit_figures_and_why_they_differ(oct_books):
 
 
 def test_gap_is_explained_when_money_arrives_for_earlier_invoices(oct_books):
-    make_inv('INV-SEPT', 'Old Client', [('Sept work', 1000, 400, '', '')], issued=date(2026, 9, 20), paid_on=date(2026, 10, 12))
+    make_inv('INV-SEPT', 'Old Client', [('Sept work', 1000, 400, '', '')], issued=date(2026, 9, 20), period=date(2026, 9, 1), paid_on=date(2026, 10, 12))
     a = finance.summary(OCT1, OCT31, today=OCT31)['accrual']
     assert a['profit_collected'] == 2271 + 600                      # R1,000 collected less its R400 cost, though invoiced in September
     assert a['profit_if_paid'] == 4200                              # September's invoice is not October's
@@ -239,3 +239,81 @@ def test_new_ui_controls_exist():
     assert 'Profit &amp; Loss' in ri and 'pnlGo' in ri and 'Axxess' in ri
     dash = (root / 'hq-dashboard.html').read_text()
     assert 'Profit on money collected' in dash and 'Profit if all invoices are paid' in dash and 'not yet counted' in dash
+
+
+# ── invoices belong to the month of their billing period (not the day they were created) ──────────────────────────────────
+
+SEPT1, SEPT30 = date(2026, 9, 1), date(2026, 9, 30)
+
+
+def test_invoice_follows_its_billing_period_not_creation_date(oct_books):
+    """Raised on 27 Sept, billing period moved to October: it is October's invoice."""
+    before_oct = finance.summary(OCT1, OCT31, today=OCT31)
+    make_inv('INV-2026-2651', 'Thebado Fuels', [('Website job', 3000, 0, '', '')], issued=date(2026, 9, 27), created=date(2026, 9, 27))
+    make_inv('INV-2026-7448', 'Thebado Fuels', [('App job', 2800, 0, '', '')], issued=date(2026, 9, 27), created=date(2026, 9, 27))
+    s = finance.summary(OCT1, OCT31, today=OCT31)
+    assert s['invoices']['invoiced']['subtotal'] == before_oct['invoices']['invoiced']['subtotal'] + 5800
+    assert s['invoices']['invoiced']['count'] == before_oct['invoices']['invoiced']['count'] + 2
+    assert s['accrual']['revenue']['invoices'] == 12498 + 5800 and s['accrual']['profit_if_paid'] == 4200 + 5800   # no costs recorded on them
+    assert s['invoices']['unpaid']['from_period'] == before_oct['invoices']['unpaid']['from_period'] + 5800 and s['invoices']['unpaid']['from_earlier'] == 0
+    assert s['invoices']['unpaid']['total'] == before_oct['invoices']['unpaid']['total'] + 5800
+    # money received and the money-collected profit do not move
+    assert s['revenue']['total'] == before_oct['revenue']['total'] and s['profit']['net'] == 2271
+    # the accrual P&L and the dashboard agree to the rand
+    rep = pnl.build('accrual', 'month', OCT1, today=OCT31)
+    assert line(rep, 'revenue') == 18298 and line(rep, 'net') == s['accrual']['profit_if_paid'] == 10000
+    # September no longer contains them
+    sept = finance.summary(SEPT1, SEPT30, today=OCT31)
+    assert sept['invoices']['invoiced']['count'] == 0 and sept['accrual']['revenue']['invoices'] == 0
+    assert line(pnl.build('accrual', 'month', SEPT1, today=OCT31), 'revenue') == 0
+    # created_at itself was never rewritten
+    assert timezone.localtime(Invoice.objects.get(invoice_number='INV-2026-2651').created_at).date() == date(2026, 9, 27)
+
+
+def test_drafts_stay_out_until_issued_then_count_in_their_month(oct_books):
+    inv = make_inv('INV-2026-9303', 'Nethezeka', [('Hardware', 1500, 0, '', '')], created=date(2026, 9, 28))
+    Invoice.objects.filter(pk=inv.pk).update(status='draft', sent_at=None)
+    assert finance.summary(OCT1, OCT31, today=OCT31)['accrual']['revenue']['invoices'] == 12498
+    Invoice.objects.filter(pk=inv.pk).update(status='sent', sent_at=at(OCT31))
+    assert finance.summary(OCT1, OCT31, today=OCT31)['accrual']['revenue']['invoices'] == 12498 + 1500
+
+
+def test_period_date_falls_back_to_created_at_when_there_is_no_billing_period():
+    from types import SimpleNamespace
+    created = timezone.make_aware(datetime(2026, 9, 30, 23, 30))        # 23:30 local time on 30 Sept
+    assert finance.invoice_period_date(SimpleNamespace(billing_period_start=None, created_at=created)) == date(2026, 9, 30)
+    assert finance.invoice_period_date(SimpleNamespace(billing_period_start=date(2026, 10, 1), created_at=created)) == date(2026, 10, 1)
+    # a billing period that spans months is placed by its start
+    assert finance.invoice_period_date(SimpleNamespace(billing_period_start=date(2026, 9, 25), billing_period_end=date(2026, 10, 24), created_at=created)) == date(2026, 9, 25)
+
+
+def test_cash_view_and_money_received_ignore_the_billing_period(oct_books):
+    before = pnl.build('cash', 'month', OCT1, today=OCT31)
+    # paid on 5 Oct, billed for September: still October's cash, but September's accrual revenue
+    make_inv('INV-LATE', 'Late Payer', [('Sept support', 1000, 0, '', '')], issued=date(2026, 9, 10), period=SEPT1, paid_on=date(2026, 10, 15))
+    after = pnl.build('cash', 'month', OCT1, today=OCT31)
+    assert line(after, 'revenue') == line(before, 'revenue') + 1000
+    assert line(pnl.build('accrual', 'month', OCT1, today=OCT31), 'revenue') == 12498
+    assert line(pnl.build('accrual', 'month', SEPT1, today=OCT31), 'revenue') == 1000
+    assert finance.summary(OCT1, OCT31, today=OCT31)['revenue']['total'] == 6899 + 1000
+
+
+def test_loose_ends_print_title_job_costs_and_labels(oct_books):
+    api = client_for(oct_books['admin'])
+    assert str(Invoice.objects.get(invoice_number='INV-PAID-1')) == 'INV-PAID-1 (Siyaya)'            # no doubled INV- prefix
+    # a job whose costs are logged as expenses against its quotation counts as having cost recorded
+    from ims.models import Quotation
+    job = make_inv('INV-2026-8454', 'Nethezeka', [('Parts job', 2900, 0, '', '')])
+    q = Quotation.objects.create(quote_number='Q-JOB-1', client_name='Nethezeka', invoice=job, issue_date=OCT1)
+    Expense.objects.create(category='cogs', account=cat('Hardware & Parts Purchases').account, expense_category=cat('Hardware & Parts Purchases'), amount=1850,
+                           vendor='Supplier', expense_date=OCT1, payment_status='paid', quotation=q, recorded_by=oct_books['admin'])
+    rep = pnl.build('accrual', 'month', OCT1, today=OCT31)
+    assert not any('INV-2026-8454' in w.get('detail', '') for w in rep['warnings'])
+    a = finance.summary(OCT1, OCT31, today=OCT31)['accrual']
+    assert a['cost_of_sales']['parts'] == 1850 and a['cost_of_sales']['total'] == a['cost_of_sales']['invoice_costs'] + 1850
+    from ims import profit_report
+    pr = profit_report.build('month', OCT1, basis='owed', today=OCT31)
+    assert not any(w['kind'] == 'no_cost' and any(r['ref'] == 'INV-2026-8454' for r in w['rows']) for w in pr['warnings'])
+    html = (__import__('pathlib').Path(__file__).resolve().parent.parent / 'staticfiles' / 'hq-dashboard.html').read_text()
+    assert 'job / parts costs' in html
+    assert html.index('/portal/static/js/app.js') < html.index('chart.js@4.4.3')          # app.js bundles an older Chart; v4 must load after it

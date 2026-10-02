@@ -82,7 +82,7 @@ def build(view='accrual', period='month', anchor=None, date_from=None, date_to=N
     rev_rows, cost_rows = [], []
     if view == 'accrual':
         for inv in finance._issued(start, end):
-            r, c = _invoice_line_rows(inv, Decimal('1'), local_date(inv.sent_at) if inv.sent_at else None, inv.status == 'paid')
+            r, c = _invoice_line_rows(inv, Decimal('1'), finance.invoice_period_date(inv), inv.status == 'paid')
             rev_rows += r
             cost_rows += c
     else:
@@ -185,7 +185,7 @@ def build(view='accrual', period='month', anchor=None, date_from=None, date_to=N
 
     # ── what is owed to us / what we owe (as at today) ──
     owed_rows = []
-    for inv in finance._unpaid_qs(today).select_related('company', 'wifi_subscriber', 'sla_contract').order_by('due_date'):
+    for inv in finance.open_issued_qs(today).select_related('company', 'wifi_subscriber', 'sla_contract').order_by('due_date'):
         late = (today - inv.due_date).days if inv.due_date and inv.due_date < today else 0
         owed_rows.append({'ref': inv.invoice_number, 'label': finance._client_name(inv), 'issued': local_date(inv.sent_at).isoformat() if inv.sent_at else None,
                           'due': inv.due_date.isoformat() if inv.due_date else None, 'days_overdue': late, 'total': _f(inv.total_amount),
@@ -206,7 +206,8 @@ def build(view='accrual', period='month', anchor=None, date_from=None, date_to=N
     if view == 'cash' and not any(g['key'] == 'supplier_bills' for g in cost_groups):
         warnings.append({'title': 'No supplier bills paid in this period', 'detail': 'Log the Axxess account bill under Expenses > Supplier bills and mark it paid, otherwise the cash view shows no Axxess cost.',
                          'url': '/portal/dashboard/expenses/'})
-    no_cost = sorted({r['ref'] for r in rev_rows if r.get('stream') in ('wifi', 'services', 'adhoc') and r.get('cost', 0) == 0 and r['amount'] and r.get('ref', '').startswith('INV')})
+    linked = {i.invoice_number for i in Invoice.objects.filter(id__in=finance.job_cost_invoice_ids())}
+    no_cost = sorted({r['ref'] for r in rev_rows if r['ref'] not in linked and r.get('stream') in ('wifi', 'services', 'adhoc') and r.get('cost', 0) == 0 and r['amount'] and r.get('ref', '').startswith('INV')})
     if view == 'accrual' and no_cost:
         warnings.append({'title': f"{len(no_cost)} invoice line(s) have no cost recorded", 'detail': 'They count as 100% profit: ' + ', '.join(no_cost[:15]) + ('…' if len(no_cost) > 15 else ''),
                          'url': '/portal/invoices/'})

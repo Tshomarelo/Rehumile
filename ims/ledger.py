@@ -252,9 +252,10 @@ def post_invoice_sent(invoice, user=None):
         lines.append(('COGS_SERVICES', cost_other, Decimal('0'), f"Service cost — {invoice.invoice_number}"))
         lines.append(('ACCOUNTS_PAYABLE', Decimal('0'), cost_other, f"Service cost — {invoice.invoice_number}"))
 
+    from .finance import invoice_period_date          # revenue is booked in the invoice's billing month
     return post_transaction(
         'Invoice', invoice.id,
-        invoice.sent_at.date() if invoice.sent_at else (invoice.created_at.date() if invoice.created_at else invoice.billing_period_start),
+        invoice_period_date(invoice) or (invoice.sent_at.date() if invoice.sent_at else invoice.billing_period_start),
         f"Invoice {invoice.invoice_number} sent",
         lines, user=user,
     )

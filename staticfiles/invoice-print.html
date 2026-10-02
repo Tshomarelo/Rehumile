@@ -215,7 +215,7 @@
     const items = d.items||[];
     const cs = d.company_settings||{};
 
-    document.title = 'Invoice INV-' + inv.invoice_number + ' | ' + (cs.company_name||'Rehumile TMW');
+    document.title = 'Invoice ' + (/^INV/i.test(inv.invoice_number||'') ? inv.invoice_number : 'INV-' + (inv.invoice_number||'')) + ' | ' + (cs.company_name||'Rehumile TMW');
 
     // Header
     document.getElementById('hdr-company-name').textContent = cs.company_name||'Rehumile TMW';

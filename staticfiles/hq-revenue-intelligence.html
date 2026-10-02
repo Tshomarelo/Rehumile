@@ -7,7 +7,7 @@
   <title>Business Intelligence | Rehumile IMS</title>
   <link href="/portal/static/css/app.css" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;606&display=swap" rel="stylesheet">
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+  
   <style>.seg{display:inline-flex;border:1px solid #d1d5db;border-radius:8px;overflow:hidden}.seg button{border:0;background:#fff;padding:6px 14px;font-size:.8125rem;cursor:pointer}.seg button.on{background:#50181E;color:#fff}.neg{color:#b91c1c}.pos{color:#15803d}
     .rp-eq{background:#fdf5f5;border-left:5px solid #50181E;border-radius:8px;padding:14px 18px;font-size:1.05rem;line-height:1.7}
     .rp-eq b{white-space:nowrap}
@@ -329,6 +329,8 @@
 </div>
 
 <script src="/portal/static/js/app.js"></script>
+<!-- loaded after app.js on purpose: app.js bundles an older Chart that would otherwise replace this one -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
 <script src="/portal/static/js/hq-sidebar-menu.js?v=20261001"></script>
 <script>(function(){function _i(){var s=document.querySelector('.js-sidebar'),t=document.querySelector('.js-sidebar-toggle');if(!s||!t)return;if(window.innerWidth<992&&localStorage.getItem('ims_sidebar')==='open')s.classList.add('collapsed');t.addEventListener('click',function(){setTimeout(function(){localStorage.setItem('ims_sidebar',s.classList.contains('collapsed')?'open':'closed');},50);});}document.readyState==='loading'?document.addEventListener('DOMContentLoaded',_i):_i();})();</script>
 <script>

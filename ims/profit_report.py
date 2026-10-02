@@ -67,12 +67,13 @@ def build(period='month', anchor=None, date_from=None, date_to=None, basis='rece
             e['paid_on'].append(ev.payment_date)
         direct = list(finance._direct_sales_qs(start, end).order_by('-created_at'))
     if basis in ('owed', 'full'):
-        for inv in finance._unpaid_qs(as_of).select_related('company', 'wifi_subscriber', 'sla_contract').prefetch_related('items__subscription'):
+        for inv in finance._unpaid_qs(end).select_related('company', 'wifi_subscriber', 'sla_contract').prefetch_related('items__subscription'):
             frac = _owed_frac(inv)
             if frac > 0:
                 entry(inv)['owed'] += frac
     rows_inv = []
     prov_rows = []
+    job_cost_ids = finance.job_cost_invoice_ids()
     for e in sorted(entries.values(), key=lambda x: (x['inv'].due_date or date.max, x['inv'].invoice_number)):
         inv = e['inv']
         frac = e['recv'] + e['owed']
@@ -104,12 +105,12 @@ def build(period='month', anchor=None, date_from=None, date_to=None, basis='rece
             'id': str(inv.id), 'number': inv.invoice_number, 'client': finance._client_name(inv), 'status': inv.status,
             'period_start': inv.billing_period_start.isoformat() if inv.billing_period_start else None,
             'period_end': inv.billing_period_end.isoformat() if inv.billing_period_end else None,
-            'issued': local_date(inv.sent_at).isoformat() if inv.sent_at else None,
+            'issued': local_date(inv.sent_at).isoformat() if inv.sent_at else None, 'period_date': (finance.invoice_period_date(inv) or date.min).isoformat(),
             'due': inv.due_date.isoformat() if inv.due_date else None, 'days_overdue': _days_overdue(inv, as_of),
             'total': _f(inv.total_amount), 'paid': _f(inv.amount_paid), 'balance': _f(inv.balance_due),
             'counted': _f(counted), 'counted_received': _f(inv.subtotal * e['recv']), 'counted_owed': _f(inv.subtotal * e['owed']),
             'cost': _f(cost_total), 'profit': _f(counted - cost_total),
-            'no_cost': cost_total == 0 and counted > 0, 'lines': lines, 'url': _invoice_link(inv),
+            'no_cost': cost_total == 0 and counted > 0 and inv.id not in job_cost_ids, 'job_costs_logged': inv.id in job_cost_ids, 'lines': lines, 'url': _invoice_link(inv),
             '_inv': inv, '_frac': frac, '_cost': cost_total, '_counted': counted, '_owed_frac': e['owed'], '_paid_on': e['paid_on'],
         })
 
