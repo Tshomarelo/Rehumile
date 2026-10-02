@@ -1769,6 +1769,8 @@ class ExpenseListView(APIView):
         payment_status = params.get("payment_status")
         if payment_status:
             qs = qs.filter(payment_status=payment_status)
+        if params.get("supplier_bill") in ("1", "true", "True"):
+            qs = qs.filter(is_supplier_bill=True)
         is_recurring = params.get("is_recurring")
         if is_recurring in ("1", "true", "True"):
             qs = qs.filter(is_recurring=True)
@@ -1796,10 +1798,15 @@ class ExpenseListView(APIView):
             "is_recurring": e.is_recurring,
             "recurring_frequency": e.recurring_frequency,
             "payment_status": e.payment_status,
+            "paid_on": e.paid_on.isoformat() if e.paid_on else None,
+            "payment_method": e.payment_method, "payment_reference": e.payment_reference,
+            "is_supplier_bill": e.is_supplier_bill, "supplier_account": str(e.supplier_account_id) if e.supplier_account_id else None,
+            "supplier_account_name": str(e.supplier_account) if e.supplier_account_id else None,
+            "is_recurring": e.is_recurring, "from_recurring": bool(e.recurring_source_id),
             "receipt_image_path": e.receipt_image_path,
             "recorded_by": e.recorded_by.email if e.recorded_by else None,
             "created_at": e.created_at.isoformat(),
-        } for e in qs.order_by("-expense_date")[:300]]
+        } for e in qs.select_related("supplier_account").order_by("-expense_date")[:300]]
         return Response({"results": data, "count": len(data)})
 
     def post(self, request):
@@ -1862,8 +1869,55 @@ class ExpenseListView(APIView):
             receipt_image_path=d.get("receipt_image_path", ""),
             recorded_by=request.user,
         )
+        extra = _apply_bill_fields(expense, d)
+        if isinstance(extra, Response):
+            expense.delete()
+            return extra
+        if expense.payment_status == "paid":
+            expense.paid_on = expense.paid_on or expense.expense_date
+            expense.save(update_fields=["paid_on"])
         post_expense(expense)
         return Response({"id": str(expense.id)}, status=status.HTTP_201_CREATED)
+
+
+def _apply_bill_fields(expense, d):
+    """Supplier-bill fields: account, flag and the lines it covers. Returns a Response on a validation problem."""
+    from decimal import Decimal, InvalidOperation
+    from .models import ExpenseLine, RecurringExpense, SupplierAccount
+    if d.get("supplier_account"):
+        acct = SupplierAccount.objects.filter(pk=d["supplier_account"]).first()
+        if acct is None:
+            return Response({"detail": "Supplier account not found."}, status=400)
+        expense.supplier_account = acct
+    if "is_supplier_bill" in d:
+        expense.is_supplier_bill = bool(d["is_supplier_bill"])
+    if expense.supplier_account_id and "is_supplier_bill" not in d:
+        expense.is_supplier_bill = True
+    expense.payment_method = (d.get("payment_method") or expense.payment_method or "")[:20]
+    expense.payment_reference = (d.get("payment_reference") or expense.payment_reference or "")[:255]
+    if d.get("paid_on"):
+        expense.paid_on = parse_day(d["paid_on"]) or expense.paid_on
+    expense.save()
+    if "lines" in d:
+        if not isinstance(d["lines"], list):
+            return Response({"detail": "lines must be a list."}, status=400)
+        new_lines, total = [], Decimal("0")
+        for ln in d["lines"]:
+            try:
+                amt = Decimal(str(ln.get("amount")))
+            except (InvalidOperation, TypeError):
+                return Response({"detail": "Every bill line needs an amount."}, status=400)
+            if amt < 0 or not (ln.get("description") or "").strip():
+                return Response({"detail": "Every bill line needs a description and a positive amount."}, status=400)
+            sub = Subscription.objects.filter(pk=ln["subscription"]).first() if ln.get("subscription") else None
+            rec = RecurringExpense.objects.filter(pk=ln["recurring_expense"]).first() if ln.get("recurring_expense") else None
+            new_lines.append(ExpenseLine(expense=expense, description=ln["description"].strip()[:255], amount=amt, subscription=sub, recurring_expense=rec))
+            total += amt
+        if new_lines and total != expense.amount:
+            return Response({"detail": f"The bill lines add up to R {total:,.2f} but the bill amount is R {expense.amount:,.2f}."}, status=400)
+        expense.lines.all().delete()
+        ExpenseLine.objects.bulk_create(new_lines)
+    return None
 
 
 class ExpenseDetailView(APIView):
@@ -1885,23 +1939,42 @@ class ExpenseDetailView(APIView):
             "receipt_image_path": e.receipt_image_path,
             "expense_category": str(e.expense_category_id) if e.expense_category_id else None,
             "quotation": str(e.quotation_id) if e.quotation_id else None,
+            "paid_on": e.paid_on.isoformat() if e.paid_on else None, "payment_method": e.payment_method,
+            "payment_reference": e.payment_reference, "is_supplier_bill": e.is_supplier_bill,
+            "supplier_account": str(e.supplier_account_id) if e.supplier_account_id else None,
+            "lines": [{"id": str(l.id), "description": l.description, "amount": str(l.amount),
+                       "subscription": str(l.subscription_id) if l.subscription_id else None,
+                       "recurring_expense": str(l.recurring_expense_id) if l.recurring_expense_id else None} for l in e.lines.all()],
         })
 
     def patch(self, request, pk):
-        """Edit the non-financial details, link to a quotation, or mark an unpaid expense paid.
-        Amount / date / category feed the ledger, so to change those delete the expense and re-enter it."""
+        """Edit an expense: details, amount, quotation link, and mark it paid (date, method, reference) or unpaid.
+        Changing the amount or paid state rebuilds its ledger entries (old ones are reversed, never edited)."""
         if request.user.role not in ("admin", "finance"):
             return Response({"detail": "Permission denied."}, status=status.HTTP_403_FORBIDDEN)
+        from decimal import Decimal, InvalidOperation
         from .models import Quotation
-        from .ledger import post_expense_payment
+        from .ledger import repost_expense
         try:
-            e = Expense.objects.get(pk=pk)
+            e = Expense.objects.select_related("account").get(pk=pk)
         except Expense.DoesNotExist:
             return Response({"detail": "Not found."}, status=404)
         d = request.data
-        blocked = [f for f in ("amount", "expense_date", "expense_category", "account", "category") if f in d]
+        blocked = [f for f in ("expense_date", "expense_category", "account", "category") if f in d]
         if blocked:
-            return Response({"detail": "Amount, date and category are locked once booked. Delete this expense and enter it again to change them."}, status=400)
+            return Response({"detail": "Date and category are locked once booked. Delete this expense and enter it again to change them."}, status=400)
+        rebook = False
+        if "amount" in d:
+            try:
+                new_amount = Decimal(str(d["amount"]))
+            except InvalidOperation:
+                return Response({"detail": "amount must be a number."}, status=400)
+            if new_amount <= 0:
+                return Response({"detail": "amount must be greater than zero."}, status=400)
+            if new_amount != e.amount:
+                if e.lines.exists():
+                    return Response({"detail": "This bill has lines that add up to its amount. Edit the lines (send lines and amount together)."}, status=400) if "lines" not in d else None
+                e.amount, rebook = new_amount, True
         for f in ("vendor", "description", "receipt_image_path", "recurring_frequency"):
             if f in d:
                 setattr(e, f, (d[f] or "").strip())
@@ -1915,11 +1988,33 @@ class ExpenseDetailView(APIView):
                 e.quotation = q
             else:
                 e.quotation = None
-        if d.get("payment_status") == "paid" and e.payment_status == "unpaid":
-            e.payment_status = "paid"
-            post_expense_payment(e, d.get("paid_on") or None, request.user)
+        new_state = d.get("payment_status")
+        if new_state in ("paid", "unpaid") and new_state != e.payment_status:
+            e.payment_status = new_state
+            rebook = True
+            if new_state == "paid":
+                paid_on = parse_day(d.get("paid_on")) if d.get("paid_on") else None
+                if d.get("paid_on") and not paid_on:
+                    return Response({"detail": "paid_on must be a date (YYYY-MM-DD)."}, status=400)
+                e.paid_on = paid_on or date.today()
+                e.payment_method = (d.get("payment_method") or "")[:20]
+                e.payment_reference = (d.get("payment_reference") or "")[:255]
+            else:
+                e.paid_on, e.payment_method, e.payment_reference = None, "", ""
+        elif new_state == "paid" and e.payment_status == "paid":
+            for f, n in (("payment_method", 20), ("payment_reference", 255)):
+                if f in d:
+                    setattr(e, f, (d[f] or "")[:n])
+            if d.get("paid_on") and parse_day(d["paid_on"]) and parse_day(d["paid_on"]) != e.paid_on:
+                e.paid_on, rebook = parse_day(d["paid_on"]), True
+        if "supplier_account" in d or "lines" in d or "is_supplier_bill" in d:
+            extra = _apply_bill_fields(e, d)
+            if isinstance(extra, Response):
+                return extra
         e.save()
-        return Response({"id": str(e.id), "payment_status": e.payment_status})
+        if rebook:
+            repost_expense(e, request.user)
+        return Response({"id": str(e.id), "payment_status": e.payment_status, "amount": str(e.amount)})
 
     def delete(self, request, pk):
         if request.user.role not in ("admin", "finance"):

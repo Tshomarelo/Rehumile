@@ -26,6 +26,7 @@ from decimal import Decimal
 
 from django.db.models import Q, Sum
 
+from . import costlines
 from .timeutils import since, until
 from .models import (
     CashTransaction, Expense, ExpenseCategory, Invoice, InvoicePayment, PayrollEntry,
@@ -162,7 +163,9 @@ def _direct_sales_qs(start, end):
 
 
 def _expense_qs(start, end):
-    return Expense.objects.filter(expense_date__gte=start, expense_date__lte=end)
+    """Expenses that count as costs in profit. Supplier account bills are left out: the cost of the client lines
+    on them is already counted through the invoices, and our own lines are recurring costs."""
+    return Expense.objects.filter(expense_date__gte=start, expense_date__lte=end, is_supplier_bill=False)
 
 
 def _payroll_qs(start, end):
@@ -402,6 +405,7 @@ def summary(start, end, today=None):
             'gross': _f(gross_profit), 'net': _f(net_profit),
             'margin_pct': round(float(net_profit / revenue * 100), 1) if revenue else 0,
         },
+        'accrual': accrual_summary(start, end, today),
         'workings': workings,
         'notes': [
             'Capital purchases (equipment/tools) of R %s are assets, so they are not deducted from profit.' % f"{_f(capital_exp):,.2f}",
@@ -409,6 +413,109 @@ def summary(start, end, today=None):
             'Payroll is booked in the pay month it belongs to, so it shows in the week/month/year containing that month-end.',
         ],
     }
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Accrual view: "profit if every invoice is paid"
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _issued(start, end):
+    return list(_invoiced_qs(start, end).select_related('company', 'wifi_subscriber', 'sla_contract').prefetch_related('items__subscription'))
+
+
+def accrual_summary(start, end, today=None):
+    """
+    The accrual picture of a period: revenue = invoices issued in it (excl. VAT) + till sales; cost of sales = the full
+    Axxess / service / job cost of those invoices whether or not they are paid, plus parts bought; then running costs
+    and payroll. Also explains the gap to "profit on money collected" (the cash-style figure the dashboard shows).
+    """
+    issued = _issued(start, end)
+    events = _paid_events(start, end)
+    recv = {}
+    for ev in events:
+        recv[ev._inv.id] = recv.get(ev._inv.id, ZERO) + ev.frac
+    issued_ids = {i.id for i in issued}
+
+    inv_rev = sum((i.subtotal for i in issued), ZERO)
+    splits = {i.id: invoice_split(i) for i in issued}
+    inv_cost = sum((sp['axxess'] + sp['services_cost'] for sp in splits.values()), ZERO)
+    direct_total = sum((t.amount for t in _direct_sales_qs(start, end)), ZERO)
+    expenses = list(_expense_qs(start, end))
+    cogs = sum((e.amount for e in expenses if e.category == 'cogs'), ZERO)
+    opex = sum((e.amount for e in expenses if e.category not in ('cogs', 'capital')), ZERO)
+    payroll = sum((p.employer_cost for p in _payroll_qs(start, end)), ZERO)
+    revenue = inv_rev + direct_total
+    cost_of_sales = inv_cost + cogs
+    gross = revenue - cost_of_sales
+    net = gross - opex - payroll
+
+    # this period's invoices that have not been (fully) paid within the period, and what they cost
+    a_rev = a_cost = ZERO
+    not_counted_rows = []
+    for inv in issued:
+        frac = max(ZERO, Decimal('1') - recv.get(inv.id, ZERO))
+        if frac <= 0:
+            continue
+        a_rev += inv.subtotal * frac
+        sp = splits[inv.id]
+        inv_c = (sp['axxess'] + sp['services_cost']) * frac
+        a_cost += inv_c
+        for ln in costlines.lines(inv):
+            c = ln['cost'] * frac
+            if c:
+                not_counted_rows.append({
+                    'ref': inv.invoice_number, 'label': _client_name(inv), 'line': ln['description'], 'branch': ln['site_name'],
+                    'amount': _f(c), 'revenue': _f(ln['amount'] * frac), 'source': costlines.line_source(inv, ln, c),
+                    'date': inv.sent_at.date().isoformat() if inv.sent_at else None,
+                    'paid': inv.status == 'paid', 'url': costlines.invoice_link(inv)})
+    # money collected in this period for invoices issued earlier (their revenue and cost count in the collected view only)
+    b_rev = b_cost = ZERO
+    for ev in events:
+        if ev._inv.id not in issued_ids:
+            sp = invoice_split(ev)
+            b_rev += ev.subtotal
+            b_cost += sp['axxess'] + sp['services_cost']
+
+    collected = summary_core_net(start, end)
+    reconciliation = [
+        {'key': 'unpaid_revenue', 'label': "Invoiced this period but not yet paid (excl. VAT)", 'sign': '+', 'amount': _f(a_rev),
+         'explain': "Revenue on this period's invoices that clients have not paid yet. The collected figure ignores it."},
+        {'key': 'unpaid_cost', 'label': "Their Axxess / service costs", 'sign': '−', 'amount': _f(a_cost),
+         'explain': "What those same invoices cost us. The collected figure only counts a cost once the client has paid."},
+        {'key': 'earlier_revenue', 'label': "Collected this period for invoices issued earlier (excl. VAT)", 'sign': '−', 'amount': _f(b_rev),
+         'explain': "Money that arrived now for earlier months' invoices. It is in the collected figure but not in this period's invoicing."},
+        {'key': 'earlier_cost', 'label': "Costs of those earlier invoices", 'sign': '+', 'amount': _f(b_cost),
+         'explain': "The matching costs, counted in the collected figure when the money arrived."},
+    ]
+    gap = (a_rev - a_cost) - (b_rev - b_cost)
+    return {
+        'profit_if_paid': _f(net), 'profit_collected': _f(collected), 'gap': _f(net - collected), 'gap_check': _f(gap),
+        'revenue': {'invoices': _f(inv_rev), 'direct_sales': _f(direct_total), 'total': _f(revenue), 'invoice_count': len(issued)},
+        'cost_of_sales': {'invoice_costs': _f(inv_cost), 'parts': _f(cogs), 'total': _f(cost_of_sales)},
+        'gross': _f(gross), 'operating': _f(opex), 'payroll': _f(payroll), 'net': _f(net),
+        'margin_pct': round(float(net / revenue * 100), 1) if revenue else 0,
+        'costs_not_counted': {'amount': _f(a_cost), 'revenue': _f(a_rev), 'rows': not_counted_rows[:ROW_LIMIT]},
+        'reconciliation': reconciliation,
+        'explain': {
+            'profit_collected': "Profit on money collected: payments received in the period (excl. VAT) minus the Axxess/service costs of those paid invoices, minus running costs and payroll.",
+            'profit_if_paid': "Profit if all invoices are paid: every invoice issued in the period (excl. VAT) minus ALL of their Axxess/service costs (paid or not), minus running costs and payroll.",
+        },
+    }
+
+
+def summary_core_net(start, end):
+    """Net profit on money collected (the dashboard's number), without building the whole summary."""
+    events = _paid_events(start, end)
+    revenue = sum((e.subtotal for e in events), ZERO) + sum((t.amount for t in _direct_sales_qs(start, end)), ZERO)
+    cost = ZERO
+    for e in events:
+        sp = invoice_split(e)
+        cost += sp['axxess'] + sp['services_cost']
+    expenses = list(_expense_qs(start, end))
+    cogs = sum((x.amount for x in expenses if x.category == 'cogs'), ZERO)
+    opex = sum((x.amount for x in expenses if x.category not in ('cogs', 'capital')), ZERO)
+    payroll = sum((p.employer_cost for p in _payroll_qs(start, end)), ZERO)
+    return revenue - cost - cogs - opex - payroll
 
 
 def _expense_rows(expenses, kind):

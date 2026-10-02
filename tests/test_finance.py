@@ -219,10 +219,13 @@ def test_expense_delete_reverses_ledger_and_mark_paid(db, api):
     r = api.post('/api/expenses/', {'expense_category': rent['id'], 'amount': '700', 'vendor': 'Landlord',
                                    'expense_date': '2026-09-01', 'payment_status': 'unpaid'}, format='json')
     eid = r.data['id']
-    assert api.patch(f'/api/expenses/{eid}/', {'amount': '1'}, format='json').status_code == 400   # locked
-    p = api.patch(f'/api/expenses/{eid}/', {'payment_status': 'paid'}, format='json')
+    assert api.patch(f'/api/expenses/{eid}/', {'expense_date': '2026-09-02'}, format='json').status_code == 400   # date stays locked
+    assert api.patch(f'/api/expenses/{eid}/', {'amount': '-5'}, format='json').status_code == 400
+    p = api.patch(f'/api/expenses/{eid}/', {'payment_status': 'paid', 'paid_on': '2026-09-05', 'payment_method': 'eft', 'payment_reference': 'REF1'}, format='json')
     assert p.status_code == 200
-    assert LedgerTransaction.objects.filter(source_model='ExpensePayment', source_id=eid).exists()
+    assert LedgerTransaction.objects.filter(source_model='ExpensePayment', source_id__startswith=eid, reverses__isnull=True).exists()
+    e = Expense.objects.get(pk=eid)
+    assert e.paid_on == date(2026, 9, 5) and e.payment_method == 'eft' and e.payment_reference == 'REF1'
     assert api.delete(f'/api/expenses/{eid}/').status_code == 204
     # every posting is mirrored by a reversal, so the account nets to zero
     from django.db.models import Sum

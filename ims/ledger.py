@@ -12,6 +12,7 @@ renaming an account in the Chart of Accounts UI can never break posting.
 from decimal import Decimal
 
 from django.db import transaction as db_transaction
+from django.db.models import Q
 
 from .models import Account, LedgerTransaction, LedgerEntry
 
@@ -339,6 +340,35 @@ def post_expense_payment(expense, pay_date=None, user=None):
 
 
 @db_transaction.atomic
+def repost_expense(expense, user=None):
+    """
+    Rebuild an expense's ledger entries after its amount or paid/unpaid state changed. The ledger is append-only, so the
+    old postings are reversed and fresh ones are made under a new revision key (id:1, id:2 ...).
+    A paid expense that has a payment date different from its expense date is booked as a payable and then paid on that date.
+    """
+    reverse_source('Expense', expense.id, user)
+    n = LedgerTransaction.objects.filter(
+        Q(source_id=str(expense.id)) | Q(source_id__startswith=f"{expense.id}:"), source_model__in=['Expense', 'ExpensePayment'],
+        reverses__isnull=True).count()
+    sid = f"{expense.id}:{n}"
+    amount = Decimal(expense.amount or 0)
+    if amount <= 0:
+        return None
+    sep = expense.payment_status == 'paid' and expense.paid_on and expense.paid_on != expense.expense_date
+    payable = expense.payment_status == 'unpaid' or sep
+    post_transaction(
+        'Expense', sid, expense.expense_date, f"{expense.vendor} — {expense.description or expense.category}",
+        [(expense.account.system_key, amount, Decimal('0'), expense.vendor),
+         ('ACCOUNTS_PAYABLE' if payable else 'BANK_CASH', Decimal('0'), amount, expense.vendor)],
+        cash_flow_stream=None if payable else expense.cash_flow_stream, user=user)
+    if sep:
+        post_transaction(
+            'ExpensePayment', sid, expense.paid_on, f"Paid supplier — {expense.vendor}",
+            [('ACCOUNTS_PAYABLE', amount, Decimal('0'), expense.vendor), ('BANK_CASH', Decimal('0'), amount, expense.vendor)],
+            cash_flow_stream=expense.cash_flow_stream, user=user)
+
+
+@db_transaction.atomic
 def reverse_source(source_model, source_id, user=None):
     """
     Undo every posting made for a source record by posting mirror-image
@@ -348,7 +378,8 @@ def reverse_source(source_model, source_id, user=None):
     from datetime import date as _date
     reversed_count = 0
     originals = LedgerTransaction.objects.filter(
-        source_model__in=[source_model, f"{source_model}Payment"], source_id=str(source_id), reverses__isnull=True,
+        Q(source_id=str(source_id)) | Q(source_id__startswith=f"{source_id}:"),
+        source_model__in=[source_model, f"{source_model}Payment"], reverses__isnull=True,
     )
     for txn in originals:
         if txn.reversed_by.exists():

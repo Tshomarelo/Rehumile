@@ -1565,6 +1565,41 @@ class ExpenseCategory(models.Model):
         return self.name
 
 
+class SupplierAccount(models.Model):
+    """A supplier account we are billed on (each Axxess account number). Lines on it are client services and our own."""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    supplier = models.CharField(max_length=100, default='Axxess')
+    account_number = models.CharField(max_length=50, unique=True)
+    name = models.CharField(max_length=200, blank=True, help_text='e.g. "Thebado & Maputaland FM"')
+    charged_total = models.DecimalField(
+        max_digits=12, decimal_places=2, null=True, blank=True,
+        help_text='What the supplier charges on this account per month, from their latest invoice',
+    )
+    notes = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'supplier_accounts'
+        ordering = ['supplier', 'account_number']
+
+    def __str__(self):
+        return f"{self.supplier} {self.account_number}"
+
+
+class ExpenseLine(models.Model):
+    """One line of a supplier bill: what the supplier charged for a line, linked to the service/cost it covers."""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    expense = models.ForeignKey('Expense', on_delete=models.CASCADE, related_name='lines')
+    description = models.CharField(max_length=255)
+    amount = models.DecimalField(max_digits=12, decimal_places=2)
+    subscription = models.ForeignKey('Subscription', on_delete=models.SET_NULL, null=True, blank=True, related_name='bill_lines')
+    recurring_expense = models.ForeignKey('RecurringExpense', on_delete=models.SET_NULL, null=True, blank=True, related_name='bill_lines')
+
+    class Meta:
+        db_table = 'expense_lines'
+        ordering = ['description']
+
+
 class RecurringExpense(models.Model):
     """
     A cost that repeats (your own Axxess line, domains, email, hosting, rent...). The daily job
@@ -1584,6 +1619,7 @@ class RecurringExpense(models.Model):
     end_date = models.DateField(null=True, blank=True)
     payment_status = models.CharField(max_length=10, choices=[('paid', 'Paid'), ('unpaid', 'Unpaid / Payable')], default='paid')
     is_active = models.BooleanField(default=True)
+    supplier_account = models.ForeignKey(SupplierAccount, on_delete=models.SET_NULL, null=True, blank=True, related_name='own_lines')
     last_posted_for = models.DateField(null=True, blank=True)
     created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='recurring_expenses_created')
     created_at = models.DateTimeField(auto_now_add=True)
@@ -1680,6 +1716,17 @@ class Expense(models.Model):
         'RecurringExpense', on_delete=models.SET_NULL, null=True, blank=True, related_name='expenses',
     )
     occurrence_date = models.DateField(null=True, blank=True)
+    # When / how an unpaid expense was settled (filled by "Mark paid")
+    paid_on = models.DateField(null=True, blank=True)
+    payment_method = models.CharField(max_length=20, blank=True)
+    payment_reference = models.CharField(max_length=255, blank=True)
+    # A supplier account bill (e.g. the monthly Axxess account). The cost of the client lines it covers is already
+    # counted through the invoices, so a bill is NOT counted again as a cost in profit; it shows under "money we owe"
+    # while unpaid and as cash out when paid.
+    is_supplier_bill = models.BooleanField(default=False)
+    supplier_account = models.ForeignKey(
+        'SupplierAccount', on_delete=models.SET_NULL, null=True, blank=True, related_name='bills',
+    )
     recorded_by = models.ForeignKey(
         User, on_delete=models.SET_NULL, null=True, related_name='expenses_recorded',
     )
@@ -2431,6 +2478,7 @@ class Subscription(models.Model):
     end_date = models.DateField(null=True, blank=True)
     status = models.CharField(max_length=20, choices=SubscriberStatusChoices.choices, default='active', db_index=True)
     axxess_id = models.CharField(max_length=150, blank=True)
+    supplier_account = models.ForeignKey(SupplierAccount, on_delete=models.SET_NULL, null=True, blank=True, related_name='client_lines')
     notes = models.TextField(blank=True)
     legacy_wifi = models.OneToOneField(WifiSubscriber, null=True, blank=True, on_delete=models.CASCADE, related_name='subscription')
     legacy_sla = models.OneToOneField(SLAContract, null=True, blank=True, on_delete=models.CASCADE, related_name='subscription')
