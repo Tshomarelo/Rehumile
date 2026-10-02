@@ -3987,14 +3987,22 @@ class InvoicePrintView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, pk):
+        try:
+            return self._build(request, pk)
+        except Exception as exc:       # show the real cause on the print page instead of a bare "not found"
+            import logging
+            logging.getLogger(__name__).exception('Invoice print failed for %s', pk)
+            return Response({'detail': f'{type(exc).__name__}: {exc}'[:300]}, status=500)
+
+    def _build(self, request, pk):
         from .models import InvoiceItem
         try:
-            inv = Invoice.objects.select_related('company', 'wifi_subscriber', 'sla_contract', 'subscription', 'incident').get(pk=pk)
+            inv = Invoice.objects.select_related('company', 'wifi_subscriber', 'sla_contract', 'incident').get(pk=pk)
         except Invoice.DoesNotExist:
             return Response({'detail': 'Not found.'}, status=404)
 
         user = request.user
-        if user.role not in ('admin', 'agent', 'finance'):
+        if user.role not in ('admin', 'agent', 'finance', 'cashier'):
             if not user.company or inv.company_id != user.company_id:
                 return Response({'detail': 'Not found.'}, status=404)
 

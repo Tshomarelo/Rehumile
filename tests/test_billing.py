@@ -382,3 +382,16 @@ def test_api_accepts_domain_and_invoice_separately(api, db):
     r = api.post('/api/subscriptions/', {'company': str(co.id), 'service_type': 'domain', 'unit_price': '15', 'invoice_separately': True,
                                          'start_date': '2026-01-01'}, format='json')
     assert r.status_code == 201 and r.data['invoice_separately'] is True and r.data['service_label'] == 'Domain'
+
+
+def test_print_api_works_for_finance_and_cashier_and_reports_errors(api, db):
+    from tests.conftest import client_for, make_user
+    co = company('Acme')
+    sub(co, stype='hosting', price=250, cost=90, desc='acme.co.za')
+    inv = billing.generate(Y, M)[0]
+    for role in ('admin', 'finance', 'cashier'):
+        r = client_for(make_user(role)).get(f'/api/invoices/{inv.id}/print/')
+        assert r.status_code == 200 and r.data['invoice']['invoice_number'] == inv.invoice_number and r.data['items'], role
+    assert 'unit_cost' not in str(r.data)                    # the printable invoice never carries costs
+    assert client_for(make_user('client')).get(f'/api/invoices/{inv.id}/print/').status_code == 404
+    assert api.get('/api/invoices/00000000-0000-0000-0000-000000000000/print/').status_code == 404
