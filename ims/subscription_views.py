@@ -22,7 +22,7 @@ from .models import Company, ClientSite, Subscription
 
 ROLES = ('admin', 'finance')
 SERVICE_TYPES = ('wifi', 'email', 'hosting', 'domain', 'sla', 'other')
-LEGACY_EDITABLE = {'site', 'description', 'quantity', 'notes'}
+LEGACY_EDITABLE = {'site', 'description', 'quantity', 'notes', 'supplier_account'}
 
 
 def _denied():

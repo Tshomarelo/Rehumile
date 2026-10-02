@@ -54,6 +54,7 @@
         <ul class="nav nav-tabs mb-3" id="mainTabs">
           <li class="nav-item"><a class="nav-link active" onclick="switchTab('expenses')">Expenses</a></li>
           <li class="nav-item"><a class="nav-link" onclick="switchTab('recurring')">Recurring costs</a></li>
+          <li class="nav-item"><a class="nav-link" onclick="switchTab('supplier')">Supplier bills (Axxess)</a></li>
           <li class="nav-item"><a class="nav-link" onclick="switchTab('categories')">Categories &amp; Budgets</a></li>
           <li class="nav-item"><a class="nav-link" onclick="switchTab('accounts')">Chart of Accounts</a></li>
         </ul>
@@ -132,6 +133,18 @@
                 <tbody id="recTbody"><tr><td colspan="8" class="text-center text-muted py-3">Loading…</td></tr></tbody>
               </table></div></div>
           </div>
+        </div>
+
+        <!-- Supplier bills tab -->
+        <div id="tab-supplier" class="tab-pane">
+          <div class="alert alert-info py-2 small"><b>Axxess accounts.</b> Log each monthly Axxess account bill once, with the lines it covers. A bill is <b>not</b> counted as a cost again (the cost of client lines is already counted through their invoices, and your own lines are recurring costs).
+            It shows under <b>Money we owe</b> while unpaid and as cash paid out once you mark it paid. Compare what Axxess charged with what our system has recorded, line by line, below.</div>
+          <div class="row g-2 mb-3 align-items-end">
+            <div class="col-auto"><label class="form-label small mb-1">Month</label><input type="month" class="form-control form-control-sm" id="sbMonth"></div>
+            <div class="col-auto"><button class="btn btn-sm btn-outline-secondary" id="sbReload">Refresh</button></div>
+            <div class="col-auto ms-auto"><button class="btn btn-sm btn-primary" id="sbNewBill" style="display:none">+ Log Axxess bill</button></div>
+          </div>
+          <div id="sbAlert"></div><div id="sbBody"><div class="text-muted text-center py-4">Loading…</div></div>
         </div>
 
         <!-- Categories tab -->
@@ -282,6 +295,44 @@
 <div class="hq-backdrop" id="accountModal-bd" onclick="HQ.hideDrawer('accountModal')"></div>
 
 <!-- Recurring Drawer -->
+<!-- Mark paid -->
+<div class="hq-drawer" id="payModal">
+  <div class="hq-drawer-header"><h5 class="hq-drawer-title">Mark as paid</h5><button type="button" class="btn-close btn-close-white" onclick="HQ.hideDrawer('payModal')"></button></div>
+  <div class="hq-drawer-body"><div id="payAlert"></div><input type="hidden" id="pay_id">
+    <div class="p-2 mb-3" style="background:#f9fafb;border-radius:8px"><div class="fw-bold" id="pay_title"></div><div class="h5 mb-0" id="pay_amount"></div></div>
+    <div class="mb-3"><label class="form-label">Date it was paid <span class="text-danger">*</span></label><input type="date" class="form-control" id="pay_date"></div>
+    <div class="mb-3"><label class="form-label">How was it paid?</label><select class="form-select" id="pay_method"><option value="eft">EFT / bank transfer</option><option value="card">Card</option><option value="cash">Cash</option><option value="debit_order">Debit order</option><option value="other">Other</option></select></div>
+    <div class="mb-3"><label class="form-label">Reference <span class="text-muted small">(optional)</span></label><input class="form-control" id="pay_ref" placeholder="Bank reference or receipt number"></div></div>
+  <div class="hq-drawer-footer"><button class="btn btn-secondary" onclick="HQ.hideDrawer('payModal')">Cancel</button><button class="btn btn-success" id="paySave">Mark as paid</button></div>
+</div>
+<div class="hq-backdrop" id="payModal-bd" onclick="HQ.hideDrawer('payModal')"></div>
+<!-- Edit amount -->
+<div class="hq-drawer" id="amtModal">
+  <div class="hq-drawer-header"><h5 class="hq-drawer-title">Edit amount</h5><button type="button" class="btn-close btn-close-white" onclick="HQ.hideDrawer('amtModal')"></button></div>
+  <div class="hq-drawer-body"><div id="amtAlert"></div><input type="hidden" id="amt_id">
+    <div class="fw-bold mb-2" id="amt_title"></div>
+    <div class="mb-3"><label class="form-label">New amount (R)</label><input type="number" class="form-control" id="amt_value" min="0.01" step="0.01"></div>
+    <div class="small text-muted">The books are corrected automatically: the old entries are reversed and new ones made. Date and category stay as they were.</div></div>
+  <div class="hq-drawer-footer"><button class="btn btn-secondary" onclick="HQ.hideDrawer('amtModal')">Cancel</button><button class="btn btn-primary" id="amtSave">Save amount</button></div>
+</div>
+<div class="hq-backdrop" id="amtModal-bd" onclick="HQ.hideDrawer('amtModal')"></div>
+<!-- Axxess bill -->
+<div class="hq-drawer hq-wide" id="billModal">
+  <div class="hq-drawer-header"><h5 class="hq-drawer-title">Log a supplier (Axxess) bill</h5><button type="button" class="btn-close btn-close-white" onclick="HQ.hideDrawer('billModal')"></button></div>
+  <div class="hq-drawer-body"><div id="billAlert"></div>
+    <div class="row g-2 mb-3"><div class="col-md-6"><label class="form-label">Axxess account <span class="text-danger">*</span></label><select class="form-select" id="b_acct"></select></div>
+      <div class="col-md-3"><label class="form-label">Bill date <span class="text-danger">*</span></label><input type="date" class="form-control" id="b_date"></div>
+      <div class="col-md-3"><label class="form-label">Total on the bill (R)</label><input class="form-control" id="b_total" readonly></div></div>
+    <div class="mb-2 fw-semibold">Lines on the bill</div>
+    <div class="table-responsive"><table class="table table-sm align-middle"><thead><tr><th>Line / description</th><th style="width:230px">Which service or own cost</th><th style="width:130px">Axxess charged (R)</th><th style="width:36px"></th></tr></thead><tbody id="b_lines"></tbody></table></div>
+    <button class="btn btn-sm btn-outline-secondary mb-3" id="b_addLine">+ Add line</button>
+    <div class="row g-2"><div class="col-md-4"><label class="form-label">Status</label><select class="form-select" id="b_status"><option value="unpaid">Unpaid — we still owe Axxess</option><option value="paid">Paid</option></select></div>
+      <div class="col-md-4 b-paid" style="display:none"><label class="form-label">Date paid</label><input type="date" class="form-control" id="b_paid_on"></div>
+      <div class="col-md-4 b-paid" style="display:none"><label class="form-label">Reference</label><input class="form-control" id="b_ref"></div></div>
+    <div class="form-text mt-2">Link each line to the client service (or your own recurring cost) it covers so the reconciliation can compare it with what our records say. Lines must add up to the bill total.</div></div>
+  <div class="hq-drawer-footer"><button class="btn btn-secondary" onclick="HQ.hideDrawer('billModal')">Cancel</button><button class="btn btn-primary" id="billSave">Save bill</button></div>
+</div>
+<div class="hq-backdrop" id="billModal-bd" onclick="HQ.hideDrawer('billModal')"></div>
 <div class="hq-drawer" id="recModal">
   <div class="hq-drawer-header"><h5 class="hq-drawer-title" id="recTitle">New recurring cost</h5><button type="button" class="btn-close btn-close-white" onclick="HQ.hideDrawer('recModal')"></button></div>
   <div class="hq-drawer-body">
@@ -296,6 +347,7 @@
       <div class="col-md-4"><label class="form-label">First date</label><input type="date" class="form-control" id="r_start"></div>
       <div class="col-md-4"><label class="form-label">Stops <span class="text-muted small">(optional)</span></label><input type="date" class="form-control" id="r_end"></div></div>
     <div class="mb-3"><label class="form-label">Paid how?</label><select class="form-select" id="r_paid"><option value="paid">Paid when it is due (debit order / card)</option><option value="unpaid">Invoice to pay later (shows as owed to suppliers)</option></select></div>
+    <div class="mb-3"><label class="form-label">Axxess account <span class="text-muted small">(only for your own Axxess lines)</span></label><select class="form-select" id="r_acct"><option value="">— none —</option></select></div>
     <div class="mb-3"><label class="form-label">Note</label><input class="form-control" id="r_desc"></div>
     <div class="form-check"><input class="form-check-input" type="checkbox" id="r_active" checked><label class="form-check-label" for="r_active">Active (untick to pause)</label></div>
   </div>
@@ -389,6 +441,7 @@
     if(name==='accounts') loadAccounts();
     if(name==='categories') renderCategories();
     if(name==='recurring') loadRecurring();
+    if(name==='supplier') loadSupplier();
     document.getElementById('newCategoryBtn').style.display = (name==='categories' && canManage) ? '' : 'none';
     document.getElementById('recNewBtn').style.display = document.getElementById('recRunBtn').style.display = (name==='recurring' && canManage) ? '' : 'none';
   };
@@ -446,7 +499,7 @@
     try{
       const params = HQFilters.qs(currentFilters());
       const r = await api('/portal/api/expenses/'+(params?'?'+params:''));
-      const _j = await r.json(); const data = Array.isArray(_j) ? _j : (_j.results||[]);
+      const _j = await r.json(); const data = Array.isArray(_j) ? _j : (_j.results||[]); _expRows=data;
       document.getElementById('tableLoading').style.display='none';
       document.getElementById('expenseCount').textContent = data.length+' record'+(data.length!==1?'s':'');
       if(!data.length){ document.getElementById('tableEmpty').style.display='block'; document.getElementById('tableWrapper').style.display='none'; return; }
@@ -462,23 +515,44 @@
           <td>${fmtR(e.amount)}</td>
           <td>${statusBadge(e.payment_status)}</td>
           <td class="d-none d-md-table-cell">${e.is_recurring ? `<span class="badge bg-secondary">${e.recurring_frequency||'recurring'}</span>` : '—'}</td>
-          <td class="text-nowrap">${canManage ? `${e.payment_status==='unpaid' ? `<button class="btn btn-sm btn-outline-success me-1" title="Mark as paid" onclick="markExpensePaid('${e.id}')">Mark paid</button>` : ''}<button class="btn btn-sm btn-outline-danger" title="Delete" onclick="deleteExpense('${e.id}')"><i data-feather="trash-2" style="width:13px;height:13px"></i></button>` : ''}</td>
+          <td class="text-nowrap">${canManage ? `${e.payment_status==='unpaid' ? `<button class="btn btn-sm btn-outline-success me-1" title="Mark as paid" onclick="markExpensePaid(${attrJson(e.id)})">Mark paid</button>` : `<button class="btn btn-sm btn-outline-warning me-1" title="Mark as unpaid (not paid yet)" onclick="markExpenseUnpaid(${attrJson(e.id)})">Mark unpaid</button>`}<button class="btn btn-sm btn-outline-primary me-1" title="Edit amount" onclick="editAmount(${attrJson({id:e.id,vendor:e.vendor,amount:e.amount,desc:e.description,lines:e.is_supplier_bill})})">Edit</button><button class="btn btn-sm btn-outline-danger" title="Delete" onclick="deleteExpense(${attrJson(e.id)})"><i data-feather="trash-2" style="width:13px;height:13px"></i></button>` : ''}${e.is_supplier_bill?' <span class="badge bg-info text-dark" title="Supplier account bill — not counted as a cost again">bill</span>':''}<div class="small text-muted">${e.payment_status==='paid'&&e.paid_on?'paid '+esc(e.paid_on)+(e.payment_method?' by '+esc(e.payment_method):'')+(e.payment_reference?' · '+esc(e.payment_reference):''):''}</div></td>
         </tr>`).join('');
       const tot = data.reduce((s,e)=>s+parseFloat(e.amount),0);
       const unpaid = data.filter(e=>e.payment_status==='unpaid').reduce((s,e)=>s+parseFloat(e.amount),0);
       const capital = data.filter(e=>e.category==='capital').reduce((s,e)=>s+parseFloat(e.amount),0);
-      const tile = (l,v,s)=>`<div class="col-md-3"><div class="card mb-0"><div class="card-body py-2"><div class="text-muted small">${l}</div><div class="h5 mb-0">${fmtR(v)}</div><div class="text-muted small">${s}</div></div></div></div>`;
-      document.getElementById('expSummary').innerHTML = tile('Total shown',tot,data.length+' record(s)')+tile('Unpaid to suppliers',unpaid,'counted as an expense, not yet paid')+tile('Capital purchases',capital,'assets — not deducted from profit')+tile('Counts against profit',tot-capital,'cost of goods + running costs');
+      const tile = (l,v,s,id,click)=>`<div class="col-md-3"><div class="card mb-0" ${id?`id="${id}" style="cursor:pointer;border:1px solid #d97706" title="Click to show only the unpaid ones"`:''}><div class="card-body py-2"><div class="text-muted small">${l}</div><div class="h5 mb-0">${fmtR(v)}</div><div class="text-muted small">${s}</div></div></div></div>`;
+      document.getElementById('expSummary').innerHTML = tile('Total shown',tot,data.length+' record(s)')+tile('Unpaid to suppliers',unpaid,'not yet paid — click to list them','tUnpaidTile')+tile('Capital purchases',capital,'assets — not deducted from profit')+tile('Counts against profit',tot-capital,'cost of goods + running costs');
+      document.getElementById('tUnpaidTile').onclick=()=>{ document.getElementById('fPaymentStatus').value='unpaid'; document.getElementById('fPaymentStatus').dispatchEvent(new Event('change')); loadExpenses(); };
       if(window.feather) feather.replace();
     }catch(e){ if(e.message!=='Unauth') showAlert('pageAlert','Failed to load expenses.'); }
   }
 
-  window.markExpensePaid = async function(id){
-    try{
-      const r = await api('/portal/api/expenses/'+id+'/', {method:'PATCH', body:JSON.stringify({payment_status:'paid'})});
-      if(r.ok){ showAlert('pageAlert','Marked as paid and booked against the bank account.','success'); loadExpenses(); }
-      else { const d = await r.json(); showAlert('pageAlert', d.detail||'Could not update expense.'); }
-    }catch(e){ if(e.message!=='Unauth') showAlert('pageAlert','Could not update expense.'); }
+  let _expRows=[];
+  window.markExpensePaid = function(id){
+    const e=_expRows.find(x=>x.id===id)||{};
+    document.getElementById('pay_id').value=id; document.getElementById('pay_title').textContent=(e.vendor||'')+(e.description?' — '+e.description:'');
+    document.getElementById('pay_amount').textContent=fmtR(e.amount||0); document.getElementById('pay_date').value=new Date().toISOString().slice(0,10);
+    document.getElementById('pay_method').value='eft'; document.getElementById('pay_ref').value=''; document.getElementById('payAlert').innerHTML=''; HQ.showDrawer('payModal');
+  };
+  document.getElementById('paySave').onclick=async()=>{
+    const id=document.getElementById('pay_id').value, d=document.getElementById('pay_date').value;
+    if(!d){ showAlert('payAlert','Choose the date it was paid.'); return; }
+    const r=await api('/portal/api/expenses/'+id+'/',{method:'PATCH',body:JSON.stringify({payment_status:'paid',paid_on:d,payment_method:document.getElementById('pay_method').value,payment_reference:document.getElementById('pay_ref').value})});
+    const j=await r.json().catch(()=>({}));
+    if(r.ok){ HQ.hideDrawer('payModal'); showAlert('pageAlert','Marked as paid and booked against the bank account.','success'); loadExpenses(); if(window.loadSupplier) loadSupplier(); } else showAlert('payAlert',j.detail||'Could not update expense.');
+  };
+  window.markExpenseUnpaid = async function(id){
+    if(!confirm('Mark this expense as NOT paid? It will show as money we still owe and the bank entry is reversed.')) return;
+    const r=await api('/portal/api/expenses/'+id+'/',{method:'PATCH',body:JSON.stringify({payment_status:'unpaid'})}); const j=await r.json().catch(()=>({}));
+    if(r.ok){ showAlert('pageAlert','Marked as unpaid. It now counts under money we owe.','success'); loadExpenses(); if(window.loadSupplier) loadSupplier(); } else showAlert('pageAlert',j.detail||'Could not update expense.');
+  };
+  window.editAmount = function(e){
+    document.getElementById('amt_id').value=e.id; document.getElementById('amt_title').textContent=e.vendor+(e.desc?' — '+e.desc:''); document.getElementById('amt_value').value=e.amount; document.getElementById('amtAlert').innerHTML='';
+    document.getElementById('amtSave').disabled=!!e.lines; if(e.lines) showAlert('amtAlert','This is a supplier bill with lines. Delete it and log it again to change its amounts.','warning'); HQ.showDrawer('amtModal');
+  };
+  document.getElementById('amtSave').onclick=async()=>{
+    const r=await api('/portal/api/expenses/'+document.getElementById('amt_id').value+'/',{method:'PATCH',body:JSON.stringify({amount:document.getElementById('amt_value').value})}); const j=await r.json().catch(()=>({}));
+    if(r.ok){ HQ.hideDrawer('amtModal'); showAlert('pageAlert','Amount updated and the books corrected.','success'); loadExpenses(); } else showAlert('amtAlert',j.detail||'Could not update the amount.');
   };
 
   window.deleteExpense = async function(id){
@@ -539,6 +613,7 @@
   let recs=[];
   async function loadRecurring(){
     if(!categories.length) await loadCategories();
+    if(!acctList.length) await loadAccts();
     try{
       const d=await (await api('/portal/api/recurring-expenses/')).json(); recs=d.results||[];
       const due=recs.filter(r=>r.is_active&&r.next_due&&r.next_due<=new Date().toISOString().slice(0,10)).length;
@@ -560,7 +635,7 @@
     const opts=categories.filter(c=>c.is_active&&c.kind!=='capital').map(c=>`<option value="${c.id}" ${c.id===r.expense_category?'selected':''}>${esc(c.name)}</option>`).join('');
     document.getElementById('r_cat').innerHTML='<option value="">Choose…</option>'+opts;
     const v=(i,x)=>document.getElementById(i).value=x==null?'':x;
-    v('r_name',r.name);v('r_vendor',r.vendor);v('r_amount',r.amount);v('r_freq',r.frequency||'monthly');v('r_day',r.day_of_month||1);v('r_start',r.start_date||new Date().toISOString().slice(0,10));v('r_end',r.end_date);v('r_paid',r.payment_status||'paid');v('r_desc',r.description);
+    v('r_name',r.name);v('r_vendor',r.vendor);v('r_amount',r.amount);v('r_freq',r.frequency||'monthly');v('r_day',r.day_of_month||1);v('r_start',r.start_date||new Date().toISOString().slice(0,10));v('r_end',r.end_date);v('r_paid',r.payment_status||'paid'); fillAcctSelect('r_acct',r.supplier_account);v('r_desc',r.description);
     document.getElementById('r_active').checked=r.id?r.is_active:true; HQ.showDrawer('recModal');
   }
   document.getElementById('recNewBtn').onclick=()=>openRec(null);
@@ -571,10 +646,78 @@
     if(r.ok){ showAlert('pageAlert',d.posted?`Posted ${d.posted} expense(s).`:'Nothing was due.','success'); loadRecurring(); loadExpenses(); } else showAlert('pageAlert',d.detail||'Failed.'); };
   document.getElementById('recSave').onclick=async()=>{
     const id=document.getElementById('r_id').value; const g=i=>document.getElementById(i).value;
-    const body={name:g('r_name'),vendor:g('r_vendor'),expense_category:g('r_cat'),amount:g('r_amount'),frequency:g('r_freq'),day_of_month:g('r_day'),start_date:g('r_start'),end_date:g('r_end')||null,payment_status:g('r_paid'),description:g('r_desc'),is_active:document.getElementById('r_active').checked};
+    const body={name:g('r_name'),vendor:g('r_vendor'),expense_category:g('r_cat'),amount:g('r_amount'),frequency:g('r_freq'),day_of_month:g('r_day'),start_date:g('r_start'),end_date:g('r_end')||null,payment_status:g('r_paid'),supplier_account:g('r_acct')||null,description:g('r_desc'),is_active:document.getElementById('r_active').checked};
     const r=await api('/portal/api/recurring-expenses/'+(id?id+'/':''),{method:id?'PATCH':'POST',body:JSON.stringify(body)}); const d=await r.json();
     if(r.ok){ HQ.hideDrawer('recModal'); showAlert('pageAlert','Saved. It will post automatically on its due date.','success'); loadRecurring(); } else showAlert('recAlert',d.detail||JSON.stringify(d));
   };
+
+
+  // ── Supplier bills (Axxess) tab ──
+  let acctList=[], linkSubs=[];
+  async function loadAccts(){ try{ const d=await (await api('/portal/api/supplier-accounts/')).json(); acctList=d.results||[]; }catch(e){} }
+  window.fillAcctSelect=function(id,sel){ const el=document.getElementById(id); el.innerHTML='<option value="">— none —</option>'+acctList.map(a=>`<option value="${a.id}" ${a.id===sel?'selected':''}>${esc(a.supplier)} ${esc(a.account_number)}${a.name?' — '+esc(a.name):''}</option>`).join(''); };
+  document.getElementById('sbMonth').value=new Date().toISOString().slice(0,7);
+  document.getElementById('sbReload').onclick=()=>loadSupplier();
+  document.getElementById('sbMonth').onchange=()=>loadSupplier();
+  window.loadSupplier=async function(){
+    const box=document.getElementById('sbBody'); document.getElementById('sbAlert').innerHTML='';
+    document.getElementById('sbNewBill').style.display=canManage?'':'none';
+    await loadAccts();
+    try{
+      const r=await api('/portal/api/finance/supplier-reconciliation/?month='+document.getElementById('sbMonth').value); const d=await r.json();
+      if(!r.ok){ box.innerHTML=''; showAlert('sbAlert',d.detail||'Could not load.'); return; }
+      const money=n=>n==null?'—':fmtR(n);
+      box.innerHTML=`<div class="small text-muted mb-2">${esc(d.rule)}</div>`+d.accounts.map(a=>{
+        const diffCls=a.difference==null?'':(Math.abs(a.difference)<0.005?'text-success':'text-danger');
+        return `<div class="card mb-3"><div class="card-header d-flex flex-wrap justify-content-between gap-2"><div><b>${esc(a.supplier)} account ${esc(a.account_number)}</b> <span class="text-muted">${esc(a.name||'')}</span></div>
+          <div class="small">Axxess charged <b>${money(a.charged)}</b> <span class="text-muted">(${esc(a.charged_source||'not entered')})</span> · our records <b>${money(a.recorded)}</b> · difference <b class="${diffCls}">${a.difference==null?'—':(a.difference>0?'+':'')+fmtR(a.difference)}</b>${a.bill_status?` · bill <span class="badge ${a.bill_status==='paid'?'bg-success':'bg-warning text-dark'}">${esc(a.bill_status)}</span>`:''}</div></div>
+          <div class="card-body"><div class="small mb-2 ${diffCls}">${esc(a.explain)}</div>`+
+          (a.lines.length?`<div class="table-responsive"><table class="table table-sm small mb-0"><thead><tr class="text-muted"><th>Line</th><th>Counted through</th><th class="text-end">Our record / month</th><th class="text-end">Axxess charged</th><th class="text-end">Difference</th></tr></thead><tbody>`+a.lines.map(l=>`<tr class="${l.diff?'table-warning':''}"><td><a href="${esc(l.url)}">${esc(l.label)}</a>${l.axxess_id?' <span class="text-muted">('+esc(l.axxess_id)+')</span>':''}</td><td>${esc(l.counted_via)}</td><td class="text-end">${money(l.recorded)}</td><td class="text-end">${money(l.charged)}</td><td class="text-end">${l.diff==null?'—':fmtR(l.diff)}</td></tr>`).join('')+'</tbody></table></div>':'')+
+          (canManage?`<div class="mt-2"><button class="btn btn-sm btn-outline-secondary" onclick="editAcctTotal(${attrJson(a.id)},${attrJson(a.charged==null?'':a.charged)})">Set what Axxess charges on this account</button></div>`:'')+`</div></div>`; }).join('')+
+        (d.unassigned_lines.length?`<div class="alert alert-warning small"><b>${d.unassigned_lines.length} WiFi line(s) are not on any Axxess account yet:</b> ${d.unassigned_lines.map(l=>esc(l.label)+(l.axxess_id?' ('+esc(l.axxess_id)+')':'')).join('; ')}. Set the Axxess account on each (Subscriptions &rarr; Services &rarr; edit).</div>`:'');
+    }catch(e){ if(e.message!=='Unauth') showAlert('sbAlert','Could not load the reconciliation.'); }
+  };
+  window.editAcctTotal=async function(id,cur){
+    const v=prompt('What does Axxess charge on this account per month (R)?',cur); if(v===null) return;
+    const r=await api('/portal/api/supplier-accounts/'+id+'/',{method:'PATCH',body:JSON.stringify({charged_total:v})}); const j=await r.json().catch(()=>({}));
+    if(r.ok) loadSupplier(); else showAlert('sbAlert',j.detail||'Could not save.');
+  };
+  async function loadLinkTargets(){
+    try{ const d=await (await api('/portal/api/subscriptions/?status=active')).json(); linkSubs=(d.results||[]).filter(x=>x.service_type==='wifi'); }catch(e){ linkSubs=[]; }
+  }
+  function lineRow(l){
+    l=l||{}; const tr=document.createElement('tr');
+    const opts='<option value="">— not linked —</option><optgroup label="Client services">'+linkSubs.map(x=>`<option value="s:${x.id}" ${l.subscription===x.id?'selected':''}>${esc(x.client_name)}${x.site_name?' — '+esc(x.site_name):''} — ${esc(x.description||x.service_label)}</option>`).join('')+'</optgroup><optgroup label="Our own lines">'+recs.map(x=>`<option value="r:${x.id}" ${l.recurring_expense===x.id?'selected':''}>${esc(x.name)}</option>`).join('')+'</optgroup>';
+    tr.innerHTML=`<td><input class="form-control form-control-sm l-desc" value="${esc(l.description||'')}" placeholder="e.g. Richards Bay"></td><td><select class="form-select form-select-sm l-link">${opts}</select></td><td><input type="number" class="form-control form-control-sm l-amt" step="0.01" min="0" value="${l.amount||''}"></td><td><button type="button" class="btn btn-sm btn-outline-danger">×</button></td>`;
+    tr.querySelector('button').onclick=()=>{ tr.remove(); billTotal(); }; tr.querySelector('.l-amt').oninput=billTotal;
+    tr.querySelector('.l-link').onchange=e=>{ const v=e.target.value; const d=tr.querySelector('.l-desc'); if(!d.value&&v){ const o=e.target.selectedOptions[0].textContent; d.value=o; } };
+    document.getElementById('b_lines').appendChild(tr);
+  }
+  function billTotal(){ document.getElementById('b_total').value=[...document.querySelectorAll('#b_lines .l-amt')].reduce((a,x)=>a+(parseFloat(x.value)||0),0).toFixed(2); }
+  document.getElementById('sbNewBill').onclick=async()=>{
+    await loadAccts(); if(!recs.length) { try{ recs=(await (await api('/portal/api/recurring-expenses/')).json()).results||[]; }catch(e){} } await loadLinkTargets();
+    fillAcctSelect('b_acct',''); document.getElementById('b_acct').querySelector('option').textContent='Choose the account…';
+    document.getElementById('b_lines').innerHTML=''; lineRow(); lineRow(); billTotal(); document.getElementById('billAlert').innerHTML='';
+    document.getElementById('b_date').value=new Date().toISOString().slice(0,10); document.getElementById('b_status').value='unpaid'; document.querySelectorAll('.b-paid').forEach(x=>x.style.display='none');
+    document.getElementById('b_paid_on').value=new Date().toISOString().slice(0,10); document.getElementById('b_ref').value=''; HQ.showDrawer('billModal');
+  };
+  document.getElementById('b_addLine').onclick=()=>lineRow();
+  document.getElementById('b_status').onchange=()=>document.querySelectorAll('.b-paid').forEach(x=>x.style.display=document.getElementById('b_status').value==='paid'?'':'none');
+  document.getElementById('billSave').onclick=async()=>{
+    const acct=document.getElementById('b_acct').value; if(!acct){ showAlert('billAlert','Choose the Axxess account.'); return; }
+    const lines=[...document.querySelectorAll('#b_lines tr')].map(tr=>{ const link=tr.querySelector('.l-link').value; return {description:tr.querySelector('.l-desc').value.trim(),amount:tr.querySelector('.l-amt').value,
+      subscription:link.startsWith('s:')?link.slice(2):null,recurring_expense:link.startsWith('r:')?link.slice(2):null}; }).filter(l=>l.description||parseFloat(l.amount));
+    if(!lines.length){ showAlert('billAlert','Add at least one line.'); return; }
+    const cat=categories.find(c=>c.name==='Internet & Axxess (own lines)')||categories.find(c=>c.kind==='cogs')||categories[0];
+    const paid=document.getElementById('b_status').value==='paid';
+    const body={expense_category:cat&&cat.id,amount:document.getElementById('b_total').value,vendor:(acctList.find(a=>a.id===acct)||{}).supplier||'Axxess',
+      description:'Supplier account bill '+((acctList.find(a=>a.id===acct)||{}).account_number||''),expense_date:document.getElementById('b_date').value,
+      payment_status:paid?'paid':'unpaid',supplier_account:acct,is_supplier_bill:true,lines};
+    if(paid){ body.paid_on=document.getElementById('b_paid_on').value; body.payment_method='eft'; body.payment_reference=document.getElementById('b_ref').value; }
+    const r=await api('/portal/api/expenses/',{method:'POST',body:JSON.stringify(body)}); const j=await r.json().catch(()=>({}));
+    if(r.ok){ HQ.hideDrawer('billModal'); showAlert('pageAlert','Bill saved. It is not counted as a cost again; it shows under money we owe until paid.','success'); loadSupplier(); loadExpenses(); } else showAlert('billAlert',j.detail||JSON.stringify(j));
+  };
+  if(new URLSearchParams(location.search).get('unpaid')==='1'){ document.getElementById('fPaymentStatus').value='unpaid'; }
 
   // ── Categories tab ──
   function renderCategories(){

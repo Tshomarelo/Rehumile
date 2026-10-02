@@ -188,8 +188,10 @@
           <div class="fin-tile unpaid"><div class="lbl">Unpaid invoices</div><div class="val" id="tUnpaid">—</div><div class="sub" id="tUnpaidSub"></div></div>
           <div class="fin-tile exp"><div class="lbl">Expenses</div><div class="val" id="tExp">—</div><div class="sub" id="tExpSub"></div></div>
           <div class="fin-tile rev"><div class="lbl">Money received this period (by payment date)</div><div class="val" id="tRev">—</div><div class="sub" id="tRevSub"></div></div>
-          <div class="fin-tile profit"><div class="lbl">Net profit</div><div class="val" id="tProfit">—</div><div class="sub" id="tProfitSub"></div></div>
+          <div class="fin-tile profit"><div class="lbl">Profit on money collected</div><div class="val" id="tProfit">—</div><div class="sub" id="tProfitSub"></div></div>
+          <div class="fin-tile profit" style="border-left-color:#7c3aed"><div class="lbl">Profit if all invoices are paid</div><div class="val" id="tProfit2">—</div><div class="sub" id="tProfit2Sub"></div></div>
         </div>
+        <div id="accrualBlock" style="margin-top:10px"></div>
         <div class="fin-eq" id="finEq"></div>
         <button class="how-btn" id="howBtn">How was this calculated? ▾</button>
         <div id="howPanel" style="display:none">
@@ -197,6 +199,12 @@
             <b>Plain-English rules.</b> Revenue is money that has actually been <b>paid</b> (invoice totals <b>without VAT</b>, because VAT belongs to SARS) plus till (POS) sales.
             <b>Unpaid</b> is what clients still owe us. <b>Expenses</b> are what the business spent or owes suppliers for, plus wages. <b>Profit = Revenue − Expenses.</b>
             Tap any line to see the exact invoices / expenses behind it.
+          </div>
+          <div class="note-box" style="background:#f5f3ff;border-color:#ddd6fe;color:#4c1d95">
+            <b>Two profit figures.</b> <b>Profit on money collected</b> = money received (excl. VAT) minus the Axxess / service costs of the invoices that were paid, minus running costs and wages.
+            It never counts a cost before the client pays, so it can look better than reality while invoices are unpaid.
+            <b>Profit if all invoices are paid</b> = every invoice issued in the period (excl. VAT) minus <i>all</i> of their Axxess / service costs (paid or not), minus running costs and wages.
+            Costs that are not recorded on an invoice line (for example hardware you have not entered yet) are missing from both until you add them.
           </div>
           <table class="wk" id="wkTable"></table>
           <div id="unpaidBlock"></div>
@@ -441,9 +449,25 @@
     const pv = document.getElementById('tProfit');
     pv.textContent = signedR(pr.net); pv.className = 'val '+(pr.net<0?'neg':'pos');
     document.getElementById('tProfitSub').innerHTML = 'Margin '+pr.margin_pct+'%<br>Gross profit '+signedR(pr.gross);
+    renderAccrual(s);
     document.getElementById('finEq').innerHTML = '<span>Revenue <b>'+fmtR(rev.total)+'</b></span><span>−</span><span>Expenses <b>'+fmtR(ex.total)+'</b></span><span>=</span><span>Net profit <b class="'+(pr.net<0?'neg':'pos')+'">'+signedR(pr.net)+'</b></span>';
     renderWorkings(s);
     loadTrend();
+  }
+  function renderAccrual(s){
+    const a=s.accrual; if(!a) return;
+    const pv=document.getElementById('tProfit2'); pv.textContent=signedR(a.profit_if_paid); pv.className='val '+(a.profit_if_paid<0?'neg':'pos');
+    document.getElementById('tProfit2Sub').innerHTML='Invoiced '+fmtR(a.revenue.invoices)+' ('+a.revenue.invoice_count+' invoices)<br>− all their Axxess / service costs '+fmtR(a.cost_of_sales.invoice_costs)+'<br>Margin '+a.margin_pct+'%';
+    const nc=a.costs_not_counted;
+    const rows=nc.rows.map(r=>'<tr><td>'+(r.url?'<a href="'+r.url+'">'+esc(r.ref)+'</a>':esc(r.ref))+'</td><td>'+esc(r.label)+(r.branch?' — '+esc(r.branch):'')+'</td><td>'+esc(r.line)+'<div style="color:#6b7280;font-size:.72rem">'+esc(r.source)+'</div></td><td style="text-align:right">'+fmtR(r.amount)+'</td></tr>').join('');
+    const rec=a.reconciliation.map(x=>'<tr><td class="sg">'+esc(x.sign)+'</td><td>'+esc(x.label)+'<div style="color:#6b7280;font-size:.72rem">'+esc(x.explain)+'</div></td><td style="text-align:right">'+fmtR(x.amount)+'</td></tr>').join('');
+    document.getElementById('accrualBlock').innerHTML=
+      '<div class="note-box" style="background:#f5f3ff;border-color:#ddd6fe;color:#4c1d95">'+
+      '<button class="more" id="ncBtn" style="font-weight:700">▸ Axxess / service costs not yet counted (clients haven\'t paid): '+fmtR(nc.amount)+'</button>'+
+      '<div id="ncBox" style="display:none;margin-top:8px"><div style="font-size:.78rem;margin-bottom:6px">These costs belong to invoices issued this period that have not been paid. Profit on money collected leaves them out until the client pays; profit if all are paid includes them now.</div>'+
+      (rows?'<table class="sub">'+rows+'</table>':'<div style="font-size:.8rem">Nothing — every invoice issued this period has been paid.</div>')+
+      '<div style="font-weight:700;margin:10px 0 4px">Why the two profit figures differ ('+signedR(a.profit_if_paid)+' − '+signedR(a.profit_collected)+' = '+signedR(a.gap)+')</div><table class="sub">'+rec+'</table></div></div>';
+    document.getElementById('ncBtn').onclick=()=>{ const b=document.getElementById('ncBox'); const o=b.style.display==='none'; b.style.display=o?'block':'none'; document.getElementById('ncBtn').textContent=(o?'▾':'▸')+document.getElementById('ncBtn').textContent.slice(1); };
   }
   function renderWorkings(s){
     const rows = s.workings.map((w,i)=>{

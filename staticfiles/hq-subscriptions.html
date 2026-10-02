@@ -153,6 +153,7 @@
       <div class="col-md-3"><label class="form-label">Price each / month (R) <span class="text-danger">*</span></label><input type="number" class="form-control" id="s_price" min="0" step="0.01"></div>
       <div class="col-md-3"><label class="form-label">Your cost each (R)</label><input type="number" class="form-control" id="s_cost" min="0" step="0.01" value="0"></div>
       <div class="col-md-3"><label class="form-label">Due day</label><input type="number" class="form-control" id="s_day" min="1" max="31" value="1"></div>
+      <div class="col-md-6"><label class="form-label">Axxess account <span class="text-muted small">(for the Axxess reconciliation)</span></label><select class="form-select" id="s_acct"><option value="">— none —</option></select></div>
       <div class="col-12"><div class="form-check"><input class="form-check-input" type="checkbox" id="s_sep"><label class="form-check-label" for="s_sep">Give this service its own invoice <span class="text-muted small">(instead of combining it with the client's other services)</span></label></div></div>
       <div class="col-md-4"><label class="form-label">Start date</label><input type="date" class="form-control" id="s_start"></div>
       <div class="col-md-4"><label class="form-label">End date <span class="text-muted small">(optional)</span></label><input type="date" class="form-control" id="s_end"></div>
@@ -361,20 +362,23 @@
     $('s_company').value=s.company||''; $('s_client_name').value=s.company?'':(s.client_name||''); fillSites(s.company||'',s.site||'');
     $('s_email').value=s.contact_email||''; $('s_phone').value=s.contact_phone||'';
     $('s_type').value=s.service_type||'wifi'; $('s_desc').value=s.description||''; $('s_qty').value=s.quantity!=null?s.quantity:1; $('s_price').value=s.unit_price!=null?s.unit_price:''; $('s_cost').value=s.unit_cost||0;
-    $('s_day').value=s.billing_day||1; $('s_sep').checked=!!s.invoice_separately; $('s_start').value=s.start_date||new Date().toISOString().slice(0,10); $('s_end').value=s.end_date||''; $('s_status').value=s.status||'active'; $('s_notes').value=s.notes||'';
+    $('s_day').value=s.billing_day||1; $('s_sep').checked=!!s.invoice_separately; fillAcct(s.supplier_account||''); $('s_start').value=s.start_date||new Date().toISOString().slice(0,10); $('s_end').value=s.end_date||''; $('s_status').value=s.status||'active'; $('s_notes').value=s.notes||'';
     const legacy=!!s.managed_by; $('legacyNote').style.display=legacy?'':'none'; $('legacyKind').textContent=s.managed_by==='sla'?'SLA contract':'WiFi subscriber';
     ['s_company','s_client_name','s_email','s_phone','s_type','s_price','s_cost','s_day','s_sep','s_start','s_end','s_status'].forEach(i=>$(i).disabled=legacy);
     prev(); HQ.showDrawer('subModal');
   }
+  let acctOpts=[];
+  fetch('/portal/api/supplier-accounts/',{headers:{'Authorization':'Bearer '+localStorage.getItem('ims_access')}}).then(r=>r.ok?r.json():{results:[]}).then(d=>{ acctOpts=d.results||[]; }).catch(()=>{});
+  function fillAcct(sel){ $('s_acct').innerHTML='<option value="">— none —</option>'+acctOpts.map(a=>`<option value="${a.id}" ${a.id===sel?'selected':''}>${esc(a.supplier)} ${esc(a.account_number)}${a.name?' — '+esc(a.name):''}</option>`).join(''); }
   $('btnNewSub').onclick=()=>openSub(null);
   window.editSub=id=>openSub(subs.find(s=>s.id===id));
   window.delSub=async id=>{ if(!confirm('Delete this service?')) return; const r=await api('/portal/api/subscriptions/'+id+'/',{method:'DELETE'});
     if(r.ok||r.status===204){ loadSubs(); } else { const d=await r.json(); alertBox('pageAlert',d.detail||'Could not delete.'); } };
   $('btnSaveSub').onclick=async()=>{
     const id=$('s_id').value; const legacy=$('s_type').disabled;
-    const body = legacy ? {site:$('s_site').value||null,description:$('s_desc').value,quantity:$('s_qty').value,notes:$('s_notes').value}
+    const body = legacy ? {site:$('s_site').value||null,description:$('s_desc').value,quantity:$('s_qty').value,notes:$('s_notes').value,supplier_account:$('s_acct').value||null}
       : {company:$('s_company').value||null,client_name:$('s_client_name').value,contact_email:$('s_email').value,contact_phone:$('s_phone').value,site:$('s_site').value||null,service_type:$('s_type').value,description:$('s_desc').value,quantity:$('s_qty').value,
-         unit_price:$('s_price').value,unit_cost:$('s_cost').value||0,billing_day:$('s_day').value||1,invoice_separately:$('s_sep').checked,start_date:$('s_start').value||null,end_date:$('s_end').value||null,status:$('s_status').value,notes:$('s_notes').value};
+         unit_price:$('s_price').value,unit_cost:$('s_cost').value||0,billing_day:$('s_day').value||1,supplier_account:$('s_acct').value||null,invoice_separately:$('s_sep').checked,start_date:$('s_start').value||null,end_date:$('s_end').value||null,status:$('s_status').value,notes:$('s_notes').value};
     const r=await api('/portal/api/subscriptions/'+(id?id+'/':''),{method:id?'PATCH':'POST',body:JSON.stringify(body)}); const d=await r.json();
     if(r.ok){ HQ.hideDrawer('subModal'); alertBox('pageAlert','Service saved.','success'); loadSubs(); } else alertBox('subAlert',d.detail||JSON.stringify(d));
   };

@@ -363,3 +363,21 @@ Things that could fail on MySQL (utf8mb3 tables):
 - `migrate --plan` must show **only** `0023`. If it lists anything older, stop and do not run `migrate`.
 - 0023 adds one yes/no column and changes only the allowed list of service types (no data change), so it is quick and safe.
 - Date filters never use `__date`, so missing MySQL time-zone tables do not matter.
+
+## Update: Profit & Loss, two profit figures, supplier (Axxess) bills (migrations 0024 and 0025)
+
+```bash
+mysqldump -u <user> -h <host> '<db>' > backup_$(date +%F).sql
+git pull origin claude/gallant-hypatia-tgbx85
+pip install -r requirements.txt
+python manage.py migrate --plan     # expect ONLY ims.0024_supplier_accounts_expense_payments and ims.0025_seed_axxess_accounts
+python manage.py migrate
+python manage.py collectstatic --noinput
+```
+Reload the web app and hard-refresh the browser.
+
+- `0024` adds columns/tables only (supplier accounts, bill lines, paid-on/method/reference on expenses): no existing data is changed.
+- `0025` creates the three Axxess accounts (379248, 343721, 296356) with the monthly totals you gave; it is safe to re-run.
+- After deploying: Subscriptions > Services > edit each Axxess line and pick its Axxess account; set the account on your own recurring Axxess costs
+  (Expenses > Recurring). Then Expenses > Supplier bills (Axxess) shows charged vs recorded per line.
+- Nothing about prices or costs is changed by this update.

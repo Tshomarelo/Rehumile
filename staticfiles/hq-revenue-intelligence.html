@@ -83,6 +83,7 @@
         <ul class="nav nav-tabs mb-3" id="biTabs">
           <li class="nav-item"><a class="nav-link active" href="#" data-bi="overview">Overview</a></li>
           <li class="nav-item" id="biReportTab" style="display:none"><a class="nav-link" href="#" data-bi="report">Profit &amp; Money Owed</a></li>
+          <li class="nav-item" id="biPnlTab" style="display:none"><a class="nav-link" href="#" data-bi="pnl">Profit &amp; Loss</a></li>
         </ul>
         <div id="bi-overview">
 
@@ -243,6 +244,25 @@
         </div>
 
         </div><!-- /bi-overview -->
+
+        <!-- ═══ Profit & Loss (admin / finance) ═══ -->
+        <div id="bi-pnl" style="display:none">
+          <div class="card mb-3"><div class="card-body">
+            <div class="row g-2 align-items-end">
+              <div class="col-12 col-md-3"><label class="form-label small mb-1">View</label>
+                <div class="btn-group w-100" role="group"><button type="button" class="btn btn-sm btn-primary" id="pnlAccrual">Accrual</button><button type="button" class="btn btn-sm btn-outline-primary" id="pnlCash">Cash</button></div></div>
+              <div class="col-6 col-md-2"><label class="form-label small mb-1">Period</label>
+                <select class="form-select form-select-sm" id="pnlPeriod"><option value="month" selected>Month</option><option value="quarter">Quarter</option><option value="year">Year</option><option value="custom">Custom…</option></select></div>
+              <div class="col-6 col-md-2" id="pnlAnchorWrap"><label class="form-label small mb-1">Around date</label><input type="date" class="form-control form-control-sm" id="pnlAnchor"></div>
+              <div class="col-6 col-md-2 pnl-custom" style="display:none"><label class="form-label small mb-1">From</label><input type="date" class="form-control form-control-sm" id="pnlFrom"></div>
+              <div class="col-6 col-md-2 pnl-custom" style="display:none"><label class="form-label small mb-1">To</label><input type="date" class="form-control form-control-sm" id="pnlTo"></div>
+              <div class="col-12 col-md-auto ms-md-auto d-flex gap-2"><button class="btn btn-sm btn-primary" id="pnlGo">Show</button><button class="btn btn-sm btn-outline-secondary" id="pnlPdf">PDF</button><button class="btn btn-sm btn-outline-secondary" id="pnlCsv">CSV</button></div>
+            </div>
+            <div class="small text-muted mt-2"><b>Accrual</b>: invoices issued in the period less the Axxess / supplier cost of those same invoices, paid or not. <b>Cash</b>: money actually received and actually paid out (e.g. the Axxess account bill once you mark it paid). Amounts exclude VAT.</div>
+          </div></div>
+          <div id="pnlAlert"></div>
+          <div id="pnlBody"><div class="text-muted text-center py-5">Press <b>Show</b>.</div></div>
+        </div>
 
         <!-- ═══ Profit & Money Owed (admin / finance) ═══ -->
         <div id="bi-report" style="display:none">
@@ -560,14 +580,16 @@
 
   // ═══ Profit & Money Owed ═══════════════════════════════════════════════
   const canReport=['admin','finance'].includes(userData.role);
-  if(canReport) document.getElementById('biReportTab').style.display='';
+  if(canReport){ document.getElementById('biReportTab').style.display=''; document.getElementById('biPnlTab').style.display=''; }
   document.querySelectorAll('#biTabs a').forEach(a=>a.onclick=e=>{ e.preventDefault(); showBi(a.dataset.bi); });
   function showBi(name){
     document.querySelectorAll('#biTabs a').forEach(x=>x.classList.toggle('active',x.dataset.bi===name));
     document.getElementById('bi-overview').style.display=name==='overview'?'':'none';
     document.getElementById('bi-report').style.display=name==='report'?'':'none';
-    if(history.replaceState) history.replaceState(null,'',name==='report'?'#report':location.pathname);
+    document.getElementById('bi-pnl').style.display=name==='pnl'?'':'none';
+    if(history.replaceState) history.replaceState(null,'',name==='report'?'#report':name==='pnl'?'#pnl':location.pathname);
     if(name==='report' && !window._rpLoaded){ window._rpLoaded=true; loadReport(); }
+    if(name==='pnl' && !window._pnlLoaded){ window._pnlLoaded=true; loadPnl(); }
   }
   const E=x=>String(x==null?'':x).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
   const M=n=>'R '+(parseFloat(n)||0).toLocaleString('en-ZA',{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -627,6 +649,50 @@
   }
   document.getElementById('rpPdf').onclick=()=>rpDownload('pdf');
   document.getElementById('rpCsv').onclick=()=>rpDownload('csv');
+
+  // ═══ Profit & Loss ═══════════════════════════════════════════════════════
+  let pnlView='accrual';
+  document.getElementById('pnlAnchor').value=new Date().toISOString().slice(0,10);
+  function setPnlView(v){ pnlView=v; document.getElementById('pnlAccrual').className='btn btn-sm '+(v==='accrual'?'btn-primary':'btn-outline-primary'); document.getElementById('pnlCash').className='btn btn-sm '+(v==='cash'?'btn-primary':'btn-outline-primary'); loadPnl(); }
+  document.getElementById('pnlAccrual').onclick=()=>setPnlView('accrual'); document.getElementById('pnlCash').onclick=()=>setPnlView('cash');
+  document.getElementById('pnlPeriod').onchange=()=>{ const c=document.getElementById('pnlPeriod').value==='custom'; document.querySelectorAll('.pnl-custom').forEach(x=>x.style.display=c?'':'none'); document.getElementById('pnlAnchorWrap').style.display=c?'none':''; };
+  function pnlQuery(){ const p=document.getElementById('pnlPeriod').value, q=new URLSearchParams({view:pnlView,period:p});
+    if(p==='custom'){ q.set('date_from',document.getElementById('pnlFrom').value); q.set('date_to',document.getElementById('pnlTo').value); } else q.set('date',document.getElementById('pnlAnchor').value); return q.toString(); }
+  async function loadPnl(){
+    const box=document.getElementById('pnlBody'); document.getElementById('pnlAlert').innerHTML=''; box.innerHTML='<div class="text-center text-muted py-5">Working it out…</div>';
+    try{ const r=await api('/portal/api/finance/pnl/?'+pnlQuery()); const d=await r.json();
+      if(!r.ok){ box.innerHTML=''; showAlert('pnlAlert',d.detail||'Could not build the Profit & Loss.'); return; } box.innerHTML=renderPnl(d);
+      box.querySelectorAll('[data-toggle]').forEach(b=>b.onclick=()=>{ const t=document.getElementById(b.dataset.toggle); const o=t.style.display==='none'; t.style.display=o?'':'none'; b.querySelector('.car').textContent=o?'▾':'▸'; });
+    }catch(e){ if(e.message!=='Unauth'){ box.innerHTML=''; showAlert('pnlAlert','Could not load the Profit & Loss.'); } }
+  }
+  let _pg=0;
+  function recTable(rows){ return '<div class="table-responsive"><table class="table table-sm mb-2 small"><thead><tr class="text-muted"><th>Ref</th><th>Client / supplier</th><th>Line</th><th>Date</th><th>Paid</th><th>How it was worked out</th><th class="rp-num">Amount</th></tr></thead><tbody>'+
+    rows.map(r=>`<tr><td><a href="${E(r.url||'#')}">${E(r.ref)}</a></td><td>${E(r.label)}${r.branch?' — '+E(r.branch):''}</td><td>${E(r.line||'')}</td><td>${E(r.date||'')}</td><td>${r.paid?'<span class="rp-pos">paid</span>':'<span class="rp-neg">unpaid</span>'}</td><td class="text-muted">${E(r.source||'')}${r.cost?' · cost '+M(r.cost):''}</td><td class="rp-num">${M(r.amount)}</td></tr>`).join('')+'</tbody></table></div>'; }
+  function pnlGroup(g){ const id='pg'+(++_pg); return `<div class="border-top py-1"><button class="btn btn-link btn-sm p-0 text-start text-decoration-none w-100 d-flex justify-content-between" data-toggle="${id}"><span><span class="car">▸</span> ${E(g.label)} <span class="text-muted small">(${g.rows.length})</span></span><b>${M(g.amount)}</b></button><div id="${id}" style="display:none">${recTable(g.rows)}</div></div>`; }
+  function pnlSection(sec,body){ return `<div class="rp-sec"><div class="rp-in pt-3"><div class="d-flex justify-content-between"><b>${E(sec.label)}</b><b>${M(sec.amount)}</b></div><div class="rp-why">${E(sec.explain)}</div>${body}</div></div>`; }
+  function renderPnl(d){
+    const S=d.sections; const L=Object.fromEntries(d.lines.map(x=>[x.key,x]));
+    let out=`<div class="rp-eq mb-3"><div class="fw-bold">${E(d.view_label)} · ${E(d.period.label)}</div><table class="w-100 mt-2" style="font-size:1rem">`+d.lines.map(l=>`<tr class="${l.total?'fw-bold border-top':''}"><td style="width:28px">${l.sign}</td><td>${E(l.label)}</td><td class="rp-num ${l.key==='net'&&l.amount<0?'rp-neg':''}">${M(l.amount)}</td></tr>`).join('')+
+      `<tr class="text-muted small"><td></td><td>Net margin</td><td class="rp-num">${d.margin_pct}%</td></tr></table><div class="small text-muted mt-2">${E(d.note)}</div></div>`;
+    if(d.warnings.length) out+=d.warnings.map(w=>`<div class="rp-warn"><b>${E(w.title)}</b><div class="small">${E(w.detail)}</div></div>`).join('');
+    out+=pnlSection(S.revenue,S.revenue.groups.map(pnlGroup).join('')+'<div class="small fw-bold mt-3">By client</div>'+S.revenue.by_client.map(c=>{ const id='pg'+(++_pg); return `<div class="border-top py-1"><button class="btn btn-link btn-sm p-0 text-start text-decoration-none w-100 d-flex justify-content-between" data-toggle="${id}"><span><span class="car">▸</span> ${E(c.client)}</span><b>${M(c.amount)}</b></button><div id="${id}" style="display:none">${recTable(c.rows)}</div></div>`; }).join(''));
+    out+=pnlSection(S.cost_of_sales,S.cost_of_sales.groups.map(pnlGroup).join('')||'<div class="text-muted small">Nothing in this view.</div>');
+    out+=`<div class="rp-sec"><div class="rp-in pt-3 d-flex justify-content-between"><b>Gross profit</b><b>${M(L.gross.amount)}</b></div><div class="rp-in rp-why">Revenue minus cost of sales.</div></div>`;
+    out+=pnlSection(S.operating,S.operating.groups.map(pnlGroup).join('')||'<div class="text-muted small">Nothing in this view.</div>');
+    out+=pnlSection(S.payroll,S.payroll.rows.length?recTable(S.payroll.rows):'');
+    out+=`<div class="rp-eq mb-3 d-flex justify-content-between"><b>Net profit</b><b class="${L.net.amount<0?'rp-neg':'rp-pos'}">${M(L.net.amount)} (${d.margin_pct}%)</b></div>`;
+    const o=d.owed_to_us, w=d.we_owe;
+    out+=`<div class="row g-3"><div class="col-lg-6"><div class="card"><div class="card-header d-flex justify-content-between"><b>Money owed to us</b><b>${M(o.amount)}</b></div><div class="card-body small"><div class="text-muted mb-2">${E(o.explain)} Overdue: <b class="rp-neg">${M(o.overdue)}</b> · not yet due: <b>${M(o.not_due)}</b></div>`+
+      (o.rows.length?'<table class="table table-sm mb-0"><thead><tr class="text-muted"><th>Invoice</th><th>Client</th><th>Due</th><th class="rp-num">Balance</th></tr></thead><tbody>'+o.rows.map(r=>`<tr><td><a href="${E(r.url)}">${E(r.ref)}</a></td><td>${E(r.label)}</td><td>${E(r.due||'')}${r.overdue?` <span class="rp-neg">(${r.days_overdue}d late)</span>`:''}</td><td class="rp-num">${M(r.amount)}</td></tr>`).join('')+'</tbody></table>':'<div class="text-muted">Nobody owes us anything.</div>')+`</div></div></div>`+
+      `<div class="col-lg-6"><div class="card"><div class="card-header d-flex justify-content-between"><b>Money we owe</b><b>${M(w.amount)}</b></div><div class="card-body small"><div class="text-muted mb-2">${E(w.explain)}</div>`+
+      (w.rows.length?'<table class="table table-sm mb-0"><thead><tr class="text-muted"><th>Supplier</th><th>For</th><th>Date</th><th class="rp-num">Amount</th></tr></thead><tbody>'+w.rows.map(r=>`<tr><td><a href="${E(r.url)}">${E(r.label)}</a></td><td>${E(r.ref)}${r.line?' — '+E(r.line):''}${r.supplier_bill?' <span class="badge bg-warning text-dark">bill</span>':''}</td><td>${E(r.date)}</td><td class="rp-num">${M(r.amount)}</td></tr>`).join('')+'</tbody></table>':'<div class="text-muted">We owe nobody.</div>')+`</div></div></div></div>`;
+    return out;
+  }
+  document.getElementById('pnlGo').onclick=loadPnl;
+  async function pnlDownload(kind){ try{ const r=await api('/portal/api/finance/pnl/'+kind+'/?'+pnlQuery()); if(!r.ok){ showAlert('pnlAlert','Could not export.'); return; }
+      const blob=await r.blob(), a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='profit-and-loss.'+kind; document.body.appendChild(a); a.click(); a.remove(); }catch(e){ if(e.message!=='Unauth') showAlert('pnlAlert','Could not export.'); } }
+  document.getElementById('pnlPdf').onclick=()=>pnlDownload('pdf'); document.getElementById('pnlCsv').onclick=()=>pnlDownload('csv');
+  if(location.hash==='#pnl' && canReport) showBi('pnl');
   if(location.hash==='#report' && canReport) showBi('report');
 
 
